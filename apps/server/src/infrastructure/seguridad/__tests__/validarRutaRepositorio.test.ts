@@ -22,8 +22,8 @@ describe('validarRutaRepositorio', () => {
   });
 
   it('debe permitir rutas dentro de PROJECTS_ROOT', () => {
-    const repo = validarRutaRepositorio(path.join('C:\\proyectos-test', 'webkraken'));
-    expect(repo).toBe(path.resolve('C:\\proyectos-test', 'webkraken'));
+    const repo = validarRutaRepositorio(path.join('C:\\proyectos-test', 'abyssan'));
+    expect(repo).toBe(path.resolve('C:\\proyectos-test', 'abyssan'));
   });
 
   it('debe rechazar path traversal fuera de PROJECTS_ROOT', () => {

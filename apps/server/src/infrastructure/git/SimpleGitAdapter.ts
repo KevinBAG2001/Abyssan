@@ -1,5 +1,5 @@
 // Austria: Adaptador de infraestructura para simple-git implementando IGitRepository
-import simpleGit, { SimpleGit, StatusResult, ResetMode } from 'simple-git';
+import { simpleGit, SimpleGit, StatusResult, ResetMode } from 'simple-git';
 import fs from 'fs';
 import path from 'path';
 import { IGitRepository } from '../../domain/repositories/IGitRepository.js';

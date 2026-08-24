@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Abyssan">
+  <defs>
+    <linearGradient id="abyssan-mark" x1="18%" y1="8%" x2="88%" y2="96%">
+      <stop offset="0%" stop-color="#34d399"/>
+      <stop offset="55%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#22d3ee"/>
+    </linearGradient>
+    <radialGradient id="abyssan-well" cx="50%" cy="42%" r="58%">
+      <stop offset="0%" stop-color="#1a2740" stop-opacity="1"/>
+      <stop offset="70%" stop-color="#0f111a" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#07080e" stop-opacity="1"/>
+    </radialGradient>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="#0b0d14"/>
+  <circle cx="128" cy="128" r="108" fill="url(#abyssan-well)"/>
+  <circle cx="128" cy="128" r="108" fill="none" stroke="#23283b" stroke-width="2"/>
+  <circle cx="128" cy="128" r="78" fill="none" stroke="#10b981" stroke-opacity="0.18" stroke-width="1.5"/>
+  <circle cx="128" cy="128" r="52" fill="none" stroke="#22d3ee" stroke-opacity="0.14" stroke-width="1.25"/>
+  <path d="M78 186 C78 128 98 86 128 58 C158 86 178 128 178 186" fill="none" stroke="url(#abyssan-mark)" stroke-width="10" stroke-linecap="round"/>
+  <path d="M104 186 C104 142 114 108 128 86 C142 108 152 142 152 186" fill="none" stroke="#22d3ee" stroke-opacity="0.45" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="128" cy="58" r="9" fill="#ecfdf5" stroke="#10b981" stroke-width="3"/>
+  <circle cx="78" cy="186" r="7" fill="#10b981"/>
+  <circle cx="178" cy="186" r="7" fill="#22d3ee"/>
+  <circle cx="128" cy="128" r="6" fill="#a7f3d0"/>
+</svg>

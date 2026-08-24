@@ -1,19 +1,20 @@
 {
-  "name": "webkraken-monorepo",
+  "name": "abyssan",
   "version": "1.0.0",
   "private": true,
-  "description": "Modern Web-based Git Client inspired by GitKraken",
+  "description": "Abyssan — cliente Git gráfico auto-hospedable, inspirado en GitKraken",
   "scripts": {
-    "dev:server": "pnpm --filter @webkraken/server dev",
-    "dev:web": "pnpm --filter @webkraken/web dev",
-    "dev": "pnpm --filter @webkraken/server dev & pnpm --filter @webkraken/web dev",
-    "build": "pnpm --filter @webkraken/server build && pnpm --filter @webkraken/web build",
+    "dev:server": "pnpm --filter @abyssan/server dev",
+    "dev:web": "pnpm --filter @abyssan/web dev",
+    "dev": "pnpm --filter @abyssan/server dev & pnpm --filter @abyssan/web dev",
+    "build": "pnpm --filter @abyssan/server build && pnpm --filter @abyssan/web build",
     "lint": "oxlint",
-    "test": "vitest"
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "keywords": [
     "git",
-    "gitkraken",
+    "abyssan",
     "git-gui",
     "react19",
     "vite",

@@ -48,7 +48,7 @@ export function useGitRepository() {
         setSelectedRepo(firstGit.path);
       }
     } catch (err: any) {
-      console.error('[WebKraken] Error cargando repositorios:', err);
+      console.error('[Abyssan] Error cargando repositorios:', err);
     }
   };
 

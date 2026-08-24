@@ -6,7 +6,6 @@ import {
   FileX,
   Plus,
   Minus,
-  Check,
   Send,
   AlertCircle,
   Layers,

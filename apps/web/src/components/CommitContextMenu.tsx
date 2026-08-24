@@ -1,6 +1,6 @@
 import React from 'react';
 import { GitCommit } from '../types/git';
-import { GitBranch, Tag, GitPullRequest, Undo2, RotateCcw, ShieldAlert, Check } from 'lucide-react';
+import { GitBranch, Tag, GitPullRequest, Undo2, RotateCcw, ShieldAlert } from 'lucide-react';
 
 interface CommitContextMenuProps {
   commit: GitCommit;

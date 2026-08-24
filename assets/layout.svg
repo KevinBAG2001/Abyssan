@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" role="img" aria-label="Esquema de la interfaz de Abyssan">
+  <defs>
+    <linearGradient id="app-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0c0e16"/>
+      <stop offset="100%" stop-color="#0f111a"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="640" rx="20" fill="url(#app-bg)" stroke="#23283b"/>
+
+  <rect x="0" y="0" width="1280" height="56" rx="20" fill="#121624"/>
+  <rect x="0" y="36" width="1280" height="20" fill="#121624"/>
+  <rect x="20" y="16" width="18" height="18" rx="5" fill="#10b981"/>
+  <text x="48" y="31" fill="#e2e8f0" font-family="Segoe UI, Inter, sans-serif" font-size="14" font-weight="700" letter-spacing="1.5">ABYSSAN</text>
+  <rect x="180" y="14" width="220" height="28" rx="8" fill="#0f111a" stroke="#23283b"/>
+  <text x="192" y="33" fill="#64748b" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="11">repositorio / abyssan</text>
+  <rect x="980" y="14" width="72" height="28" rx="8" fill="#10231c" stroke="#10b981" stroke-opacity="0.4"/>
+  <text x="998" y="33" fill="#6ee7b7" font-family="Segoe UI, sans-serif" font-size="11" font-weight="600">Fetch</text>
+  <rect x="1060" y="14" width="72" height="28" rx="8" fill="#10231c"/>
+  <text x="1080" y="33" fill="#6ee7b7" font-family="Segoe UI, sans-serif" font-size="11" font-weight="600">Pull</text>
+  <rect x="1140" y="14" width="72" height="28" rx="8" fill="#10b981"/>
+  <text x="1158" y="33" fill="#042f1c" font-family="Segoe UI, sans-serif" font-size="11" font-weight="700">Push</text>
+  <line x1="0" y1="56" x2="1280" y2="56" stroke="#23283b"/>
+
+  <rect x="0" y="56" width="220" height="584" fill="#12151f"/>
+  <text x="20" y="84" fill="#64748b" font-family="Segoe UI, sans-serif" font-size="10" font-weight="700" letter-spacing="1.4">RAMAS LOCALES</text>
+  <rect x="16" y="96" width="188" height="28" rx="6" fill="#10231c"/>
+  <circle cx="32" cy="110" r="4" fill="#10b981"/>
+  <text x="44" y="115" fill="#6ee7b7" font-family="ui-monospace, Menlo, monospace" font-size="12">main</text>
+  <circle cx="28" cy="146" r="3.5" fill="#22d3ee"/>
+  <text x="44" y="150" fill="#94a3b8" font-family="ui-monospace, Menlo, monospace" font-size="12">feature/grafo</text>
+  <circle cx="28" cy="176" r="3.5" fill="#818cf8"/>
+  <text x="44" y="180" fill="#94a3b8" font-family="ui-monospace, Menlo, monospace" font-size="12">hotfix/paths</text>
+  <text x="20" y="228" fill="#64748b" font-family="Segoe UI, sans-serif" font-size="10" font-weight="700" letter-spacing="1.4">REMOTAS</text>
+  <circle cx="28" cy="250" r="3.5" fill="#f59e0b"/>
+  <text x="44" y="254" fill="#94a3b8" font-family="ui-monospace, Menlo, monospace" font-size="12">origin/main</text>
+  <text x="20" y="300" fill="#64748b" font-family="Segoe UI, sans-serif" font-size="10" font-weight="700" letter-spacing="1.4">TAGS</text>
+  <text x="44" y="326" fill="#94a3b8" font-family="ui-monospace, Menlo, monospace" font-size="12">v1.0.0</text>
+  <line x1="220" y1="56" x2="220" y2="640" stroke="#23283b"/>
+
+  <text x="244" y="84" fill="#64748b" font-family="Segoe UI, sans-serif" font-size="10" font-weight="700" letter-spacing="1.4">GRAFO DAG</text>
+  <g fill="none" stroke-linecap="round">
+    <path d="M268 120 V520" stroke="#10b981" stroke-width="2.5"/>
+    <path d="M268 220 C320 240 352 250 352 300 V400 C352 430 310 450 268 470" stroke="#22d3ee" stroke-width="2"/>
+    <path d="M268 180 C220 200 200 220 200 260" stroke="#818cf8" stroke-width="2"/>
+  </g>
+  <circle cx="268" cy="120" r="7" fill="#ecfdf5" stroke="#10b981" stroke-width="2.5"/>
+  <circle cx="268" cy="180" r="6" fill="#0f111a" stroke="#818cf8" stroke-width="2.5"/>
+  <circle cx="268" cy="220" r="6" fill="#0f111a" stroke="#10b981" stroke-width="2.5"/>
+  <circle cx="200" cy="260" r="5.5" fill="#0f111a" stroke="#818cf8" stroke-width="2"/>
+  <circle cx="352" cy="300" r="6" fill="#0f111a" stroke="#22d3ee" stroke-width="2.5"/>
+  <circle cx="268" cy="360" r="6" fill="#0f111a" stroke="#10b981" stroke-width="2.5"/>
+  <circle cx="268" cy="420" r="6" fill="#0f111a" stroke="#10b981" stroke-width="2.5"/>
+  <circle cx="268" cy="520" r="6" fill="#0f111a" stroke="#10b981" stroke-width="2.5"/>
+
+  <text x="380" y="126" fill="#e2e8f0" font-family="Segoe UI, sans-serif" font-size="13" font-weight="600">Alinear validador de rutas</text>
+  <text x="380" y="146" fill="#64748b" font-family="Segoe UI, sans-serif" font-size="11">hace 12 min   |   HEAD   |   main</text>
+  <text x="380" y="226" fill="#cbd5e1" font-family="Segoe UI, sans-serif" font-size="13">Staging por archivo y refresh WS</text>
+  <text x="380" y="246" fill="#64748b" font-family="Segoe UI, sans-serif" font-size="11">hace 3 h</text>
+  <text x="380" y="366" fill="#cbd5e1" font-family="Segoe UI, sans-serif" font-size="13">Merge de feature/grafo</text>
+  <text x="380" y="386" fill="#64748b" font-family="Segoe UI, sans-serif" font-size="11">ayer</text>
+  <rect x="620" y="108" width="52" height="18" rx="4" fill="#10231c" stroke="#10b981" stroke-opacity="0.4"/>
+  <text x="630" y="121" fill="#6ee7b7" font-family="ui-monospace, Menlo, monospace" font-size="10">main</text>
+  <rect x="678" y="108" width="44" height="18" rx="4" fill="#1e1b4b"/>
+  <text x="688" y="121" fill="#c7d2fe" font-family="ui-monospace, Menlo, monospace" font-size="10">HEAD</text>
+
+  <line x1="860" y1="56" x2="860" y2="640" stroke="#23283b"/>
+
+  <rect x="860" y="56" width="420" height="584" fill="#12151f"/>
+  <text x="880" y="84" fill="#64748b" font-family="Segoe UI, sans-serif" font-size="10" font-weight="700" letter-spacing="1.4">CAMBIOS</text>
+  <text x="880" y="112" fill="#94a3b8" font-family="Segoe UI, sans-serif" font-size="11">Unstaged</text>
+  <rect x="880" y="122" width="380" height="28" rx="6" fill="#1a1220"/>
+  <text x="892" y="141" fill="#f43f5e" font-family="ui-monospace, Menlo, monospace" font-size="11">M  apps/web/src/App.tsx</text>
+  <text x="880" y="178" fill="#94a3b8" font-family="Segoe UI, sans-serif" font-size="11">Staged</text>
+  <rect x="880" y="188" width="380" height="28" rx="6" fill="#10231c"/>
+  <text x="892" y="207" fill="#10b981" font-family="ui-monospace, Menlo, monospace" font-size="11">A  docs/PRD.md</text>
+
+  <text x="880" y="252" fill="#64748b" font-family="Segoe UI, sans-serif" font-size="10" font-weight="700" letter-spacing="1.4">DIFF</text>
+  <rect x="880" y="264" width="380" height="150" rx="8" fill="#0b0d14" stroke="#23283b"/>
+  <text x="896" y="288" fill="#64748b" font-family="ui-monospace, Menlo, monospace" font-size="11">@@ -12,6 +12,9 @@</text>
+  <text x="896" y="310" fill="#94a3b8" font-family="ui-monospace, Menlo, monospace" font-size="11">  const PORT = process.env.PORT</text>
+  <text x="896" y="332" fill="#f43f5e" font-family="ui-monospace, Menlo, monospace" font-size="11">- PROJECTS_ROOT = undefined</text>
+  <text x="896" y="354" fill="#10b981" font-family="ui-monospace, Menlo, monospace" font-size="11">+ const raiz = process.env.PROJECTS_ROOT</text>
+  <text x="896" y="376" fill="#10b981" font-family="ui-monospace, Menlo, monospace" font-size="11">+ validarRutaRepositorio(repoPath)</text>
+
+  <rect x="880" y="436" width="380" height="36" rx="8" fill="#0b0d14" stroke="#23283b"/>
+  <text x="896" y="458" fill="#475569" font-family="Segoe UI, sans-serif" font-size="12">T&#237;tulo del commit</text>
+  <rect x="880" y="484" width="380" height="72" rx="8" fill="#0b0d14" stroke="#23283b"/>
+  <text x="896" y="510" fill="#475569" font-family="Segoe UI, sans-serif" font-size="12">Cuerpo (opcional)</text>
+  <rect x="880" y="572" width="380" height="40" rx="10" fill="#10b981"/>
+  <text x="1028" y="597" fill="#042f1c" font-family="Segoe UI, sans-serif" font-size="14" font-weight="700">Commit</text>
+</svg>
