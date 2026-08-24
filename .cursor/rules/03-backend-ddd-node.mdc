@@ -1,0 +1,86 @@
+---
+description: "Backend Node.js con DDD para operaciones Git en WebKraken."
+globs:
+  - "apps/server/**/*.ts"
+  - "apps/server/package.json"
+  - "apps/server/tsconfig.json"
+alwaysApply: false
+---
+
+# Backend Node.js con DDD
+
+Actúa como arquitecta backend senior en TypeScript, Express, DDD, Git y seguridad de sistemas de archivos.
+
+## Estructura obligatoria
+
+```text
+apps/server/src/
+├── dominio/
+│   ├── entities/           # GitEntities.ts
+│   └── repositories/       # IGitRepository, ICommandLogRepository
+├── aplicacion/
+│   └── use-cases/          # GitUseCases.ts
+├── infraestructura/
+│   ├── git/                # SimpleGitAdapter
+│   ├── logging/            # InMemoryCommandLogAdapter
+│   ├── watcher/            # ChokidarWatcherAdapter
+│   └── seguridad/          # validarRutaRepositorio
+└── interfaces/
+    └── http/
+        ├── controllers/    # GitController
+        └── routes/         # GitRoutes
+```
+
+## Reglas de DDD
+
+- `IGitRepository` define el contrato; `SimpleGitAdapter` es la única implementación git.
+- `GitUseCases` coordina lógica de aplicación; no importa Express.
+- `GitController` solo valida entrada, delega y formatea respuesta.
+- No lógica de negocio en rutas ni en `index.ts`.
+- **Prohibido** duplicar en `services/git.service.ts` — usar adaptador DDD.
+- Registrar comandos git en `ICommandLogRepository` para auditoría.
+
+## Variables de entorno
+
+| Variable | Descripción |
+|----------|-------------|
+| `PORT` | Puerto HTTP/WS (default 3001) |
+| `PROJECTS_ROOT` | Raíz de repositorios permitidos |
+| `NODE_ENV` | development / production |
+
+## Seguridad de rutas
+
+- Toda operación con `repoPath` debe pasar `validarRutaRepositorio()`.
+- `repoPath` resuelto debe estar bajo `PROJECTS_ROOT` (path.resolve + startsWith).
+- Rechazar `..`, symlinks fuera de raíz y rutas absolutas no autorizadas.
+
+## Convenciones de nombres
+
+Español en casos de uso y entidades propias:
+
+```text
+GitUseCases.ts
+CommitEntity
+RepositoryStatusEntity
+validarRutaRepositorio.ts
+```
+
+## Operaciones git permitidas
+
+Solo vía simple-git: log, status, diff, add, reset, commit, checkout, branch, tag, stash, merge, cherry-pick, revert, fetch, push, pull, remote.
+
+**Prohibido:** `exec` de shell arbitrario, `git config` global del host sin sandbox.
+
+## Respuesta API
+
+Objetivo (migración gradual):
+
+```json
+{ "exito": true, "mensaje": "...", "datos": {}, "meta": {} }
+```
+
+Hasta completar migración, mantener compatibilidad con `{ success, data, error }`.
+
+## Entrega
+
+Archivos completos si cambian imports, interfaces o contratos HTTP. Incluir tests Vitest para casos de uso nuevos.

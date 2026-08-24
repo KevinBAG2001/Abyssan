@@ -1,0 +1,110 @@
+---
+description: "Regla maestra del proyecto WebKraken — cliente gráfico de Git para la web."
+alwaysApply: true
+---
+
+# Regla Maestra del Proyecto
+
+Actúa como especialista senior en ingeniería de software, arquitectura en capas (DDD), desarrollo full stack TypeScript, UI engineering, Git, seguridad de sistemas de archivos y herramientas de desarrollo.
+
+El proyecto es **WebKraken**, un cliente gráfico interactivo de Git para la web inspirado en GitKraken, gratuito y auto-hospedable.
+
+## Stack del proyecto
+
+- **Frontend:** React 19 + TypeScript + Vite 8 + Tailwind CSS 4 (`apps/web`).
+- **Backend:** Node.js + Express + TypeScript + simple-git + WebSocket + chokidar (`apps/server`).
+- **Monorepo:** pnpm workspaces (`pnpm-workspace.yaml`).
+- **DevOps:** Docker Compose.
+- **Idioma del proyecto:** español (código de negocio, UI, comentarios, documentación).
+- **Sin base de datos** en v1 — estado en memoria, localStorage (cliente) y archivos de config locales.
+
+## Estructura base
+
+```text
+webkraken/
+├── apps/
+│   ├── web/                        # SPA React
+│   │   └── src/
+│   │       ├── componentes/        # UI reutilizable
+│   │       ├── modulos/            # git, repositorio, conflictos
+│   │       ├── aplicacion/         # hooks, orquestación
+│   │       ├── dominio/            # modelos y contratos
+│   │       ├── infraestructura/    # HttpGitApi, adaptadores
+│   │       ├── servicios/          # websocket, utilidades
+│   │       ├── estilos/
+│   │       └── rutas/
+│   └── server/                     # API Express
+│       └── src/
+│           ├── dominio/
+│           ├── aplicacion/
+│           ├── infraestructura/
+│           └── interfaces/
+├── docs/
+├── docker-compose.yml
+├── pnpm-workspace.yaml
+└── .cursor/rules/
+```
+
+## Módulos funcionales
+
+**Backend (dominio Git):**
+
+- Repositorios (listar, seleccionar, validar rutas)
+- Commits (grafo DAG, log, detalle)
+- Ramas y tags (checkout, crear, listar)
+- Staging (stage, unstage, status)
+- Diff (archivos staged/unstaged)
+- Remotos (CRUD, fetch, push, pull)
+- Stash (save, pop, drop)
+- Merge y comparación de ramas
+- Conflictos (detección, resolución 3-way)
+- Operaciones avanzadas (cherry-pick, revert, reset)
+- Auditoría de comandos git (log en memoria)
+- Tiempo real (WebSocket + chokidar)
+
+**Frontend (módulos):**
+
+- repositorio (selector, estado, refresh)
+- grafo (DAG interactivo)
+- staging (panel lateral)
+- diff (visor de cambios)
+- ramas (sidebar)
+- remotos, stash, merge (modales)
+- conflictos (resolución)
+- consola (log de comandos)
+
+**Evolución prevista:**
+
+- OAuth GitHub / GitLab
+- Pull requests / merge requests
+- Multi-repo con tabs / workspaces
+- Interactive rebase visual
+- Blame inline
+- Autenticación y multi-usuario (LAN/cloud)
+
+## Principios obligatorios
+
+Antes de modificar cualquier archivo:
+
+- Lee los archivos relacionados.
+- Respeta la arquitectura DDD existente en `apps/server` y la separación de capas en `apps/web`.
+- No cambies el stack sin autorización explícita.
+- No introduzcas librerías nuevas si puede resolverse con las existentes.
+- No elimines lógica de operaciones git sin reemplazo.
+- No rompas contratos de API REST ni tipos compartidos frontend/backend.
+- Usa español en carpetas, archivos y nombres de negocio propios.
+- No dupliques adaptadores git — un solo camino: `SimpleGitAdapter` → `GitUseCases` → `GitController`.
+- Prioriza mantenibilidad, seguridad de rutas, claridad visual y rendimiento del grafo.
+- Contrato API estándar: `{ "exito": true, "mensaje": "...", "datos": {}, "meta": {} }` (migración gradual desde `{ success, data, error }`).
+- Flujo de desarrollo: `pnpm dev:server` + `pnpm dev:web` (puertos 3001 y 5174).
+
+## Reglas críticas del dominio
+
+- `PROJECTS_ROOT` define el directorio raíz de repositorios; nunca operar fuera de él.
+- Validar `repoPath` y rutas de archivo antes de ejecutar comandos git.
+- No almacenar credenciales git en código ni en repositorio.
+- No ejecutar comandos shell arbitrarios — solo operaciones vía simple-git.
+- Operaciones destructivas (reset --hard, force push) requieren confirmación en UI.
+- El backend no debe exponer el sistema de archivos completo del host.
+- WebSocket solo notifica cambios; no transmite contenido de archivos sensibles.
+- Usar `pnpm` exclusivamente; prohibido el CLI `npm`.

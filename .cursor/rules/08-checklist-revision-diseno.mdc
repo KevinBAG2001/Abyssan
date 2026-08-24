@@ -1,0 +1,199 @@
+---
+description: "Checklist de evaluación para auditar, mejorar o rediseñar interfaces de SIRH."
+globs:
+  - "frontend/**/*.tsx"
+  - "frontend/**/*.ts"
+  - "frontend/**/*.css"
+  - "frontend/**/*.scss"
+  - "frontend/**/*.module.css"
+  - "frontend/**/*.module.scss"
+alwaysApply: false
+---
+
+# Checklist de Revisión de Diseño
+
+Cuando se pida revisar, auditar, mejorar o rediseñar una interfaz del **SIRH — Sistema Integral de Recursos Humanos**, evalúa la pantalla en cinco dimensiones:
+
+- Claridad.
+- Consistencia.
+- Usabilidad.
+- Accesibilidad.
+- Calidad visual.
+
+Entrega siempre una evaluación objetiva y accionable.
+
+## 1. Claridad
+
+Evalúa:
+
+- ¿La pantalla comunica su propósito en menos de cinco segundos?
+- ¿El usuario entiende qué módulo está usando?
+- ¿La acción principal es evidente?
+- ¿La jerarquía visual guía correctamente?
+- ¿Los datos importantes están priorizados?
+- ¿Hay ruido visual o elementos innecesarios?
+- ¿Los estados críticos son visibles?
+
+Aplica especialmente a:
+
+- Tablero ejecutivo.
+- Expediente del trabajador.
+- Listado de plazas.
+- Movimientos.
+- Reportes.
+- Incidencias (evolución).
+- Vacaciones (evolución).
+- Cursos (evolución).
+- Metas (evolución).
+
+## 2. Consistencia
+
+Evalúa:
+
+- ¿Colores, espacios, bordes, sombras y tipografía son consistentes?
+- ¿Los componentes similares se comportan igual?
+- ¿Los badges de estado son coherentes?
+- ¿Los botones principales y secundarios tienen jerarquía clara?
+- ¿Existen duplicaciones visuales?
+- ¿Existen estilos contradictorios?
+- ¿El diseño respeta el sistema visual existente?
+- ¿El tema claro y oscuro mantienen la misma lógica visual?
+
+Revisa consistencia en estados como:
+
+- Registrada.
+- Pendiente de validación.
+- Validada.
+- Rechazada.
+- Cancelada.
+- Cerrada.
+- Autorizada.
+- Tomada.
+- Cumplida.
+- Parcialmente cumplida.
+- No cumplida.
+- Disponible / ocupada (plazas).
+- Activo / inactivo.
+
+## 3. Usabilidad
+
+Evalúa:
+
+- ¿El flujo es simple?
+- ¿Los formularios son claros?
+- ¿Los filtros son visibles y fáciles de usar?
+- ¿Las tablas permiten encontrar información rápidamente?
+- ¿Los estados de error, carga y vacío están contemplados?
+- ¿El usuario entiende qué hacer después?
+- ¿Las acciones destructivas o sensibles están protegidas?
+- ¿Las confirmaciones son claras?
+- ¿La navegación al detalle funciona de forma natural?
+
+Flujos críticos:
+
+- Iniciar sesión con CAPTCHA.
+- Registrar trabajador.
+- Alta de plaza.
+- Movimiento plaza–empleado.
+- Registrar incidencia (evolución).
+- Autorizar vacaciones (evolución).
+- Validar curso (evolución).
+- Evaluar meta (evolución).
+- Generar reporte.
+- Exportar Excel/PDF.
+- Consultar movimientos externos (evolución).
+- Administrar usuarios y permisos.
+
+## 4. Accesibilidad
+
+Evalúa:
+
+- ¿Existe buen contraste?
+- ¿La navegación por teclado funciona?
+- ¿Los textos son legibles?
+- ¿Los elementos interactivos son identificables?
+- ¿Los formularios tienen labels?
+- ¿Los errores están asociados al campo?
+- ¿El foco visible está implementado?
+- ¿La interfaz evita depender solo del color?
+- ¿Las tablas son comprensibles?
+- ¿Los modales son accesibles?
+
+## 5. Calidad visual
+
+Evalúa:
+
+- ¿El diseño se percibe profesional?
+- ¿La composición tiene equilibrio?
+- ¿La interfaz tiene personalidad sin sacrificar claridad?
+- ¿La dirección visual corresponde al producto institucional?
+- ¿La densidad de información es adecuada?
+- ¿Las tarjetas tienen jerarquía real?
+- ¿Las gráficas son útiles y no decorativas?
+- ¿Las microinteracciones son sobrias?
+- ¿Los elementos 3D o carruseles aportan valor?
+
+## Formato de entrega obligatorio
+
+Cuando revises una interfaz, entrega:
+
+```text
+Diagnóstico general:
+
+Calificación por dimensión:
+- Claridad: X/5
+- Consistencia: X/5
+- Usabilidad: X/5
+- Accesibilidad: X/5
+- Calidad visual: X/5
+
+Problemas principales:
+- ...
+
+Quick wins:
+- ...
+
+Cambios estructurales recomendados:
+- ...
+
+Riesgos:
+- ...
+
+Código sugerido:
+- Incluir solo si corresponde.
+```
+
+## Criterios de calificación
+
+Usa esta escala:
+
+- 1: Deficiente, requiere rediseño completo.
+- 2: Bajo, presenta problemas importantes.
+- 3: Aceptable, funcional pero mejorable.
+- 4: Bueno, requiere ajustes menores.
+- 5: Excelente, cumple con claridad, consistencia y calidad.
+
+## Reglas de revisión
+
+- No propongas rediseños genéricos.
+- No cambies el stack visual sin autorización.
+- No sugieras dependencias nuevas sin justificarlo.
+- No sacrifiques claridad por estética.
+- No ignores accesibilidad.
+- No propongas ocultar datos críticos sin alternativa.
+- No modifiques flujos sensibles sin considerar permisos y auditoría.
+- Si falta contexto, solicita o inspecciona archivos antes de concluir.
+
+## Validación final
+
+Antes de considerar aprobada una interfaz, confirma que:
+
+- La pantalla tiene propósito claro.
+- La acción principal es evidente.
+- Los estados principales están contemplados.
+- Los datos sensibles respetan permisos.
+- Los formularios son accesibles.
+- Las tablas son legibles.
+- El diseño responde correctamente.
+- El rendimiento no se ve comprometido.
+- El diseño corresponde al carácter institucional y operativo del sistema.

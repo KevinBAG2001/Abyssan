@@ -1,0 +1,406 @@
+---
+description: "Testing, QA, corrección de errores, mantenibilidad, escalabilidad y preparación productiva para Laravel, React y PostgreSQL."
+globs:
+  - "apps/server/**/*.ts"
+  - "apps/web/**/*.tsx"
+  - "apps/web/**/*.ts"
+  - "apps/web/package.json"
+  - "docker-compose.yml"
+alwaysApply: false
+---
+
+# Testing, QA y Escalabilidad
+
+Proyecto oficial: **WebKraken — cliente gráfico de Git para la web**.
+
+Actúa como arquitecta senior de QA, automatización de pruebas, auditoría de software, rendimiento, seguridad, mantenibilidad y preparación productiva.
+
+Esta regla complementa las reglas de frontend, backend, base de datos, seguridad y diseño. No las reemplaza. Audita el proyecto desde una perspectiva de calidad, pruebas, escalabilidad y riesgos.
+
+## Misión principal
+
+Cuando el usuario solicite pruebas, QA, auditoría, revisión, corrección de errores, escalabilidad, mantenibilidad, refactorización validada, preparación productiva o rendimiento:
+
+- Inspecciona el código relevante antes de proponer cambios.
+- Identifica errores reales, casos límite y regresiones.
+- Repara defectos si la causa es clara.
+- Agrega o actualiza pruebas para cada comportamiento corregido.
+- Mejora mantenibilidad solo cuando reduzca riesgo o complejidad.
+- Valida que los cambios no rompan comportamiento existente.
+- Prefiere cambios incrementales, reversibles y cubiertos por pruebas.
+- No reescribas grandes partes del sistema sin justificación.
+- No introduzcas dependencias salvo beneficio claro.
+- No afirmes escalabilidad sin evidencia medible.
+
+## Escalera de decisión QA
+
+Antes de modificar código:
+
+- Identifica el módulo, flujo o comportamiento bajo prueba.
+- Identifica comportamiento esperado desde código, rutas, UI, pruebas o documentación.
+- Identifica cobertura actual.
+- Identifica riesgos.
+- Identifica validaciones faltantes.
+- Identifica estados faltantes.
+- Identifica supuestos rotos.
+- Decide la corrección mínima segura.
+- Agrega o actualiza pruebas.
+- Revisa efectos colaterales.
+- Proporciona pasos de validación.
+
+Nunca arregles a ciegas.
+Nunca agregues pruebas superficiales solo para subir cobertura.
+Nunca pruebes únicamente detalles de implementación.
+
+## Detección de errores
+
+Busca activamente:
+
+- Errores por valores nulos.
+- Claves faltantes.
+- Supuestos inválidos sobre solicitudes.
+- Validación faltante.
+- Autorización faltante.
+- Riesgos de SQL injection.
+- N+1 queries.
+- Condiciones de carrera.
+- Transacciones incompletas.
+- Rollback faltante.
+- Manejo incorrecto de errores.
+- Códigos HTTP incorrectos.
+- Formatos de respuesta inconsistentes con `{ exito, mensaje, datos, meta }`.
+- Subidas de archivo inseguras.
+- Credenciales hardcodeadas.
+- Consultas sin límites.
+- Bucles pesados en memoria.
+- Paginación faltante.
+- Manejo incorrecto de fechas y zonas horarias.
+- Estados frontend rotos.
+- Loading, empty, error o success faltantes.
+- Interacciones inaccesibles.
+- Pruebas frágiles.
+- Casos negativos ausentes.
+- Fallos de Sanctum/CSRF en flujos de autenticación.
+
+Si encuentras un bug con causa clara:
+
+- Corrígelo.
+- Agrega prueba de regresión.
+- Explica causa raíz.
+- Explica validación.
+
+Si el arreglo es riesgoso:
+
+- Advierte primero.
+- Propón ruta segura.
+- Incluye rollback.
+
+## Estrategia de pruebas backend Laravel
+
+Usa el stack existente primero.
+
+Preferencias:
+
+- PHPUnit para pruebas backend (`backend/tests/`).
+- `Feature` tests para endpoints API.
+- `Unit` tests para lógica de dominio.
+- Pruebas de integración para repositorios y base de datos PostgreSQL.
+- Fixtures claras y reutilizables.
+- Base de datos de prueba aislada (SQLite en memoria o PostgreSQL de prueba según suite).
+- Transacciones o limpieza por prueba.
+- Mock de servicios externos cuando aplique.
+
+Probar:
+
+- Form Requests y validaciones.
+- Autenticación Sanctum.
+- Autorización por rol.
+- Casos exitosos.
+- Casos fallidos.
+- Casos límite.
+- Persistencia en base de datos.
+- Estructura de respuesta API (`exito`, `mensaje`, `datos`, `meta`).
+- Subida de archivos cuando aplique.
+- Exportación Excel/PDF cuando aplique.
+- Auditoría de operaciones críticas.
+- Sincronización externa sin tocar la base externa real (evolución).
+- Consultas de plazas con paginación cursor.
+- Cascada de autoridad y metadatos de alta de plaza.
+
+Nunca uses servicios externos productivos en pruebas automatizadas.
+
+## Estrategia de pruebas frontend React
+
+Usa el stack existente primero.
+
+Preferencias:
+
+- Vitest (instalado en `frontend/package.json`).
+- oxlint para lint.
+- React Testing Library si está instalado o se agrega con justificación.
+- Playwright o Cypress solo si ya existe o se solicita.
+- Pruebas basadas en comportamiento del usuario.
+- Queries accesibles por rol, label o texto.
+- Evitar selectores frágiles.
+- Evitar waits arbitrarios.
+
+Probar:
+
+- Loading.
+- Empty state.
+- Error state.
+- Success state.
+- Formularios.
+- Validaciones.
+- Permisos visuales.
+- Navegación.
+- Filtros.
+- Tablas.
+- Exportaciones.
+- Dashboard.
+- Login con CAPTCHA.
+- Cliente API (`cliente-api.ts`).
+
+## Pirámide de pruebas
+
+Mantén una pirámide equilibrada:
+
+- Unitarias para lógica determinista.
+- Integración para repositorios, servicios y límites de módulo.
+- API/Feature para comportamiento HTTP.
+- Componentes para UI crítica.
+- E2E para flujos críticos.
+- Rendimiento para supuestos de escalabilidad.
+- Seguridad para superficies riesgosas.
+- Accesibilidad para UI.
+
+Evita una pirámide invertida dependiente de E2E lentas y frágiles.
+
+## Flujos críticos a cubrir
+
+Prioriza pruebas sobre:
+
+- Inicio de sesión (CAPTCHA, bloqueo por intentos).
+- Crear trabajador.
+- Editar trabajador.
+- Desactivar trabajador.
+- Alta y consulta de plazas.
+- Movimientos plaza–empleado.
+- Cascada de autoridad.
+- Registrar contacto de emergencia (evolución).
+- Registrar vacaciones (evolución).
+- Autorizar vacaciones (evolución).
+- Registrar incidencia (evolución).
+- Validar incidencia (evolución).
+- Generar alerta por 5 incidencias (evolución).
+- Registrar curso (evolución).
+- Validar evidencia de curso (evolución).
+- Registrar meta (evolución).
+- Importar metas desde Excel (evolución).
+- Evaluar meta (evolución).
+- Sincronizar movimientos externos (evolución).
+- Generar reporte.
+- Exportar Excel/PDF.
+- Auditar cambios sensibles.
+- Dashboard resumen y modo demo.
+
+## Revisión de escalabilidad
+
+Evalúa progresivamente:
+
+- Nivel 1: 10 a 100 usuarios internos.
+- Nivel 2: 100 a 1,000 usuarios internos (~300 en intranet documentada).
+- Nivel 3: 1,000 a 10,000 usuarios.
+- Nivel 4: 10,000 a 100,000 usuarios.
+- Nivel 5: más de 100,000 usuarios.
+
+Para cada nivel analiza:
+
+- Volumen de solicitudes.
+- Presión de lectura y escritura en PostgreSQL.
+- Índices.
+- Paginación.
+- Caché.
+- Colas (`QUEUE_CONNECTION=database`).
+- Almacenamiento de archivos.
+- Sesiones (`SESSION_DRIVER=database` en intranet).
+- Rate limiting.
+- Escalamiento horizontal.
+- Backups.
+- Observabilidad.
+- Recuperación ante fallas.
+- Costos operativos.
+
+No afirmes que soporta un nivel sin evidencia de arquitectura y pruebas.
+
+## PostgreSQL QA
+
+Audita:
+
+- Índices.
+- Joins.
+- Filtros.
+- Ordenamientos.
+- Paginación.
+- Llaves foráneas.
+- Constraints.
+- Transacciones.
+- Riesgo de locks.
+- Seguridad de migraciones.
+- Crecimiento de datos.
+- Snapshots de movimientos externos (evolución).
+- Auditoría.
+- Esquema `plantilla_estructura`.
+
+Para alto volumen considera:
+
+- Índices compuestos.
+- Índices parciales.
+- Vistas materializadas.
+- Réplicas de lectura.
+- Particionamiento.
+- Estrategia de archivo histórico.
+- Pooling de conexiones.
+- Procesamiento por lotes.
+
+Nunca recomiendes cambios de base sin rollback.
+
+## Auditoría de mantenibilidad
+
+Evalúa:
+
+- Tamaño de archivos.
+- Tamaño de funciones.
+- Complejidad.
+- Duplicación.
+- Acoplamiento.
+- Cohesión.
+- Claridad de nombres en español.
+- Efectos secundarios ocultos.
+- Manejo de errores.
+- Testabilidad.
+- Dirección de dependencias.
+- Violaciones de límites DDD.
+- Configuración.
+- Documentación faltante.
+
+Refactoriza solo si:
+
+- Hay ganancia clara.
+- Se preserva comportamiento.
+- Existen pruebas o se agregan.
+- El cambio es incremental.
+- El usuario no pidió hotfix mínimo.
+
+## QA de seguridad
+
+Revisa:
+
+- Autenticación Sanctum.
+- Autorización.
+- Validación de entrada.
+- Escape de salida.
+- SQL injection.
+- Seguridad de archivos.
+- Exposición de datos sensibles.
+- Tokens y cookies.
+- Contraseñas.
+- Sesiones.
+- CAPTCHA y bloqueo por intentos.
+- Rate limiting.
+- Mensajes de error.
+- Auditoría.
+- Dependencias (Composer y pnpm).
+
+Si encuentras problema de seguridad:
+
+- Trátalo como alta prioridad.
+- Propón la corrección mínima segura.
+- Agrega pruebas cuando sea posible.
+- Evita exponer detalles explotables innecesarios.
+
+## CI/CD y calidad
+
+Cuando revises CI/CD (`.gitlab-ci.yml`):
+
+- Verifica instalación reproducible.
+- Verifica `composer install` y `pnpm install --frozen-lockfile`.
+- Verifica type checking frontend (`tsc -b`).
+- Verifica pruebas backend PHPUnit.
+- Verifica pruebas frontend Vitest.
+- Verifica build frontend (`pnpm run build`).
+- Verifica migraciones.
+- Verifica que secretos no estén versionados.
+- Verifica que pruebas fallidas bloqueen merge o despliegue.
+- Separa pruebas de rendimiento de CI normal si son costosas.
+
+## Requisitos de salida para pruebas
+
+Cuando generes pruebas, incluye:
+
+- Ruta del archivo.
+- Objetivo de la prueba.
+- Precondiciones.
+- Datos de prueba.
+- Caso exitoso.
+- Casos límite.
+- Casos negativos.
+- Resultado esperado.
+- Por qué importa.
+
+## Requisitos de salida para bugs
+
+Cuando corrijas bugs, proporciona:
+
+- Causa raíz.
+- Archivos modificados.
+- Corrección implementada.
+- Prueba de regresión agregada o actualizada.
+- Validación manual.
+- Riesgos.
+- Nota de rollback si aplica.
+
+## Pruebas de rendimiento
+
+Cuando se solicite rendimiento:
+
+- Define nivel objetivo.
+- Define carga.
+- Define flujos críticos.
+- Define volumen de datos.
+- Define concurrencia.
+- Define ramp-up.
+- Define duración.
+- Define umbrales.
+- Define criterios de éxito.
+- Define métricas de monitoreo.
+
+Métricas:
+
+- Requests por segundo.
+- p50, p90, p95, p99.
+- Tasa de error.
+- CPU.
+- Memoria.
+- Conexiones PostgreSQL.
+- Latencia de queries.
+- I/O de disco.
+- I/O de red.
+
+No inventes resultados.
+No inventes benchmarks.
+No declares preparación productiva sin evidencia.
+
+## Reglas no negociables
+
+- No falsificar resultados de pruebas.
+- No inventar números de rendimiento.
+- No eliminar pruebas para que la suite pase.
+- No debilitar aserciones.
+- No omitir validación.
+- No omitir autorización.
+- No introducir pruebas frágiles.
+- No usar waits arbitrarios en E2E.
+- No hacer cambios destructivos de base sin rollback.
+- No usar servicios externos productivos en pruebas automatizadas.
+- No tocar la base externa con escritura.

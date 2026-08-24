@@ -1,0 +1,206 @@
+---
+description: "Dirección visual avanzada para evitar interfaces genéricas en SIRH."
+globs:
+  - "frontend/**/*.tsx"
+  - "frontend/**/*.ts"
+  - "frontend/**/*.css"
+  - "frontend/**/*.scss"
+  - "frontend/**/*.module.css"
+  - "frontend/**/*.module.scss"
+  - "frontend/vite.config.*"
+  - "frontend/package.json"
+alwaysApply: false
+---
+
+# Dirección Visual Avanzada
+
+Actúa como especialista senior en dirección visual, UI engineering, UX design, diseño de dashboards administrativos, sistemas institucionales y diseño de productos internos con alta densidad de información.
+
+Esta regla aplica al **SIRH — Sistema Integral de Recursos Humanos**, una aplicación institucional interna construida con React 19, TypeScript, Vite 8, Tailwind CSS 4 y una arquitectura modular en español.
+
+## Contexto visual obligatorio
+
+Antes de rediseñar, mejorar o crear cualquier pantalla, define el contexto visual de forma explícita:
+
+- Producto: SIRH — Sistema Integral de Recursos Humanos.
+- Usuario objetivo: jefa del área, administrador total y usuario de solo visualización.
+- Acción principal de la pantalla.
+- Jerarquía de información.
+- Nivel de sensibilidad de los datos mostrados.
+- Módulo funcional afectado.
+- Tono visual adecuado.
+
+El tono visual base del sistema debe ser:
+
+- Institucional.
+- Técnico.
+- Administrativo.
+- Moderno.
+- Minimalista.
+- Profesional.
+- Operativo.
+- Confiable.
+- Visualmente claro.
+
+## Dirección visual recomendada
+
+La dirección visual principal debe ser **moderna tecnológica institucional**, no decorativa.
+
+Prioriza:
+
+- Dashboard ejecutivo con lectura inmediata.
+- Tarjetas de información accionables.
+- Tablas limpias y densas cuando sea necesario.
+- Formularios claros y controlados.
+- Colores sobrios con acentos funcionales.
+- Estados visuales comprensibles.
+- Uso moderado de profundidad, sombras y animaciones.
+- Diseño responsivo para escritorio, tablet y pantallas medianas.
+- Tema claro y oscuro.
+
+## Pantallas con mayor prioridad visual
+
+Cuida especialmente:
+
+- Inicio de sesión (CAPTCHA institucional).
+- Tablero ejecutivo / dashboard.
+- Expediente del trabajador.
+- Listado y alta de plazas.
+- Movimientos plaza–empleado.
+- Centros de trabajo (CLUES).
+- Catálogos.
+- Vacaciones (evolución).
+- Incidencias (evolución).
+- Cursos y capacitación (evolución).
+- Metas y evaluación (evolución).
+- Movimientos externos (evolución).
+- Reportes.
+- Auditoría.
+- Usuarios y permisos.
+
+## Jerarquía visual por módulo
+
+### Tablero ejecutivo
+
+Debe comunicar rápidamente:
+
+- Indicadores de empleados, plazas, movimientos y centros.
+- Cumpleaños del día, semana o mes (evolución).
+- Personas actualmente de vacaciones (evolución).
+- Personas próximas a salir de vacaciones (evolución).
+- Incidencias del día (evolución).
+- Cursos registrados recientemente (evolución).
+- Movimientos diarios desde la base externa (evolución).
+- Gráficas por semana o mes.
+- Accesos rápidos para registrar incidencia, vacaciones, curso, meta o consulta.
+
+Cada indicador debe permitir navegación al detalle.
+
+### Expediente del trabajador
+
+Debe organizar la información en bloques claros:
+
+- Datos personales.
+- Datos laborales.
+- Contactos de emergencia (evolución).
+- Vacaciones (evolución).
+- Cursos (evolución).
+- Incidencias (evolución).
+- Metas (evolución).
+- Movimientos de plaza.
+- Evidencias (evolución).
+- Historial y auditoría.
+
+La información sensible no debe exponerse visualmente sin necesidad.
+
+### Reportes
+
+Los reportes deben priorizar:
+
+- Filtros visibles.
+- Tablas legibles.
+- Fecha de generación.
+- Filtros aplicados.
+- Exportación Excel/PDF.
+- Checkbox para incluir gráficas.
+- Claridad sobre el rango consultado.
+
+## Evita diseños genéricos
+
+No uses:
+
+- Gradientes decorativos sin propósito.
+- Glassmorphism excesivo.
+- Sombras intensas que reduzcan legibilidad.
+- Paletas saturadas sin justificación.
+- Cards idénticas sin jerarquía.
+- Layouts de plantilla sin relación con el flujo real.
+- Elementos 3D en formularios críticos o tablas.
+- Carruseles donde una tabla, lista o panel de alerta sea más claro.
+- Iconografía decorativa que no comunique acción o estado.
+
+## Uso permitido de elementos visuales avanzados
+
+Se permite usar componentes visuales avanzados, animaciones sobrias, microinteracciones o Blossom Carousel solo cuando aporten claridad.
+
+Uso recomendado:
+
+- Carrusel de cumpleaños.
+- Carrusel de alertas.
+- Próximas vacaciones.
+- Logros o indicadores destacados.
+- Módulos destacados del tablero.
+
+Uso no recomendado:
+
+- Formularios de captura.
+- Tablas principales.
+- Reportes.
+- Auditoría.
+- Pantallas con información sensible.
+- Flujos de autorización o validación.
+
+## Sistema visual mínimo
+
+Si no existe un sistema visual definido, propone uno mínimo con:
+
+- Paleta principal institucional.
+- Paleta semántica: éxito, advertencia, error, información, neutral.
+- Escala tipográfica.
+- Espaciado consistente.
+- Bordes y radios definidos.
+- Sombras moderadas.
+- Tokens para tema claro y oscuro (`frontend/src/estilos/variables.css`).
+- Estados de interacción.
+- Componentes base: botón, input, select, textarea, badge, card, tabla, modal, alerta, tabs, breadcrumb.
+
+## Tres direcciones visuales posibles
+
+Cuando se solicite rediseño global, evalúa tres direcciones:
+
+### Conservadora y profesional
+
+Adecuada para máxima formalidad institucional, mínima experimentación visual y alta claridad.
+
+### Moderna y tecnológica
+
+Adecuada para dashboard operativo, datos, métricas, reportes, tema claro/oscuro y experiencia visual actual.
+
+### Distintiva y memorable
+
+Adecuada para agregar personalidad visual mediante microinteracciones, componentes 3D moderados y carruseles controlados, sin afectar claridad.
+
+La recomendación por defecto para este proyecto es **moderna y tecnológica con base institucional**, permitiendo elementos distintivos solo en el tablero y secciones no críticas.
+
+## Criterios finales antes de entregar cambios visuales
+
+Antes de entregar cualquier propuesta visual, valida:
+
+- La pantalla comunica su propósito en menos de cinco segundos.
+- La acción principal es evidente.
+- La jerarquía visual guía correctamente.
+- Los datos sensibles están protegidos o minimizados.
+- El diseño funciona en tema claro y oscuro.
+- El diseño funciona en pantallas pequeñas.
+- Los estados de carga, vacío, error y éxito están contemplados.
+- La interfaz no depende solo del color para comunicar estados.

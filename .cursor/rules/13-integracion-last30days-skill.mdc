@@ -1,0 +1,153 @@
+---
+description: "Integración de last30days como skill de investigación externa del agente en Cursor (herramienta local, aislada del runtime productivo)."
+alwaysApply: true
+---
+
+# Integración last30days Skill (Herramienta Externa Local)
+
+Esta regla regula el uso de **last30days** por el **agente de IA** en el **SIRH — Sistema Integral de Recursos Humanos**. last30days es una **skill de investigación** externa, local y **no forma parte del runtime productivo** de la aplicación (Laravel, React, PostgreSQL, Docker).
+
+Repositorio oficial de referencia (solo lectura, fuera de este proyecto):
+
+- https://github.com/mvanhorn/last30days-skill
+
+## Qué es
+
+**last30days** es una Agent Skill (estándar [agentskills.io](https://agentskills.io)) que investiga un tema en los últimos 30 días consultando en paralelo fuentes públicas: Reddit, Hacker News, Polymarket, GitHub, X/Twitter, YouTube, TikTok, arXiv, Techmeme, web y más. Sintetiza resultados ponderados por engagement real (upvotes, likes, volumen de mercado) en un brief citado.
+
+No es un módulo del sistema SIRH. Es una **herramienta de desarrollo e investigación** para el agente de Cursor.
+
+## Para qué sirve en este proyecto
+
+Usos **permitidos y recomendados**:
+
+- Investigar tendencias tecnológicas (React, Laravel, PostgreSQL, Docker, DDD).
+- Comparar herramientas o patrones de arquitectura (`Laravel vs FastAPI`, `Vitest vs Jest`).
+- Revisar prácticas de la comunidad sobre seguridad, auditoría, reportes o UI institucional.
+- Preparar decisiones técnicas antes de implementar un módulo.
+- Investigar normativa o buenas prácticas **públicas** de RRHH (sin datos internos).
+
+Usos **prohibidos**:
+
+- Investigar nombres, RFC, CURP, domicilios, teléfonos o datos de trabajadores del sistema.
+- Buscar incidencias, evaluaciones, vacaciones, contactos de emergencia o evidencias internas.
+- Exportar o incluir en consultas contenido de bases productivas, QA o respaldos SQL.
+- Usar last30days como sustituto de reportes, auditoría o consultas del backend institucional.
+
+## Requisitos técnicos
+
+| Componente | Requisito | Estado esperado |
+|------------|-----------|-----------------|
+| Python | 3.12+ | `python --version` |
+| Node.js | Para cliente X (bird-search) | `node --version` |
+| Skill global Cursor | Instalación vía Agent Skills CLI | `npx skills list -g` |
+| Fuentes gratuitas | Reddit, HN, Polymarket, GitHub | Sin API keys |
+| Fuentes opcionales | X, YouTube, TikTok, Perplexity, Brave | API keys o cookies en `~/.config/last30days/.env` |
+
+## Cómo funciona
+
+1. El usuario invoca `/last30days <tema>` en el chat de Cursor.
+2. El agente carga `SKILL.md` desde la instalación global (no desde el repo productivo).
+3. El motor Python (`last30days.py`) resuelve handles, subreddits y fuentes; busca en paralelo; puntúa y sintetiza.
+4. Los resultados se guardan localmente en `~/Documents/Last30Days/` (Windows: `C:\Users\<usuario>\Documents\Last30Days\`).
+5. La configuración y credenciales viven en `~/.config/last30days/.env` (fuera del repositorio).
+
+### Comandos de diagnóstico (agente)
+
+Antes de la primera investigación en una sesión larga, o si faltan fuentes:
+
+```powershell
+python "$env:USERPROFILE\.agents\skills\last30days\scripts\last30days.py" --preflight
+python "$env:USERPROFILE\.agents\skills\last30days\scripts\last30days.py" doctor
+```
+
+### Instalación y actualización (desarrollador)
+
+```powershell
+# Instalar globalmente para Cursor (recomendado)
+npx skills add mvanhorn/last30days-skill -g -a cursor
+
+# Actualizar
+npx skills update last30days -g
+
+# Listar / remover
+npx skills list -g
+npx skills remove last30days -g
+```
+
+Laboratorio local opcional (clon de referencia, no productivo):
+
+- `C:/Users/kevin.austria/tools/last30days-skill-lab`
+
+## Aislamiento del repositorio productivo
+
+La integración **no debe mezclar** last30days con el código en producción.
+
+### Ubicaciones autorizadas (fuera del repo)
+
+| Recurso | Ruta |
+|---------|------|
+| Skill instalada | `~/.agents/skills/last30days/` |
+| Configuración global | `~/.config/last30days/.env` |
+| Salida de investigación | `~/Documents/Last30Days/` |
+| Laboratorio de referencia | `~/tools/last30days-skill-lab/` |
+
+### Prohibiciones estrictas
+
+Queda **prohibido**:
+
+- Copiar código, scripts o módulos de last30days dentro de `backend/`, `frontend/`, `scripts/` productivos o `docker/`.
+- Agregar last30days a `composer.json`, `package.json`, lockfiles, `Dockerfile`, `docker-compose.yml` ni `.gitlab-ci.yml`.
+- Versionar `.skills/`, `.claude/last30days.env` ni credenciales en el repositorio.
+- Activar `LAST30DAYS_TRUST_PROJECT_CONFIG` en el proyecto institucional.
+- Ejecutar investigaciones con datos sensibles del personal o de producción.
+- Incluir briefs de last30days en reportes exportados del sistema sin revisión y sin anonimización.
+
+### Configuración segura en este workspace
+
+- `LAST30DAYS_TRUST_PROJECT_CONFIG` debe permanecer **desactivado** (valor por defecto).
+- No crear `.claude/last30days.env` en la raíz del proyecto.
+- No instalar la skill con `npx skills add` **sin** `-g` (evita carpeta `.skills/` local en el repo).
+
+## Uso obligatorio del agente de IA
+
+Cuando el usuario pida `/last30days`, investigación de tendencias recientes o "qué dice la comunidad sobre X":
+
+1. **Verificar** que la skill está disponible (`npx skills list -g` o lectura de `~/.agents/skills/last30days/SKILL.md`).
+2. **Ejecutar** `--preflight` si es la primera vez en la sesión o hay dudas de configuración.
+3. **Seguir** el contrato de `SKILL.md` (badge, LAWs de formato, motor Python desde `SKILL_DIR`).
+4. **Rechazar** consultas que incluyan datos sensibles del personal o información confidencial institucional.
+5. **No improvisar** formato de salida; pasar la salida del motor o cumplir el contrato de voz del skill.
+
+## Estrategia de ramas
+
+| Rama | Uso |
+|------|-----|
+| `feature/last30days-skill-evaluation` | Evaluación controlada de la skill y reglas Cursor |
+| `dev` / `qa` / `main` | Solo reglas documentadas; **sin** código ni dependencias de last30days |
+
+- No modificar `main` ni `qa` directamente para integrar last30days.
+- Los cambios en este repositorio se limitan a **reglas Cursor** (`.cursor/rules/`) y entradas de **`.gitignore`** preventivas.
+- Antes de merge hacia `dev`, confirmar que no hubo cambios en runtime productivo.
+
+## Compatibilidad con reglas existentes
+
+Esta regla complementa:
+
+- `00-regla-maestra-proyecto.mdc` — stack productivo aislado de herramientas externas.
+- `05-seguridad-reportes-auditoria.mdc` — prohibición de procesar datos sensibles del personal.
+- `14-gestor-paquetes-pnpm.mdc` — uso de `pnpm dlx` en lugar de `npx` cuando aplique en flujos del proyecto (la instalación global de skills puede usar `npx skills` fuera del runtime productivo).
+
+Headroom (si se integra) comprime contexto del agente; last30days **investiga fuentes externas**. Son complementarias, no sustitutas.
+
+## Criterio de aceptación
+
+La integración se considera correcta si:
+
+1. La skill opera solo en rutas globales del usuario (`~/.agents/skills/`).
+2. Ningún archivo productivo, dependencia, Dockerfile, pipeline o servicio de despliegue fue alterado.
+3. No se investigaron datos sensibles del personal ni secretos del proyecto.
+4. El agente puede ejecutar `--preflight` y una investigación de prueba con fuentes gratuitas.
+5. Las pruebas frontend (Vitest) y backend (PHPUnit) del proyecto siguen en verde tras cualquier cambio en `.gitignore`.
+
+Si alguna condición falla, **detener la integración** y reportar el riesgo antes de continuar.

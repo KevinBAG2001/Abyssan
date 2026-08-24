@@ -1,0 +1,37 @@
+---
+description: Usar pnpm (no npm) en el monorepo WebKraken
+alwaysApply: true
+---
+
+# Gestor de paquetes: pnpm obligatorio
+
+## Regla obligatoria
+
+En `apps/web`, `apps/server` y raíz del monorepo:
+
+| Permitido | Prohibido |
+|-----------|-----------|
+| `pnpm install` | `npm install` / `npm i` / `npm ci` |
+| `pnpm add` / `pnpm add -D` | `npm uninstall` / `npm update` |
+| `pnpm remove` | `npm run` |
+| `pnpm run <script>` | `npx` → usar `pnpm dlx` o `pnpm exec` |
+| Lockfile `pnpm-lock.yaml` | `package-lock.json`, `yarn.lock`, `bun.lock*` |
+
+## Scripts del monorepo
+
+```bash
+pnpm install
+pnpm dev:server    # backend :3001
+pnpm dev:web       # frontend :5174
+pnpm build
+pnpm lint
+pnpm test
+```
+
+## Docker
+
+Usar `pnpm` en Dockerfiles de `apps/web` y `apps/server`.
+
+## Artefactos prohibidos
+
+No crear ni versionar: `package-lock.json`, `yarn.lock`, `bun.lock*`.

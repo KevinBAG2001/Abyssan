@@ -1,0 +1,29 @@
+{
+  "name": "webkraken-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Modern Web-based Git Client inspired by GitKraken",
+  "scripts": {
+    "dev:server": "pnpm --filter @webkraken/server dev",
+    "dev:web": "pnpm --filter @webkraken/web dev",
+    "dev": "pnpm --filter @webkraken/server dev & pnpm --filter @webkraken/web dev",
+    "build": "pnpm --filter @webkraken/server build && pnpm --filter @webkraken/web build",
+    "lint": "oxlint",
+    "test": "vitest"
+  },
+  "keywords": [
+    "git",
+    "gitkraken",
+    "git-gui",
+    "react19",
+    "vite",
+    "typescript"
+  ],
+  "author": "Kevin Austria",
+  "license": "MIT",
+  "devDependencies": {
+    "oxlint": "^0.15.13",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.7"
+  }
+}

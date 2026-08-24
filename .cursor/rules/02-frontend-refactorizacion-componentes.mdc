@@ -1,0 +1,168 @@
+---
+description: "Criterios para refactorizar componentes React sin romper comportamiento existente."
+globs:
+  - "apps/web/src/**/*.tsx"
+  - "apps/web/src/**/*.ts"
+  - "apps/web/src/**/*.css"
+alwaysApply: false
+---
+
+# Refactorización de Componentes Frontend
+
+Cuando mejores componentes frontend de **WebKraken**, conserva siempre el comportamiento existente.
+
+## Reglas obligatorias
+
+- Conserva la lógica funcional existente.
+- Mantén compatibilidad con las props actuales.
+- No cambies contratos de componentes sin justificarlo.
+- No rompas formularios, rutas, filtros, tablas ni llamadas a servicios.
+- Extrae componentes solo si mejora claridad, reutilización o mantenibilidad.
+- Evita sobreingeniería.
+- Evita duplicación de componentes.
+- Mejora nombres de clases, estructura semántica y jerarquía HTML.
+- Usa elementos semánticos cuando aplique: `header`, `main`, `section`, `article`, `nav`, `aside`, `footer`, `button`, `form`, `label`.
+- Evita `div` innecesarios.
+- No mezcles paradigmas de estilos.
+
+## Formularios
+
+Todos los formularios deben tener:
+
+- `label` visible o accesible.
+- Validaciones claras.
+- Mensajes de error.
+- Estado de carga.
+- Estado deshabilitado cuando aplique.
+- Confirmación de éxito.
+- Prevención de doble envío.
+- Campos obligatorios claramente identificados.
+- Buen manejo de datos sensibles.
+
+Aplica especialmente en:
+
+- Registro de trabajador.
+- Alta de plaza.
+- Movimientos plaza–empleado.
+- Contactos de emergencia (evolución).
+- Vacaciones (evolución).
+- Incidencias (evolución).
+- Cursos (evolución).
+- Metas (evolución).
+- Usuarios y permisos.
+- Reportes.
+- Login con CAPTCHA.
+
+## Botones y acciones
+
+Los botones deben tener intención clara:
+
+- Registrar.
+- Guardar.
+- Cancelar.
+- Validar.
+- Rechazar.
+- Autorizar.
+- Exportar.
+- Consultar.
+- Limpiar filtros.
+- Ver detalle.
+
+No uses textos ambiguos como:
+
+```text
+OK
+Enviar
+Aceptar
+Click aquí
+```
+
+Si la acción modifica información sensible, debe quedar visualmente clara.
+
+## Tablas
+
+Las tablas deben ser legibles y útiles:
+
+- Encabezados claros.
+- Filtros visibles.
+- Paginación si aplica.
+- Estados vacíos.
+- Ordenamiento si aplica.
+- Acciones por fila.
+- Indicadores de estado.
+- Manejo responsivo.
+- No ocultar información crítica sin alternativa.
+
+Aplica a:
+
+- Trabajadores.
+- Plazas.
+- Movimientos.
+- Centros de trabajo.
+- Catálogos.
+- Incidencias (evolución).
+- Vacaciones (evolución).
+- Cursos (evolución).
+- Metas (evolución).
+- Movimientos externos (evolución).
+- Reportes.
+- Auditoría.
+
+## Cards y dashboards
+
+Las cards deben tener:
+
+- Título claro.
+- Métrica principal.
+- Contexto temporal.
+- Estado visual.
+- Acción de detalle.
+- Iconografía sobria si existe.
+- Jerarquía visual clara.
+
+Evita cards decorativas sin utilidad operativa.
+
+## Estados obligatorios
+
+Siempre que aplique, implementa o conserva:
+
+- `loading`
+- `error`
+- `empty`
+- `success`
+- `disabled`
+- `pending`
+- `validated`
+- `rejected`
+- `cancelled`
+
+Usa traducciones en español:
+
+```text
+Cargando
+Error
+Sin resultados
+Guardado correctamente
+Pendiente
+Validado
+Rechazado
+Cancelado
+```
+
+## Accesibilidad
+
+Asegura:
+
+- Navegación por teclado.
+- Focus visible.
+- Contraste suficiente.
+- Labels correctos.
+- Botones con área táctil suficiente.
+- Mensajes de error asociados al campo.
+- No depender solo del color para comunicar estados.
+
+## Entrega de código
+
+Cuando el cambio afecte estructura, imports, props, tipos o servicios, entrega el archivo completo.
+
+No entregues fragmentos incompletos si pueden generar ambigüedad.

@@ -1,0 +1,44 @@
+services:
+  server:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    container_name: abyssan-server
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - NODE_ENV=development
+      - PROJECTS_ROOT=/workspace/proyectos
+    volumes:
+      # Montaje de la carpeta de proyectos locales para inspección con Git
+      - ../:/workspace/proyectos:ro
+      # Solo montamos src para hot-reload; evita romper node_modules de Linux con symlinks de Windows
+      - ./apps/server/src:/app/apps/server/src
+    networks:
+      - abyssan-net
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: abyssan-web
+    restart: unless-stopped
+    ports:
+      - "5174:5174"
+    environment:
+      - VITE_API_URL=http://localhost:3001
+      - VITE_WS_URL=ws://localhost:3001
+    volumes:
+      - ./apps/web/src:/app/apps/web/src
+      - ./apps/web/index.html:/app/apps/web/index.html
+      - ./apps/web/vite.config.ts:/app/apps/web/vite.config.ts
+    depends_on:
+      - server
+    networks:
+      - abyssan-net
+
+networks:
+  abyssan-net:
+    driver: bridge

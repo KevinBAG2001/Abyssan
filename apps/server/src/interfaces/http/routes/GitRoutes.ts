@@ -1,0 +1,56 @@
+// Austria: Enrutador HTTP que inyecta dependencias bajo arquitectura DDD
+import { Router } from 'express';
+import { SimpleGitAdapter } from '../../../infrastructure/git/SimpleGitAdapter.js';
+import { commandLogAdapter } from '../../../infrastructure/logging/InMemoryCommandLogAdapter.js';
+import { GitUseCases } from '../../../application/use-cases/GitUseCases.js';
+import { GitController } from '../controllers/GitController.js';
+
+const gitRepository = new SimpleGitAdapter(commandLogAdapter);
+const gitUseCases = new GitUseCases(gitRepository, commandLogAdapter);
+const gitController = new GitController(gitUseCases);
+
+export const gitRouter = Router();
+
+// Rutas REST
+gitRouter.get('/repos', (req, res) => gitController.listRepositories(req, res));
+gitRouter.get('/status', (req, res) => gitController.getStatus(req, res));
+gitRouter.get('/commits', (req, res) => gitController.getCommits(req, res));
+gitRouter.get('/branches', (req, res) => gitController.getBranches(req, res));
+gitRouter.get('/branches/compare', (req, res) => gitController.compareBranches(req, res));
+gitRouter.post('/merge', (req, res) => gitController.merge(req, res));
+gitRouter.get('/diff', (req, res) => gitController.getDiff(req, res));
+gitRouter.post('/stage', (req, res) => gitController.stage(req, res));
+gitRouter.post('/unstage', (req, res) => gitController.unstage(req, res));
+gitRouter.post('/commit', (req, res) => gitController.commit(req, res));
+gitRouter.post('/checkout', (req, res) => gitController.checkout(req, res));
+gitRouter.post('/branch', (req, res) => gitController.createBranch(req, res));
+gitRouter.post('/pull', (req, res) => gitController.pull(req, res));
+gitRouter.post('/push', (req, res) => gitController.push(req, res));
+
+// Remotos
+gitRouter.get('/remotes', (req, res) => gitController.getRemotes(req, res));
+gitRouter.post('/remote/add', (req, res) => gitController.addRemote(req, res));
+gitRouter.post('/remote/remove', (req, res) => gitController.removeRemote(req, res));
+gitRouter.post('/fetch', (req, res) => gitController.fetch(req, res));
+
+// Stashes
+gitRouter.get('/stashes', (req, res) => gitController.getStashes(req, res));
+gitRouter.post('/stash/save', (req, res) => gitController.saveStash(req, res));
+gitRouter.post('/stash/pop', (req, res) => gitController.popStash(req, res));
+gitRouter.post('/stash/drop', (req, res) => gitController.dropStash(req, res));
+
+// Tags
+gitRouter.get('/tags', (req, res) => gitController.getTags(req, res));
+gitRouter.post('/tag', (req, res) => gitController.createTag(req, res));
+
+// Cherry-Pick, Revert, Reset
+gitRouter.post('/cherry-pick', (req, res) => gitController.cherryPick(req, res));
+gitRouter.post('/revert', (req, res) => gitController.revert(req, res));
+gitRouter.post('/reset', (req, res) => gitController.reset(req, res));
+
+// Conflictos
+gitRouter.get('/conflict', (req, res) => gitController.getConflict(req, res));
+gitRouter.post('/conflict/resolve', (req, res) => gitController.resolveConflict(req, res));
+
+// Auditoria
+gitRouter.get('/logs', (req, res) => gitController.getLogs(req, res));

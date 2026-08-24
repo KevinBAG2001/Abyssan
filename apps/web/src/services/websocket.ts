@@ -1,0 +1,74 @@
+const WS_BASE = import.meta.env.VITE_WS_URL || 'ws://localhost:3001';
+
+type RepoChangeCallback = (data: { repoPath: string; eventType: string; filePath: string }) => void;
+
+export class WebSocketClient {
+  private socket: WebSocket | null = null;
+  private listeners: Set<RepoChangeCallback> = new Set();
+  private currentRepoPath: string | null = null;
+  private reconnectTimer: NodeJS.Timeout | null = null;
+
+  connect() {
+    if (this.socket && (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING)) {
+      return;
+    }
+
+    try {
+      this.socket = new WebSocket(WS_BASE);
+
+      this.socket.onopen = () => {
+        console.log('[WebKraken] Conectado al WebSocket');
+        if (this.currentRepoPath) {
+          this.watchRepo(this.currentRepoPath);
+        }
+      };
+
+      this.socket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'REPO_CHANGED') {
+            this.listeners.forEach((callback) => callback(data));
+          }
+        } catch (e) {
+          console.error('[WebKraken] Error parseando mensaje WS:', e);
+        }
+      };
+
+      this.socket.onclose = () => {
+        console.log('[WebKraken] Conexion WS cerrada. Reintentando en 3s...');
+        this.scheduleReconnect();
+      };
+
+      this.socket.onerror = (err) => {
+        console.error('[WebKraken] Error en WebSocket:', err);
+        this.socket?.close();
+      };
+    } catch (err) {
+      console.error('[WebKraken] Fallo al inicializar WebSocket:', err);
+      this.scheduleReconnect();
+    }
+  }
+
+  private scheduleReconnect() {
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = setTimeout(() => {
+      this.connect();
+    }, 3000);
+  }
+
+  watchRepo(repoPath: string) {
+    this.currentRepoPath = repoPath;
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      this.socket.send(JSON.stringify({ type: 'WATCH_REPO', repoPath }));
+    }
+  }
+
+  onRepoChange(callback: RepoChangeCallback): () => void {
+    this.listeners.add(callback);
+    return () => {
+      this.listeners.delete(callback);
+    };
+  }
+}
+
+export const wsClient = new WebSocketClient();

@@ -1,0 +1,245 @@
+---
+description: "Criterios obligatorios de accesibilidad, diseño responsivo y rendimiento frontend para SIRH."
+globs:
+  - "frontend/**/*.tsx"
+  - "frontend/**/*.ts"
+  - "frontend/**/*.css"
+  - "frontend/**/*.scss"
+  - "frontend/**/*.module.css"
+  - "frontend/**/*.module.scss"
+  - "frontend/vite.config.*"
+  - "frontend/package.json"
+alwaysApply: false
+---
+
+# Accesibilidad, Diseño Responsivo y Rendimiento
+
+Toda mejora frontend del **SIRH — Sistema Integral de Recursos Humanos** debe considerar accesibilidad, diseño responsivo, rendimiento, seguridad visual y claridad operativa.
+
+Esta regla aplica especialmente al frontend ubicado en:
+
+```text
+frontend/
+```
+
+## Accesibilidad obligatoria
+
+Usa HTML semántico siempre que sea posible.
+
+Elementos recomendados:
+
+- `header`
+- `main`
+- `section`
+- `article`
+- `nav`
+- `aside`
+- `footer`
+- `form`
+- `label`
+- `button`
+- `table`
+- `thead`
+- `tbody`
+- `th`
+- `td`
+
+## Encabezados
+
+Mantén orden lógico de encabezados:
+
+- Una pantalla debe tener una jerarquía clara.
+- No saltes niveles sin razón.
+- Usa encabezados para estructura, no solo para tamaño visual.
+
+## ARIA
+
+Usa atributos `aria-*` solo cuando HTML semántico no sea suficiente.
+
+No agregues ARIA innecesario si el elemento nativo ya comunica correctamente su función.
+
+## Foco y teclado
+
+Todo elemento interactivo debe tener:
+
+- Foco visible.
+- Navegación por teclado.
+- Orden de tabulación lógico.
+- Activación mediante teclado cuando aplique.
+
+Aplica especialmente a:
+
+- Botones.
+- Menús.
+- Modales.
+- Formularios.
+- Selectores.
+- Filtros.
+- Tabs.
+- Tablas con acciones.
+- Dropdowns.
+- Calendarios de vacaciones.
+- CAPTCHA y login.
+
+## Contraste y estados
+
+Asegura contraste suficiente en:
+
+- Texto principal.
+- Texto secundario.
+- Badges.
+- Botones.
+- Alertas.
+- Estados de incidencia.
+- Estados de vacaciones.
+- Estados de cursos.
+- Estados de metas.
+- Estados de plazas y movimientos.
+- Tema claro.
+- Tema oscuro.
+
+No dependas solo del color para comunicar estados.
+
+Complementa con:
+
+- Texto.
+- Icono funcional.
+- Badge.
+- Tooltip accesible si aplica.
+- Descripción visible.
+
+## Formularios accesibles
+
+Todo formulario debe tener:
+
+- Labels reales.
+- Mensajes de error asociados al campo.
+- Campos obligatorios identificados.
+- Validación clara.
+- Estados de carga y deshabilitado.
+- Confirmación de guardado.
+- Prevención de doble envío.
+
+Aplica a:
+
+- Trabajadores.
+- Plazas.
+- Movimientos.
+- Contactos de emergencia (evolución).
+- Vacaciones (evolución).
+- Incidencias (evolución).
+- Cursos (evolución).
+- Metas (evolución).
+- Usuarios.
+- Reportes.
+- Login con CAPTCHA.
+
+## Imágenes e iconos
+
+- Usa `alt` significativo en imágenes informativas.
+- Usa `alt=""` en imágenes decorativas.
+- Los iconos decorativos no deben duplicar texto leído por tecnologías asistivas.
+- Los iconos que comuniquen estado deben tener texto visible o etiqueta accesible.
+- El CAPTCHA debe tener alternativa accesible documentada.
+
+## Diseño responsivo
+
+Diseña mobile-first salvo que exista una convención explícita diferente.
+
+Evita:
+
+- Anchos fijos innecesarios.
+- Overflow horizontal.
+- Tablas imposibles de leer en pantallas pequeñas.
+- Modales más altos que la pantalla.
+- Formularios con columnas rígidas.
+- Cards que pierdan contexto al apilarse.
+
+Usa:
+
+- Contenedores fluidos.
+- Grid adaptable.
+- Columnas por breakpoint.
+- Tipografía escalable.
+- Espaciado consistente.
+- Scroll horizontal controlado solo en tablas complejas.
+
+## Estados extremos obligatorios
+
+Valida la interfaz con:
+
+- Textos largos.
+- Nombres de trabajadores largos.
+- RFC/CURP visibles solo si el rol lo permite.
+- Tablas con muchos registros.
+- Tablas sin registros.
+- Filtros sin resultados.
+- Reportes con rangos amplios.
+- Error de sincronización externa (evolución).
+- Usuario sin permisos.
+- Sesión expirada.
+- Pantalla pequeña.
+- Tema oscuro.
+- Modo demo del dashboard cuando falta esquema.
+
+## Rendimiento
+
+Evita:
+
+- Imágenes sin optimizar.
+- Animaciones costosas.
+- Dependencias pesadas sin justificación.
+- Renderizados innecesarios.
+- Consultas repetidas al backend sin caché o control.
+- Tablas enormes sin paginación, virtualización o filtros.
+- Recalcular métricas complejas en cada render.
+
+Prefiere:
+
+- CSS para microinteracciones simples.
+- Componentes pequeños y legibles.
+- Carga diferida de módulos pesados.
+- Paginación en tablas.
+- Filtros server-side cuando haya muchos datos.
+- Memoización solo cuando esté justificada.
+- Paginación cursor en consultas de plazas cuando aplique.
+
+## Rendimiento en dashboard
+
+El tablero no debe bloquearse por consultas pesadas.
+
+Recomendaciones:
+
+- Cargar tarjetas críticas primero.
+- Cargar gráficas después si son pesadas.
+- Mostrar skeletons o estados de carga.
+- Manejar error parcial por sección.
+- No consultar la base externa en vivo para cada render; usar snapshots internos (evolución).
+- Soportar modo demo si falta esquema institucional.
+
+## Rendimiento en reportes
+
+Para reportes:
+
+- Solicitar filtros antes de generar.
+- Evitar generar reportes masivos sin rango.
+- Generar Excel/PDF desde backend.
+- Mostrar estado de generación.
+- Registrar auditoría si contiene información sensible.
+- Permitir gráficas solo si el checkbox está activo.
+
+## Checklist técnico antes de finalizar
+
+Antes de entregar cambios frontend, valida:
+
+- No hay overflow horizontal no intencional.
+- La navegación por teclado funciona.
+- El foco es visible.
+- Los formularios tienen labels.
+- Los errores son claros.
+- Los estados vacíos existen.
+- Los estados de carga existen.
+- El diseño funciona en tema claro y oscuro.
+- No se agregaron dependencias pesadas sin justificación.
+- No se rompieron props, rutas ni servicios existentes.
+- El build (`pnpm run build`) sigue publicando correctamente en `backend/public/sirh`.
