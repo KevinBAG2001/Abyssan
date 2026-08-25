@@ -63,12 +63,21 @@ export interface GitRepoSummary {
   currentBranch?: string;
 }
 
+export interface GitConflictHunk {
+  actual: string;
+  entrante: string;
+  encabezadoActual: string;
+  encabezadoEntrante: string;
+}
+
 export interface GitConflictData {
   filePath: string;
   currentContent: string;
   incomingContent: string;
   baseContent: string;
   rawConflict: string;
+  baseDisponible?: boolean;
+  hunks?: GitConflictHunk[];
 }
 
 export interface GitBranchComparison {

@@ -10,6 +10,10 @@ import {
   Terminal,
   Globe,
   GitCompare,
+  Download,
+  Undo2,
+  FolderPlus,
+  GitPullRequest,
 } from 'lucide-react';
 import { GitRepoSummary, GitRepoStatus } from '../types/git';
 
@@ -18,6 +22,7 @@ interface HeaderProps {
   selectedRepo: string | null;
   status: GitRepoStatus | null;
   loading: boolean;
+  cargandoRepos?: boolean;
   onSelectRepo: (repoPath: string) => void;
   onPull: () => void;
   onPush: () => void;
@@ -26,6 +31,14 @@ interface HeaderProps {
   onOpenRemoteModal: () => void;
   onOpenCompareModal: () => void;
   onToggleConsole: () => void;
+  onFetch: () => void;
+  onOpenNacimiento: () => void;
+  onOpenForjas: () => void;
+  onDeshacer: () => void;
+  modoPull: 'merge' | 'rebase';
+  onCambiarModoPull: (modo: 'merge' | 'rebase') => void;
+  puedeDeshacer: boolean;
+  motivoDeshacer?: string;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -33,6 +46,7 @@ export const Header: React.FC<HeaderProps> = ({
   selectedRepo,
   status,
   loading,
+  cargandoRepos = false,
   onSelectRepo,
   onPull,
   onPush,
@@ -41,6 +55,14 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenRemoteModal,
   onOpenCompareModal,
   onToggleConsole,
+  onFetch,
+  onOpenNacimiento,
+  onOpenForjas,
+  onDeshacer,
+  modoPull,
+  onCambiarModoPull,
+  puedeDeshacer,
+  motivoDeshacer,
 }) => {
   return (
     <header className="h-14 bg-[#141724] border-b border-[#23283b] px-4 flex items-center justify-between select-none">
@@ -65,15 +87,30 @@ export const Header: React.FC<HeaderProps> = ({
             className="bg-[#1b1f30] hover:bg-[#23283b] text-slate-200 text-sm font-medium rounded-md px-3 py-1.5 border border-[#2e354e] focus:outline-none focus:border-emerald-500 cursor-pointer transition-colors"
           >
             <option value="" disabled>
-              -- Seleccionar Repositorio --
+              {cargandoRepos
+                ? 'Cargando repositorios…'
+                : repos.length === 0
+                  ? 'Sin repos en PROJECTS_ROOT'
+                  : '-- Seleccionar Repositorio --'}
             </option>
             {repos.map((repo) => (
               <option key={repo.path} value={repo.path}>
-                {repo.name} {repo.isGitRepo ? `(${repo.currentBranch || 'git'})` : '(No Git)'}
+                {repo.name} (
+                {selectedRepo === repo.path
+                  ? status?.currentBranch || repo.currentBranch || 'git'
+                  : repo.currentBranch || 'git'}
+                )
               </option>
             ))}
           </select>
         </div>
+        <button
+          onClick={onOpenNacimiento}
+          className="p-1.5 bg-[#1b1f30] hover:bg-[#23283b] text-slate-300 rounded-md border border-[#2e354e]"
+          title="Clonar o inicializar repositorio"
+        >
+          <FolderPlus className="w-3.5 h-3.5 text-emerald-400" />
+        </button>
       </div>
 
       {/* Acciones de Git */}
@@ -101,16 +138,36 @@ export const Header: React.FC<HeaderProps> = ({
 
           <div className="h-5 w-[1px] bg-[#23283b] mx-1" />
 
-          {/* Pull */}
           <button
-            onClick={onPull}
+            onClick={onFetch}
             disabled={loading}
-            className="flex items-center space-x-1 px-3 py-1.5 bg-[#1b1f30] hover:bg-[#23283b] active:bg-[#2e354e] text-slate-200 text-xs font-medium rounded-md border border-[#2e354e] transition-colors disabled:opacity-50"
-            title="Traer cambios del remoto"
+            className="flex items-center space-x-1 px-3 py-1.5 bg-[#1b1f30] hover:bg-[#23283b] text-slate-200 text-xs font-medium rounded-md border border-[#2e354e] disabled:opacity-50"
+            title="Fetch --all --prune"
           >
-            <ArrowDown className="w-3.5 h-3.5 text-sky-400" />
-            <span>Pull</span>
+            <Download className="w-3.5 h-3.5 text-sky-400" />
+            <span>Fetch</span>
           </button>
+
+          <div className="flex items-center">
+            <button
+              onClick={onPull}
+              disabled={loading}
+              className="flex items-center space-x-1 px-3 py-1.5 bg-[#1b1f30] hover:bg-[#23283b] text-slate-200 text-xs font-medium rounded-l-md border border-[#2e354e] disabled:opacity-50"
+              title={`Pull (${modoPull})`}
+            >
+              <ArrowDown className="w-3.5 h-3.5 text-sky-400" />
+              <span>Pull</span>
+            </button>
+            <select
+              value={modoPull}
+              onChange={(e) => onCambiarModoPull(e.target.value as 'merge' | 'rebase')}
+              className="h-[30px] bg-[#1b1f30] border border-l-0 border-[#2e354e] rounded-r-md text-[10px] text-slate-400 px-1 focus:outline-none"
+              title="Modo de pull (D10)"
+            >
+              <option value="merge">merge</option>
+              <option value="rebase">rebase</option>
+            </select>
+          </div>
 
           {/* Push */}
           <button
@@ -133,6 +190,16 @@ export const Header: React.FC<HeaderProps> = ({
             <span>Comparar</span>
           </button>
 
+          {/* Forjas */}
+          <button
+            onClick={onOpenForjas}
+            className="flex items-center space-x-1 px-2.5 py-1.5 bg-[#1b1f30] hover:bg-[#23283b] text-sky-300 hover:text-sky-200 rounded-md border border-[#2e354e] text-xs transition-colors"
+            title="PRs y MRs del origin"
+          >
+            <GitPullRequest className="w-3.5 h-3.5 text-sky-400" />
+            <span>PRs</span>
+          </button>
+
           {/* Remotos */}
           <button
             onClick={onOpenRemoteModal}
@@ -151,6 +218,15 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Archive className="w-3.5 h-3.5 text-amber-400" />
             <span>Stash</span>
+          </button>
+
+          <button
+            onClick={onDeshacer}
+            disabled={loading || !puedeDeshacer}
+            className="p-1.5 bg-[#1b1f30] hover:bg-[#23283b] text-slate-300 rounded-md border border-[#2e354e] disabled:opacity-40"
+            title={puedeDeshacer ? 'Deshacer última operación' : motivoDeshacer || 'Nada que deshacer'}
+          >
+            <Undo2 className="w-3.5 h-3.5 text-purple-400" />
           </button>
 
           {/* Consola */}
