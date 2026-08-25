@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { GitBranch, GitFork, Plus, Tag, ChevronDown, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { GitBranch, GitFork, Plus, Tag, ChevronDown, ChevronRight, CheckCircle2, Trash2, Pencil } from 'lucide-react';
 import { GitBranch as IGitBranch, GitTag } from '../types/git';
 
 interface SidebarProps {
@@ -10,6 +10,8 @@ interface SidebarProps {
   onCheckout: (branchName: string) => void;
   onCreateBranch: (branchName: string) => void;
   onCreateTag: (tagName: string) => void;
+  onDeleteBranch: (branchName: string) => void;
+  onRenameBranch: (nombreActual: string, nombreNuevo: string) => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -20,6 +22,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onCheckout,
   onCreateBranch,
   onCreateTag,
+  onDeleteBranch,
+  onRenameBranch,
 }) => {
   const [localExpanded, setLocalExpanded] = useState(true);
   const [remoteExpanded, setRemoteExpanded] = useState(true);
@@ -101,7 +105,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     }`}
                   >
                     <span className="truncate">{branch.name}</span>
-                    {isCurrent && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 ml-1" />}
+                    <div className="flex items-center shrink-0 ml-1 space-x-0.5">
+                      {isCurrent && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}
+                      <button
+                        type="button"
+                        title="Renombrar rama"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const nuevo = window.prompt(`Nuevo nombre para ${branch.name}:`, branch.name);
+                          if (nuevo?.trim() && nuevo.trim() !== branch.name) {
+                            onRenameBranch(branch.name, nuevo.trim());
+                          }
+                        }}
+                        className="opacity-0 group-hover:opacity-100 p-0.5 text-slate-500 hover:text-amber-300"
+                      >
+                        <Pencil className="w-3 h-3" />
+                      </button>
+                      <button
+                        type="button"
+                        title={isCurrent ? 'No se puede borrar HEAD' : 'Borrar rama local'}
+                        disabled={isCurrent}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!isCurrent) onDeleteBranch(branch.name);
+                        }}
+                        className="opacity-0 group-hover:opacity-100 p-0.5 text-slate-500 hover:text-rose-400 disabled:opacity-30"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
                   </div>
                 );
               })}

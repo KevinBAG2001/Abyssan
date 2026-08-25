@@ -65,12 +65,21 @@ export interface RepositorySummaryModel {
   currentBranch?: string;
 }
 
+export interface HunkConflictoModel {
+  actual: string;
+  entrante: string;
+  encabezadoActual: string;
+  encabezadoEntrante: string;
+}
+
 export interface ConflictModel {
   filePath: string;
   currentContent: string;
   incomingContent: string;
   baseContent: string;
   rawConflict: string;
+  baseDisponible?: boolean;
+  hunks?: HunkConflictoModel[];
 }
 
 export interface BranchComparisonModel {

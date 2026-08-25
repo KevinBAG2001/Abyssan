@@ -4,6 +4,9 @@ import cors from 'cors';
 import http from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import { gitRouter } from './interfaces/http/routes/GitRoutes.js';
+import { authRouter } from './interfaces/http/routes/AuthForjasRoutes.js';
+import { forjasRouter } from './interfaces/http/routes/ForjasRoutes.js';
+import { authForjasController } from './interfaces/http/controllers/AuthForjasController.js';
 import { watcherAdapter } from './infrastructure/watcher/ChokidarWatcherAdapter.js';
 import { validarRutaRepositorio } from './infrastructure/seguridad/validarRutaRepositorio.js';
 import {
@@ -38,8 +41,11 @@ app.get('/health', (_req, res) => {
   });
 });
 
+app.get('/api/auth/callback', (req, res) => authForjasController.callback(req, res));
 app.use('/api', middlewareTokenInstancia);
+app.use('/api/auth', authRouter);
 app.use('/api/git', gitRouter);
+app.use('/api/forjas', forjasRouter);
 
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });

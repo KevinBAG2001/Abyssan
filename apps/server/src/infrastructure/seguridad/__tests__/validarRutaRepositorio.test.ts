@@ -6,6 +6,8 @@ import {
   validarRutaArchivoEnRepositorio,
   obtenerRaizProyectos,
   esRutaArchivoAbsoluta,
+  validarDestinoNuevo,
+  validarUrlClone,
 } from '../validarRutaRepositorio.js';
 
 describe('validarRutaRepositorio', () => {
@@ -65,5 +67,21 @@ describe('validarRutaRepositorio', () => {
   it('validarRutaArchivoEnRepositorio debe rechazar .. en la ruta', () => {
     const repo = path.join(raiz, 'mi-repo');
     expect(() => validarRutaArchivoEnRepositorio(repo, path.join('..', '..', 'secret.txt'))).toThrow();
+  });
+
+  it('validarDestinoNuevo rechaza clone fuera de la raíz', () => {
+    expect(() => validarDestinoNuevo('../fuera')).toThrow('no autorizada');
+    expect(() => validarDestinoNuevo('..\\fuera')).toThrow();
+  });
+
+  it('validarDestinoNuevo acepta una subcarpeta', () => {
+    const dest = validarDestinoNuevo('nuevo-repo');
+    expect(dest).toBe(path.resolve(raiz, 'nuevo-repo'));
+  });
+
+  it('validarUrlClone rechaza file:// y rutas locales', () => {
+    expect(() => validarUrlClone('file:///tmp/repo')).toThrow();
+    expect(() => validarUrlClone('C:\\secret')).toThrow();
+    expect(validarUrlClone('https://github.com/org/repo.git')).toContain('https://');
   });
 });
