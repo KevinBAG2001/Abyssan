@@ -7,6 +7,7 @@ interface GitConsoleDrawerProps {
   isOpen: boolean;
   onToggle: () => void;
   onClear: () => void;
+  reflog: { hash: string; selector: string; mensaje: string; fecha: string }[];
 }
 
 export const GitConsoleDrawer: React.FC<GitConsoleDrawerProps> = ({
@@ -14,6 +15,7 @@ export const GitConsoleDrawer: React.FC<GitConsoleDrawerProps> = ({
   isOpen,
   onToggle,
   onClear,
+  reflog,
 }) => {
   return (
     <div className="border-t border-[#23283b] bg-[#0d0f17] flex flex-col transition-all duration-200 select-none">
@@ -51,7 +53,18 @@ export const GitConsoleDrawer: React.FC<GitConsoleDrawerProps> = ({
       {/* Contenido desplegable de logs */}
       {isOpen && (
         <div className="h-44 overflow-y-auto p-3 font-['JetBrains_Mono',monospace] text-[11px] space-y-1 bg-[#090a10]">
-          {logs.length === 0 ? (
+          {reflog.length > 0 && (
+            <div className="mb-2 pb-2 border-b border-[#23283b]">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Reflog (últimas)</div>
+              {reflog.slice(0, 12).map((r, i) => (
+                <div key={`${r.hash}-${i}`} className="flex space-x-2 text-slate-400 py-0.5">
+                  <span className="text-emerald-400 font-mono w-14 shrink-0">{r.hash}</span>
+                  <span className="truncate">{r.mensaje}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {logs.length === 0 && reflog.length === 0 ? (
             <div className="text-slate-600 italic py-2">No se han ejecutado comandos aún en esta sesión.</div>
           ) : (
             logs.map((log) => (

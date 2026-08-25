@@ -1,5 +1,5 @@
 // Austria: Hook de la Capa de Aplicacion para orquestar el estado de dominio del repositorio Git (DDD)
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { httpGitApi } from '../../infrastructure/api/HttpGitApi.js';
 import { wsClient } from '../../services/websocket.js';
 import {
@@ -14,6 +14,10 @@ import {
   FileStatusModel,
   ConflictModel,
 } from '../../domain/models/GitModels.js';
+
+function dePromesa<T>(r: PromiseSettledResult<T>, fallback: T): T {
+  return r.status === 'fulfilled' ? r.value : fallback;
+}
 
 export function useGitRepository() {
   const [repos, setRepos] = useState<RepositorySummaryModel[]>([]);
@@ -32,25 +36,34 @@ export function useGitRepository() {
   const [conflictData, setConflictData] = useState<ConflictModel | null>(null);
 
   const [loading, setLoading] = useState<boolean>(false);
+  const [cargandoRepos, setCargandoRepos] = useState(true);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  const generacion = useRef(0);
+  const archivoSeleccionado = useRef<FileStatusModel | null>(null);
+  archivoSeleccionado.current = selectedFile;
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 4000);
   };
 
-  const loadRepos = async () => {
+  const loadRepos = useCallback(async () => {
+    setCargandoRepos(true);
     try {
       const data = await httpGitApi.getRepos();
       setRepos(data);
-      if (data.length > 0 && !selectedRepo) {
+      setSelectedRepo((actual) => {
+        if (actual) return actual;
         const firstGit = data.find((r) => r.isGitRepo) || data[0];
-        setSelectedRepo(firstGit.path);
-      }
-    } catch (err: any) {
-      console.error('[Abyssan] Error cargando repositorios:', err);
+        return firstGit?.path ?? null;
+      });
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Error cargando repositorios', 'error');
+    } finally {
+      setCargandoRepos(false);
     }
-  };
+  }, []);
 
   const refreshLogs = async () => {
     try {
@@ -61,70 +74,80 @@ export function useGitRepository() {
     }
   };
 
-  const refreshRepoData = useCallback(
-    async (repoPath: string) => {
-      if (!repoPath) return;
-      setLoading(true);
-      try {
-        const [repoStatus, repoCommits, repoBranches, repoTags, repoStashes, repoRemotes] = await Promise.all([
-          httpGitApi.getStatus(repoPath),
-          httpGitApi.getCommits(repoPath),
-          httpGitApi.getBranches(repoPath),
-          httpGitApi.getTags(repoPath),
-          httpGitApi.getStashes(repoPath),
-          httpGitApi.getRemotes(repoPath),
-        ]);
-        setStatus(repoStatus);
-        setCommits(repoCommits);
-        setBranches(repoBranches);
-        setTags(repoTags);
-        setStashes(repoStashes);
-        setRemotes(repoRemotes);
-        await refreshLogs();
+  const refreshRepoData = useCallback(async (repoPath: string) => {
+    if (!repoPath) return;
+    const yo = ++generacion.current;
+    setLoading(true);
+    try {
+      const rapidos = await Promise.allSettled([
+        httpGitApi.getCommits(repoPath),
+        httpGitApi.getBranches(repoPath),
+        httpGitApi.getRemotes(repoPath),
+      ]);
+      if (yo !== generacion.current) return;
+      setCommits(dePromesa(rapidos[0], []));
+      setBranches(dePromesa(rapidos[1], []));
+      setRemotes(dePromesa(rapidos[2], []));
+      setLoading(false);
 
-        if (selectedFile) {
-          try {
-            const diff = await httpGitApi.getDiff(repoPath, selectedFile.path, selectedFile.staged);
-            setCurrentDiff(diff);
-          } catch {
-            setSelectedFile(null);
-            setCurrentDiff('');
-          }
-        }
-      } catch (err: any) {
-        showToast(err.message || 'Error al cargar datos del repositorio', 'error');
-      } finally {
-        setLoading(false);
+      const lentos = await Promise.allSettled([
+        httpGitApi.getStatus(repoPath),
+        httpGitApi.getTags(repoPath),
+        httpGitApi.getStashes(repoPath),
+      ]);
+      if (yo !== generacion.current) return;
+
+      const fallos = [...rapidos, ...lentos]
+        .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+        .map((r) => (r.reason instanceof Error ? r.reason.message : String(r.reason)));
+      if (fallos.length) {
+        showToast(fallos[0], 'error');
       }
-    },
-    [selectedFile]
-  );
+
+      setStatus(dePromesa(lentos[0], null));
+      setTags(dePromesa(lentos[1], []));
+      setStashes(dePromesa(lentos[2], []));
+      await refreshLogs();
+
+      const archivo = archivoSeleccionado.current;
+      if (archivo) {
+        try {
+          const diff = await httpGitApi.getDiff(repoPath, archivo.path, archivo.staged);
+          if (yo !== generacion.current) return;
+          setCurrentDiff(diff);
+        } catch {
+          setSelectedFile(null);
+          setCurrentDiff('');
+        }
+      }
+    } finally {
+      if (yo === generacion.current) setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    loadRepos();
+    void loadRepos();
     wsClient.connect();
+  }, [loadRepos]);
 
+  useEffect(() => {
     const unsubscribe = wsClient.onRepoChange((data) => {
       if (selectedRepo && data.repoPath.toLowerCase() === selectedRepo.toLowerCase()) {
-        refreshRepoData(selectedRepo);
+        void refreshRepoData(selectedRepo);
       }
     });
-
-    return () => {
-      unsubscribe();
-    };
+    return () => unsubscribe();
   }, [selectedRepo, refreshRepoData]);
 
   useEffect(() => {
-    if (selectedRepo) {
-      wsClient.watchRepo(selectedRepo);
-      setSelectedFile(null);
-      setSelectedCommit(null);
-      setConflictData(null);
-      setCurrentDiff('');
-      refreshRepoData(selectedRepo);
-    }
-  }, [selectedRepo]);
+    if (!selectedRepo) return;
+    wsClient.watchRepo(selectedRepo);
+    setSelectedFile(null);
+    setSelectedCommit(null);
+    setConflictData(null);
+    setCurrentDiff('');
+    void refreshRepoData(selectedRepo);
+  }, [selectedRepo, refreshRepoData]);
 
   return {
     repos,
@@ -147,8 +170,10 @@ export function useGitRepository() {
     conflictData,
     setConflictData,
     loading,
+    cargandoRepos,
     toast,
     showToast,
     refreshRepoData,
+    loadRepos,
   };
 }

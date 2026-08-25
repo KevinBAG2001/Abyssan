@@ -278,12 +278,52 @@ Abre **[http://localhost:5174](http://localhost:5174)**, elige un repositorio ba
 | `pnpm test`       | Vitest                                    |
 
 
+### Atajos (Daily Driver)
+
+| Atajo | Acción |
+|-------|--------|
+| `Ctrl+Enter` | Commit (con el formulario enfocado) |
+| `Ctrl+Shift+A` | Stage all |
+| `Ctrl+Shift+P` | Paleta mínima (fetch / pull / push / commit / PRs) |
+
+Deshacer está en el header (no hay pila Ctrl+Z). El reflog corto vive en el drawer de consola.
+
+
 
 
 ### Docker Compose
 
+Desde la raíz del repositorio:
+
 ```bash
+docker compose down
 docker compose up --build
+```
+
+Solo el frontend (más rápido si el API ya está bien):
+
+```bash
+docker compose up --build -d web
+```
+
+Cuando ya esté reconstruido y solo quieras reiniciar procesos (sin instalar nada nuevo):
+
+```bash
+docker compose restart web
+docker compose restart server
+```
+
+O por nombre de contenedor:
+
+```bash
+docker restart abyssan-web
+docker restart abyssan-server
+```
+
+Ver que existen:
+
+```bash
+docker compose ps
 ```
 
 
