@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { GitConflictData } from '../types/git';
-import { AlertCircle, Check, ArrowLeft, Split, Code2, ShieldAlert } from 'lucide-react';
+import { Check, ArrowLeft, Code2, ShieldAlert } from 'lucide-react';
 
 interface ConflictResolverProps {
   conflictData: GitConflictData;

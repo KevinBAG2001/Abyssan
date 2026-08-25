@@ -5,16 +5,20 @@ services:
       dockerfile: apps/server/Dockerfile
     container_name: abyssan-server
     restart: unless-stopped
+    labels:
+      org.opencontainers.image.title: Abyssan
+      org.opencontainers.image.description: Cliente Git gráfico auto-hospedable
     ports:
-      - "3001:3001"
+      - "127.0.0.1:3001:3001"
     environment:
       - PORT=3001
+      - BIND_HOST=0.0.0.0
       - NODE_ENV=development
       - PROJECTS_ROOT=/workspace/proyectos
+      - ABYSSAN_API_TOKEN=${ABYSSAN_API_TOKEN:-abyssan-local}
     volumes:
-      # Montaje de la carpeta de proyectos locales para inspección con Git
-      - ../:/workspace/proyectos:ro
-      # Solo montamos src para hot-reload; evita romper node_modules de Linux con symlinks de Windows
+      # RW: commit, stage y el resto de escrituras Git deben funcionar en Compose
+      - ../:/workspace/proyectos
       - ./apps/server/src:/app/apps/server/src
     networks:
       - abyssan-net
@@ -25,11 +29,15 @@ services:
       dockerfile: apps/web/Dockerfile
     container_name: abyssan-web
     restart: unless-stopped
+    labels:
+      org.opencontainers.image.title: Abyssan
+      org.opencontainers.image.description: SPA del cliente Git Abyssan
     ports:
-      - "5174:5174"
+      - "127.0.0.1:5174:5174"
     environment:
       - VITE_API_URL=http://localhost:3001
       - VITE_WS_URL=ws://localhost:3001
+      - VITE_ABYSSAN_API_TOKEN=${ABYSSAN_API_TOKEN:-abyssan-local}
     volumes:
       - ./apps/web/src:/app/apps/web/src
       - ./apps/web/index.html:/app/apps/web/index.html

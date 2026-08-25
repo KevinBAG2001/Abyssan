@@ -1,16 +1,19 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import path from 'path';
+import os from 'node:os';
+import path from 'node:path';
 import {
   validarRutaRepositorio,
   validarRutaArchivoEnRepositorio,
   obtenerRaizProyectos,
+  esRutaArchivoAbsoluta,
 } from '../validarRutaRepositorio.js';
 
 describe('validarRutaRepositorio', () => {
   const raizOriginal = process.env.PROJECTS_ROOT;
+  const raiz = path.join(os.tmpdir(), 'abyssan-proyectos-test');
 
   beforeEach(() => {
-    process.env.PROJECTS_ROOT = path.resolve('C:\\proyectos-test');
+    process.env.PROJECTS_ROOT = raiz;
   });
 
   afterEach(() => {
@@ -22,16 +25,17 @@ describe('validarRutaRepositorio', () => {
   });
 
   it('debe permitir rutas dentro de PROJECTS_ROOT', () => {
-    const repo = validarRutaRepositorio(path.join('C:\\proyectos-test', 'webkraken'));
-    expect(repo).toBe(path.resolve('C:\\proyectos-test', 'webkraken'));
+    const repo = validarRutaRepositorio(path.join(raiz, 'abyssan'));
+    expect(repo).toBe(path.resolve(raiz, 'abyssan'));
   });
 
   it('debe rechazar path traversal fuera de PROJECTS_ROOT', () => {
-    expect(() => validarRutaRepositorio('C:\\Windows\\System32')).toThrow('no autorizada');
+    const fuera = path.resolve(raiz, '..', 'fuera-de-raiz');
+    expect(() => validarRutaRepositorio(fuera)).toThrow('no autorizada');
   });
 
   it('debe rechazar rutas con .. que salen de la raíz', () => {
-    expect(() => validarRutaRepositorio(path.join('C:\\proyectos-test', '..', 'otro'))).toThrow('no autorizada');
+    expect(() => validarRutaRepositorio(path.join(raiz, '..', 'otro'))).toThrow('no autorizada');
   });
 
   it('obtenerRaizProyectos debe fallar sin variable de entorno', () => {
@@ -39,13 +43,27 @@ describe('validarRutaRepositorio', () => {
     expect(() => obtenerRaizProyectos()).toThrow('PROJECTS_ROOT');
   });
 
-  it('validarRutaArchivoEnRepositorio debe rechazar rutas absolutas', () => {
-    const repo = path.join('C:\\proyectos-test', 'mi-repo');
+  it('esRutaArchivoAbsoluta detecta POSIX y Windows', () => {
+    expect(esRutaArchivoAbsoluta('/etc/passwd')).toBe(true);
+    expect(esRutaArchivoAbsoluta('C:\\secret.txt')).toBe(true);
+    expect(esRutaArchivoAbsoluta('C:/secret.txt')).toBe(true);
+    expect(esRutaArchivoAbsoluta('src/index.ts')).toBe(false);
+  });
+
+  it('validarRutaArchivoEnRepositorio debe rechazar rutas absolutas POSIX', () => {
+    const repo = path.join(raiz, 'mi-repo');
+    expect(() => validarRutaArchivoEnRepositorio(repo, path.resolve(os.tmpdir(), 'secret.txt'))).toThrow(
+      'relativa'
+    );
+  });
+
+  it('validarRutaArchivoEnRepositorio debe rechazar rutas absolutas Windows', () => {
+    const repo = path.join(raiz, 'mi-repo');
     expect(() => validarRutaArchivoEnRepositorio(repo, 'C:\\secret.txt')).toThrow('relativa');
   });
 
   it('validarRutaArchivoEnRepositorio debe rechazar .. en la ruta', () => {
-    const repo = path.join('C:\\proyectos-test', 'mi-repo');
-    expect(() => validarRutaArchivoEnRepositorio(repo, '..\\..\\secret.txt')).toThrow();
+    const repo = path.join(raiz, 'mi-repo');
+    expect(() => validarRutaArchivoEnRepositorio(repo, path.join('..', '..', 'secret.txt'))).toThrow();
   });
 });

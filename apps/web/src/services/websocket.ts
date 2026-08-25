@@ -1,12 +1,19 @@
 const WS_BASE = import.meta.env.VITE_WS_URL || 'ws://localhost:3001';
+const TOKEN_INSTANCIA = import.meta.env.VITE_ABYSSAN_API_TOKEN as string | undefined;
 
 type RepoChangeCallback = (data: { repoPath: string; eventType: string; filePath: string }) => void;
+
+function urlWebSocket(): string {
+  if (!TOKEN_INSTANCIA) return WS_BASE;
+  const sep = WS_BASE.includes('?') ? '&' : '?';
+  return `${WS_BASE}${sep}token=${encodeURIComponent(TOKEN_INSTANCIA)}`;
+}
 
 export class WebSocketClient {
   private socket: WebSocket | null = null;
   private listeners: Set<RepoChangeCallback> = new Set();
   private currentRepoPath: string | null = null;
-  private reconnectTimer: NodeJS.Timeout | null = null;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
   connect() {
     if (this.socket && (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING)) {
@@ -14,10 +21,10 @@ export class WebSocketClient {
     }
 
     try {
-      this.socket = new WebSocket(WS_BASE);
+      this.socket = new WebSocket(urlWebSocket());
 
       this.socket.onopen = () => {
-        console.log('[WebKraken] Conectado al WebSocket');
+        console.log('[Abyssan] Conectado al WebSocket');
         if (this.currentRepoPath) {
           this.watchRepo(this.currentRepoPath);
         }
@@ -30,21 +37,21 @@ export class WebSocketClient {
             this.listeners.forEach((callback) => callback(data));
           }
         } catch (e) {
-          console.error('[WebKraken] Error parseando mensaje WS:', e);
+          console.error('[Abyssan] Error parseando mensaje WS:', e);
         }
       };
 
       this.socket.onclose = () => {
-        console.log('[WebKraken] Conexion WS cerrada. Reintentando en 3s...');
+        console.log('[Abyssan] Conexion WS cerrada. Reintentando en 3s...');
         this.scheduleReconnect();
       };
 
       this.socket.onerror = (err) => {
-        console.error('[WebKraken] Error en WebSocket:', err);
+        console.error('[Abyssan] Error en WebSocket:', err);
         this.socket?.close();
       };
     } catch (err) {
-      console.error('[WebKraken] Fallo al inicializar WebSocket:', err);
+      console.error('[Abyssan] Fallo al inicializar WebSocket:', err);
       this.scheduleReconnect();
     }
   }

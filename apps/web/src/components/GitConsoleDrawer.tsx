@@ -1,6 +1,6 @@
 import React from 'react';
 import { GitCommandLog } from '../types/git';
-import { Terminal, ChevronDown, ChevronUp, CheckCircle, XCircle, Clock, Trash2 } from 'lucide-react';
+import { Terminal, ChevronDown, ChevronUp, CheckCircle, XCircle, Trash2 } from 'lucide-react';
 
 interface GitConsoleDrawerProps {
   logs: GitCommandLog[];
