@@ -4,14 +4,17 @@ import {
   obtenerRaizProyectos,
   validarRutaRepositorio,
   validarRutaArchivoEnRepositorio,
+  validarDestinoNuevo,
+  validarUrlClone,
 } from '../../../infrastructure/seguridad/validarRutaRepositorio.js';
 import { codigoHttpDeError, responderExito, responderFallo } from '../respuestaApi.js';
+import { mensajeErrorGit } from '../../../application/git/mensajeErrorGit.js';
 
 export class GitController {
   constructor(private gitUseCases: GitUseCases) {}
 
   private responderError(res: Response, error: unknown) {
-    const mensaje = error instanceof Error ? error.message : 'Error interno del servidor';
+    const mensaje = mensajeErrorGit(error);
     responderFallo(res, mensaje, codigoHttpDeError(error));
   }
 
@@ -48,7 +51,7 @@ export class GitController {
   async getCommits(req: Request, res: Response) {
     try {
       const repoPath = req.query.path as string;
-      const limit = parseInt(req.query.limit as string) || 150;
+      const limit = parseInt(req.query.limit as string) || 800;
       if (!repoPath) return this.falta(res, 'Parámetro path es requerido');
       const commits = await this.gitUseCases.getCommitGraph(this.validarRepo(repoPath), limit);
       responderExito(res, commits, 'Grafo de commits');
@@ -172,10 +175,11 @@ export class GitController {
 
   async pull(req: Request, res: Response) {
     try {
-      const { repoPath } = req.body;
+      const { repoPath, modo } = req.body as { repoPath?: string; modo?: 'merge' | 'rebase' };
       if (!repoPath) return this.falta(res, 'repoPath es requerido');
-      await this.gitUseCases.pull(this.validarRepo(repoPath));
-      responderExito(res, {}, 'Pull completado con éxito');
+      const modoPull = modo === 'rebase' ? 'rebase' : 'merge';
+      await this.gitUseCases.pull(this.validarRepo(repoPath), modoPull);
+      responderExito(res, {}, `Pull (${modoPull}) completado con éxito`);
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -371,5 +375,149 @@ export class GitController {
   getLogs(_req: Request, res: Response) {
     const logs = this.gitUseCases.getAuditLogs();
     responderExito(res, logs, 'Log de comandos');
+  }
+
+  async discardArchivo(req: Request, res: Response) {
+    try {
+      const { repoPath, file } = req.body;
+      if (!repoPath || !file) return this.falta(res, 'repoPath y file son requeridos');
+      const repoValidado = this.validarRepo(repoPath);
+      const archivo = validarRutaArchivoEnRepositorio(repoValidado, file);
+      await this.gitUseCases.discardArchivo(repoValidado, archivo);
+      responderExito(res, {}, `Cambios de ${archivo} descartados`);
+    } catch (error: unknown) {
+      this.responderError(res, error);
+    }
+  }
+
+  async abortarMerge(req: Request, res: Response) {
+    try {
+      const { repoPath } = req.body;
+      if (!repoPath) return this.falta(res, 'repoPath es requerido');
+      await this.gitUseCases.abortarMerge(this.validarRepo(repoPath));
+      responderExito(res, {}, 'Merge abortado');
+    } catch (error: unknown) {
+      this.responderError(res, error);
+    }
+  }
+
+  async continuarMerge(req: Request, res: Response) {
+    try {
+      const { repoPath } = req.body;
+      if (!repoPath) return this.falta(res, 'repoPath es requerido');
+      await this.gitUseCases.continuarMerge(this.validarRepo(repoPath));
+      responderExito(res, {}, 'Merge continuado');
+    } catch (error: unknown) {
+      this.responderError(res, error);
+    }
+  }
+
+  async clonarRepositorio(req: Request, res: Response) {
+    try {
+      const { url, nombreCarpeta } = req.body as { url?: string; nombreCarpeta?: string };
+      if (!url || !nombreCarpeta) return this.falta(res, 'url y nombreCarpeta son requeridos');
+      const urlValida = validarUrlClone(url);
+      const destino = validarDestinoNuevo(nombreCarpeta);
+      await this.gitUseCases.clonarRepositorio(urlValida, destino);
+      responderExito(res, { path: destino }, `Repositorio clonado en ${nombreCarpeta}`);
+    } catch (error: unknown) {
+      this.responderError(res, error);
+    }
+  }
+
+  async inicializarRepositorio(req: Request, res: Response) {
+    try {
+      const { nombreCarpeta } = req.body as { nombreCarpeta?: string };
+      if (!nombreCarpeta) return this.falta(res, 'nombreCarpeta es requerido');
+      const destino = validarDestinoNuevo(nombreCarpeta);
+      await this.gitUseCases.inicializarRepositorio(destino);
+      responderExito(res, { path: destino }, `Repositorio inicializado en ${nombreCarpeta}`);
+    } catch (error: unknown) {
+      this.responderError(res, error);
+    }
+  }
+
+  async deleteLocalBranch(req: Request, res: Response) {
+    try {
+      const { repoPath, branchName } = req.body;
+      if (!repoPath || !branchName) return this.falta(res, 'repoPath y branchName son requeridos');
+      await this.gitUseCases.deleteLocalBranch(this.validarRepo(repoPath), branchName);
+      responderExito(res, {}, `Rama ${branchName} eliminada`);
+    } catch (error: unknown) {
+      this.responderError(res, error);
+    }
+  }
+
+  async renameLocalBranch(req: Request, res: Response) {
+    try {
+      const { repoPath, nombreActual, nombreNuevo } = req.body;
+      if (!repoPath || !nombreActual || !nombreNuevo) {
+        return this.falta(res, 'repoPath, nombreActual y nombreNuevo son requeridos');
+      }
+      await this.gitUseCases.renameLocalBranch(this.validarRepo(repoPath), nombreActual, nombreNuevo);
+      responderExito(res, {}, `Rama renombrada a ${nombreNuevo}`);
+    } catch (error: unknown) {
+      this.responderError(res, error);
+    }
+  }
+
+  async obtenerInfoAmend(req: Request, res: Response) {
+    try {
+      const repoPath = req.query.path as string;
+      if (!repoPath) return this.falta(res, 'Parámetro path es requerido');
+      const info = await this.gitUseCases.obtenerInfoAmend(this.validarRepo(repoPath));
+      responderExito(res, info, 'Info de amend');
+    } catch (error: unknown) {
+      this.responderError(res, error);
+    }
+  }
+
+  async enmendarCommit(req: Request, res: Response) {
+    try {
+      const { repoPath, message, confirmarRemoto } = req.body;
+      if (!repoPath || !message) return this.falta(res, 'repoPath y message son requeridos');
+      const hash = await this.gitUseCases.enmendarCommit(
+        this.validarRepo(repoPath),
+        message,
+        Boolean(confirmarRemoto)
+      );
+      responderExito(res, { hash }, 'Commit enmendado');
+    } catch (error: unknown) {
+      this.responderError(res, error);
+    }
+  }
+
+  async obtenerReflog(req: Request, res: Response) {
+    try {
+      const repoPath = req.query.path as string;
+      const limite = parseInt(req.query.limit as string) || 20;
+      if (!repoPath) return this.falta(res, 'Parámetro path es requerido');
+      const entradas = await this.gitUseCases.obtenerReflog(this.validarRepo(repoPath), limite);
+      responderExito(res, entradas, 'Reflog');
+    } catch (error: unknown) {
+      this.responderError(res, error);
+    }
+  }
+
+  obtenerUltimaOperacion(req: Request, res: Response) {
+    try {
+      const repoPath = req.query.path as string | undefined;
+      const validado = repoPath ? this.validarRepo(repoPath) : undefined;
+      const op = this.gitUseCases.obtenerUltimaOperacion(validado);
+      responderExito(res, op, 'Última operación');
+    } catch (error: unknown) {
+      this.responderError(res, error);
+    }
+  }
+
+  async deshacer(req: Request, res: Response) {
+    try {
+      const { repoPath } = req.body;
+      if (!repoPath) return this.falta(res, 'repoPath es requerido');
+      await this.gitUseCases.deshacer(this.validarRepo(repoPath));
+      responderExito(res, {}, 'Operación deshecha');
+    } catch (error: unknown) {
+      this.responderError(res, error);
+    }
   }
 }

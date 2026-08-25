@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { codigoHttpDeError, cuerpoExito, cuerpoFallo } from '../respuestaApi.js';
+import { ErrorForja, MENSAJE_FORJA_CAIDA } from '../../../application/forjas/ErrorForja.js';
 
 describe('contrato API { exito, mensaje, datos, meta }', () => {
   it('cuerpoExito arma el envelope correcto', () => {
@@ -25,6 +26,12 @@ describe('contrato API { exito, mensaje, datos, meta }', () => {
   });
 
   it('un error genérico se mapea a 500', () => {
+    expect(codigoHttpDeError(new Error('fatal: not a git repository'))).toBe(500);
+  });
+
+  it('ErrorForja conserva su código HTTP y no se confunde con un fallo git', () => {
+    expect(codigoHttpDeError(new ErrorForja(MENSAJE_FORJA_CAIDA, 503))).toBe(503);
+    expect(codigoHttpDeError(new ErrorForja('Token inválido', 401))).toBe(401);
     expect(codigoHttpDeError(new Error('fatal: not a git repository'))).toBe(500);
   });
 });

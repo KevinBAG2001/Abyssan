@@ -11,6 +11,56 @@ import {
   CommandLogModel,
 } from '../../domain/models/GitModels.js';
 
+export type InfoAmend = {
+  esNuestro: boolean;
+  estaEnRemoto: boolean;
+  mensaje: string;
+  hash: string;
+};
+
+export type EntradaReflog = {
+  hash: string;
+  selector: string;
+  mensaje: string;
+  fecha: string;
+};
+
+export type UltimaOperacion = {
+  tipo?: string;
+  repoPath?: string;
+  descripcion?: string;
+  puedeDeshacer: boolean;
+  motivoBloqueo?: string;
+};
+
+export type CuentaForja = { proveedor: 'github' | 'gitlab'; usuario?: string };
+
+export type OriginForja = {
+  proveedor: 'github' | 'gitlab';
+  propietario: string;
+  repositorio: string;
+  idApi: string;
+};
+
+export type SolicitudForja = {
+  proveedor: 'github' | 'gitlab';
+  numero: number;
+  titulo: string;
+  estado: string;
+  ramaOrigen: string;
+  ramaDestino: string;
+  autor: string;
+  url: string;
+  esFork: boolean;
+  shaCabeza: string;
+};
+
+export type SolicitudForjaCreada = {
+  numero: number;
+  url: string;
+  titulo: string;
+};
+
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 const TOKEN_INSTANCIA = import.meta.env.VITE_ABYSSAN_API_TOKEN as string | undefined;
 
@@ -59,7 +109,7 @@ export class HttpGitApi {
     return this.pedir(`/api/git/status?path=${encodeURIComponent(repoPath)}`);
   }
 
-  async getCommits(repoPath: string, limit = 150): Promise<CommitModel[]> {
+  async getCommits(repoPath: string, limit = 800): Promise<CommitModel[]> {
     return this.pedir(
       `/api/git/commits?path=${encodeURIComponent(repoPath)}&limit=${limit}`
     );
@@ -116,8 +166,8 @@ export class HttpGitApi {
     await this.post('/api/git/branch', { repoPath, branchName, startPoint });
   }
 
-  async pull(repoPath: string): Promise<void> {
-    await this.post('/api/git/pull', { repoPath });
+  async pull(repoPath: string, modo: 'merge' | 'rebase' = 'merge'): Promise<void> {
+    await this.post('/api/git/pull', { repoPath, modo });
   }
 
   async push(repoPath: string): Promise<void> {
@@ -188,6 +238,123 @@ export class HttpGitApi {
 
   async getLogs(): Promise<CommandLogModel[]> {
     return this.pedir('/api/git/logs');
+  }
+
+  async discardArchivo(repoPath: string, file: string): Promise<void> {
+    await this.post('/api/git/discard', { repoPath, file });
+  }
+
+  async abortarMerge(repoPath: string): Promise<void> {
+    await this.post('/api/git/merge/abort', { repoPath });
+  }
+
+  async continuarMerge(repoPath: string): Promise<void> {
+    await this.post('/api/git/merge/continue', { repoPath });
+  }
+
+  async clonarRepositorio(url: string, nombreCarpeta: string): Promise<{ path: string }> {
+    return this.pedir('/api/git/clone', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, nombreCarpeta }),
+    });
+  }
+
+  async inicializarRepositorio(nombreCarpeta: string): Promise<{ path: string }> {
+    return this.pedir('/api/git/init', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nombreCarpeta }),
+    });
+  }
+
+  async deleteLocalBranch(repoPath: string, branchName: string): Promise<void> {
+    await this.post('/api/git/branch/delete', { repoPath, branchName });
+  }
+
+  async renameLocalBranch(repoPath: string, nombreActual: string, nombreNuevo: string): Promise<void> {
+    await this.post('/api/git/branch/rename', { repoPath, nombreActual, nombreNuevo });
+  }
+
+  async getAmendInfo(repoPath: string): Promise<InfoAmend> {
+    return this.pedir(`/api/git/amend-info?path=${encodeURIComponent(repoPath)}`);
+  }
+
+  async amend(repoPath: string, message: string, confirmarRemoto = false): Promise<string> {
+    const datos = await this.pedir<{ hash: string }>('/api/git/amend', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ repoPath, message, confirmarRemoto }),
+    });
+    return datos.hash;
+  }
+
+  async getReflog(repoPath: string, limit = 20): Promise<EntradaReflog[]> {
+    return this.pedir(`/api/git/reflog?path=${encodeURIComponent(repoPath)}&limit=${limit}`);
+  }
+
+  async getUltimaOperacion(repoPath: string): Promise<UltimaOperacion> {
+    return this.pedir(`/api/git/deshacer?path=${encodeURIComponent(repoPath)}`);
+  }
+
+  async deshacer(repoPath: string): Promise<void> {
+    await this.post('/api/git/deshacer', { repoPath });
+  }
+
+  async listarForjas(): Promise<{
+    cuentas: CuentaForja[];
+    githubConfigurado: boolean;
+    gitlabConfigurado: boolean;
+  }> {
+    return this.pedir('/api/auth/forjas');
+  }
+
+  async iniciarOAuth(proveedor: 'github' | 'gitlab'): Promise<string> {
+    const datos = await this.pedir<{ url: string }>(`/api/auth/${proveedor}/iniciar`);
+    return datos.url;
+  }
+
+  async desconectarForja(proveedor: 'github' | 'gitlab'): Promise<void> {
+    await this.pedir(`/api/auth/forjas/${proveedor}`, { method: 'DELETE' });
+  }
+
+  async listarSolicitudesForja(repoPath: string): Promise<{
+    origin: OriginForja;
+    solicitudes: SolicitudForja[];
+  }> {
+    return this.pedir(`/api/forjas/solicitudes?path=${encodeURIComponent(repoPath)}`);
+  }
+
+  async diffSolicitudForja(
+    repoPath: string,
+    numero: number
+  ): Promise<{ origin: OriginForja; diff: string }> {
+    return this.pedir(`/api/forjas/solicitudes/${numero}/diff?path=${encodeURIComponent(repoPath)}`);
+  }
+
+  async checkoutSolicitudForja(
+    repoPath: string,
+    numero: number,
+    ramaOrigen: string,
+    esFork: boolean
+  ): Promise<string> {
+    const datos = await this.pedir<{ rama: string }>(`/api/forjas/solicitudes/${numero}/checkout`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ repoPath, ramaOrigen, esFork }),
+    });
+    return datos.rama;
+  }
+
+  async crearSolicitudForja(
+    repoPath: string,
+    entrada: { titulo: string; cuerpo?: string; base: string; cabeza: string }
+  ): Promise<SolicitudForjaCreada> {
+    return this.pedir(`/api/forjas/solicitudes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ repoPath, ...entrada }),
+    });
   }
 }
 

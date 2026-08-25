@@ -10,7 +10,7 @@ interface CommitContextMenuProps {
   onCreateTag: (hash: string) => void;
   onCherryPick: (hash: string) => void;
   onRevert: (hash: string) => void;
-  onReset: (type: 'soft' | 'hard', hash: string) => void;
+  onReset: (type: 'soft' | 'mixed' | 'hard', hash: string) => void;
 }
 
 export const CommitContextMenu: React.FC<CommitContextMenuProps> = ({
@@ -101,9 +101,18 @@ export const CommitContextMenu: React.FC<CommitContextMenuProps> = ({
 
         <button
           onClick={() => {
-            if (confirm(`¿Estás seguro de hacer un HARD RESET al commit ${commit.shortHash}? Se descartarán todos los cambios no confirmados.`)) {
-              onReset('hard', commit.hash);
-            }
+            onReset('mixed', commit.hash);
+            onClose();
+          }}
+          className="w-full flex items-center space-x-2 px-2.5 py-1.5 hover:bg-[#23283b] text-amber-300 hover:text-amber-200 rounded-md transition-colors text-left"
+        >
+          <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
+          <span>Reset Mixed (conservar working tree)</span>
+        </button>
+
+        <button
+          onClick={() => {
+            onReset('hard', commit.hash);
             onClose();
           }}
           className="w-full flex items-center space-x-2 px-2.5 py-1.5 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 rounded-md transition-colors text-left"

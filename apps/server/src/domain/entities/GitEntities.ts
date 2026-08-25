@@ -65,12 +65,35 @@ export interface RepositorySummaryEntity {
   currentBranch?: string;
 }
 
+export interface HunkConflictoEntity {
+  actual: string;
+  entrante: string;
+  encabezadoActual: string;
+  encabezadoEntrante: string;
+}
+
 export interface ConflictEntity {
   filePath: string;
   currentContent: string;
   incomingContent: string;
   baseContent: string;
   rawConflict: string;
+  baseDisponible: boolean;
+  hunks: HunkConflictoEntity[];
+}
+
+export interface InfoAmendEntity {
+  esNuestro: boolean;
+  estaEnRemoto: boolean;
+  mensaje: string;
+  hash: string;
+}
+
+export interface EntradaReflogEntity {
+  hash: string;
+  selector: string;
+  mensaje: string;
+  fecha: string;
 }
 
 export interface BranchComparisonEntity {

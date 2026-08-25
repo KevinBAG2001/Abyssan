@@ -5,7 +5,7 @@ import { commandLogAdapter } from '../../../infrastructure/logging/InMemoryComma
 import { GitUseCases } from '../../../application/use-cases/GitUseCases.js';
 import { GitController } from '../controllers/GitController.js';
 
-const gitRepository = new SimpleGitAdapter(commandLogAdapter);
+export const gitRepository = new SimpleGitAdapter(commandLogAdapter);
 const gitUseCases = new GitUseCases(gitRepository, commandLogAdapter);
 const gitController = new GitController(gitUseCases);
 
@@ -47,6 +47,19 @@ gitRouter.post('/tag', (req, res) => gitController.createTag(req, res));
 gitRouter.post('/cherry-pick', (req, res) => gitController.cherryPick(req, res));
 gitRouter.post('/revert', (req, res) => gitController.revert(req, res));
 gitRouter.post('/reset', (req, res) => gitController.reset(req, res));
+
+gitRouter.post('/discard', (req, res) => gitController.discardArchivo(req, res));
+gitRouter.post('/merge/abort', (req, res) => gitController.abortarMerge(req, res));
+gitRouter.post('/merge/continue', (req, res) => gitController.continuarMerge(req, res));
+gitRouter.post('/clone', (req, res) => gitController.clonarRepositorio(req, res));
+gitRouter.post('/init', (req, res) => gitController.inicializarRepositorio(req, res));
+gitRouter.post('/branch/delete', (req, res) => gitController.deleteLocalBranch(req, res));
+gitRouter.post('/branch/rename', (req, res) => gitController.renameLocalBranch(req, res));
+gitRouter.get('/amend-info', (req, res) => gitController.obtenerInfoAmend(req, res));
+gitRouter.post('/amend', (req, res) => gitController.enmendarCommit(req, res));
+gitRouter.get('/reflog', (req, res) => gitController.obtenerReflog(req, res));
+gitRouter.get('/deshacer', (req, res) => gitController.obtenerUltimaOperacion(req, res));
+gitRouter.post('/deshacer', (req, res) => gitController.deshacer(req, res));
 
 // Conflictos
 gitRouter.get('/conflict', (req, res) => gitController.getConflict(req, res));

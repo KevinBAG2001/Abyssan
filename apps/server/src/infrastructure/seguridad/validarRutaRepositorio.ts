@@ -55,3 +55,40 @@ export function validarRutaArchivoEnRepositorio(repoPath: string, filePath: stri
 
   return normalizado;
 }
+
+/**
+ * Nombre de carpeta destino para clone/init: 1 o 2 segmentos bajo PROJECTS_ROOT.
+ * Rechaza `..`, absolutas y separadores extraños.
+ */
+export function validarDestinoNuevo(nombreCarpeta: string): string {
+  if (!nombreCarpeta || typeof nombreCarpeta !== 'string') {
+    throw new Error('El nombre de carpeta es requerido');
+  }
+  const recortado = nombreCarpeta.trim().replace(/\\/g, '/');
+  if (!recortado) {
+    throw new Error('El nombre de carpeta es requerido');
+  }
+  const partes = recortado.split('/').filter((p) => p.length > 0);
+  if (partes.length === 0 || partes.length > 2) {
+    throw new Error('El destino debe ser una subcarpeta (máximo dos niveles) de PROJECTS_ROOT');
+  }
+  if (partes.some((p) => p === '.' || p === '..' || p.includes('..'))) {
+    throw new Error('Ruta de repositorio no autorizada');
+  }
+  const destino = path.join(obtenerRaizProyectos(), ...partes);
+  return validarRutaRepositorio(destino);
+}
+
+export function validarUrlClone(url: string): string {
+  if (!url || typeof url !== 'string') {
+    throw new Error('La URL de clonado es requerida');
+  }
+  const recortada = url.trim();
+  if (/^file:/i.test(recortada) || recortada.startsWith('/') || /^[a-zA-Z]:[\\/]/.test(recortada)) {
+    throw new Error('Solo se permite clonar por HTTPS o SSH. file:// no está permitido.');
+  }
+  if (!/^https:\/\//i.test(recortada) && !/^git@/i.test(recortada) && !/^ssh:\/\//i.test(recortada)) {
+    throw new Error('La URL debe ser HTTPS o SSH');
+  }
+  return recortada;
+}

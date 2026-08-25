@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import { ErrorForja } from '../../application/forjas/ErrorForja.js';
 
 export type RespuestaApi<T = unknown> = {
   exito: boolean;
@@ -24,6 +25,7 @@ export function cuerpoFallo(
 }
 
 export function codigoHttpDeError(error: unknown): number {
+  if (error instanceof ErrorForja) return error.codigoHttp;
   const mensaje = error instanceof Error ? error.message : '';
   if (
     mensaje.includes('no autorizada') ||
@@ -31,6 +33,12 @@ export function codigoHttpDeError(error: unknown): number {
     mensaje.includes('fuera del repositorio')
   ) {
     return 403;
+  }
+  if (mensaje.includes('No se puede borrar la rama activa') || mensaje.includes('son requeridos')) {
+    return 400;
+  }
+  if (mensaje.includes('ya está en el remoto')) {
+    return 409;
   }
   return 500;
 }
