@@ -27,6 +27,11 @@ export function validarRutaRepositorio(repoPath: string): string {
   return resuelto;
 }
 
+/** Absoluta en el host o con forma Windows (`C:\...`) aunque el server sea POSIX. */
+export function esRutaArchivoAbsoluta(filePath: string): boolean {
+  return path.posix.isAbsolute(filePath) || path.win32.isAbsolute(filePath);
+}
+
 export function validarRutaArchivoEnRepositorio(repoPath: string, filePath: string): string {
   const repoResuelto = validarRutaRepositorio(repoPath);
 
@@ -34,7 +39,7 @@ export function validarRutaArchivoEnRepositorio(repoPath: string, filePath: stri
     throw new Error('La ruta del archivo es requerida');
   }
 
-  if (path.isAbsolute(filePath)) {
+  if (esRutaArchivoAbsoluta(filePath)) {
     throw new Error('La ruta del archivo debe ser relativa al repositorio');
   }
 
