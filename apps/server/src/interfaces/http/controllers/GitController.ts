@@ -1,4 +1,3 @@
-// Controlador HTTP en la Capa de Interfaces (Presentation DDD)
 import { Request, Response } from 'express';
 import { GitUseCases } from '../../../application/use-cases/GitUseCases.js';
 import {
@@ -6,15 +5,18 @@ import {
   validarRutaRepositorio,
   validarRutaArchivoEnRepositorio,
 } from '../../../infrastructure/seguridad/validarRutaRepositorio.js';
+import { codigoHttpDeError, responderExito, responderFallo } from '../respuestaApi.js';
 
 export class GitController {
   constructor(private gitUseCases: GitUseCases) {}
 
   private responderError(res: Response, error: unknown) {
     const mensaje = error instanceof Error ? error.message : 'Error interno del servidor';
-    const esRutaNoAutorizada =
-      mensaje.includes('no autorizada') || mensaje.includes('no válida') || mensaje.includes('PROJECTS_ROOT');
-    res.status(esRutaNoAutorizada ? 403 : 500).json({ success: false, error: mensaje });
+    responderFallo(res, mensaje, codigoHttpDeError(error));
+  }
+
+  private falta(res: Response, mensaje: string) {
+    responderFallo(res, mensaje, 400);
   }
 
   private validarRepo(repoPath: string): string {
@@ -26,7 +28,7 @@ export class GitController {
       const rootPath = (req.query.root as string) || obtenerRaizProyectos();
       const raizValidada = validarRutaRepositorio(rootPath);
       const repos = await this.gitUseCases.listRepositories(raizValidada);
-      res.json({ success: true, data: repos });
+      responderExito(res, repos, 'Repositorios listados');
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -35,9 +37,9 @@ export class GitController {
   async getStatus(req: Request, res: Response) {
     try {
       const repoPath = req.query.path as string;
-      if (!repoPath) return res.status(400).json({ success: false, error: 'Parametro path es requerido' });
+      if (!repoPath) return this.falta(res, 'Parámetro path es requerido');
       const status = await this.gitUseCases.getRepositoryStatus(this.validarRepo(repoPath));
-      res.json({ success: true, data: status });
+      responderExito(res, status, 'Estado del repositorio');
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -47,9 +49,9 @@ export class GitController {
     try {
       const repoPath = req.query.path as string;
       const limit = parseInt(req.query.limit as string) || 150;
-      if (!repoPath) return res.status(400).json({ success: false, error: 'Parametro path es requerido' });
+      if (!repoPath) return this.falta(res, 'Parámetro path es requerido');
       const commits = await this.gitUseCases.getCommitGraph(this.validarRepo(repoPath), limit);
-      res.json({ success: true, data: commits });
+      responderExito(res, commits, 'Grafo de commits');
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -58,9 +60,9 @@ export class GitController {
   async getBranches(req: Request, res: Response) {
     try {
       const repoPath = req.query.path as string;
-      if (!repoPath) return res.status(400).json({ success: false, error: 'Parametro path es requerido' });
+      if (!repoPath) return this.falta(res, 'Parámetro path es requerido');
       const branches = await this.gitUseCases.getBranches(this.validarRepo(repoPath));
-      res.json({ success: true, data: branches });
+      responderExito(res, branches, 'Ramas listadas');
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -72,10 +74,10 @@ export class GitController {
       const base = req.query.base as string;
       const target = req.query.target as string;
       if (!repoPath || !base || !target) {
-        return res.status(400).json({ success: false, error: 'Parametros path, base y target son requeridos' });
+        return this.falta(res, 'Parámetros path, base y target son requeridos');
       }
       const comparison = await this.gitUseCases.compareBranches(this.validarRepo(repoPath), base, target);
-      res.json({ success: true, data: comparison });
+      responderExito(res, comparison, 'Comparación de ramas');
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -85,10 +87,10 @@ export class GitController {
     try {
       const { repoPath, sourceBranch, noFf } = req.body;
       if (!repoPath || !sourceBranch) {
-        return res.status(400).json({ success: false, error: 'repoPath y sourceBranch son requeridos' });
+        return this.falta(res, 'repoPath y sourceBranch son requeridos');
       }
       await this.gitUseCases.merge(this.validarRepo(repoPath), sourceBranch, noFf);
-      res.json({ success: true, message: `Merge de ${sourceBranch} completado` });
+      responderExito(res, {}, `Merge de ${sourceBranch} completado`);
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -99,11 +101,11 @@ export class GitController {
       const repoPath = req.query.path as string;
       const file = req.query.file as string | undefined;
       const staged = req.query.staged === 'true';
-      if (!repoPath) return res.status(400).json({ success: false, error: 'Parametro path es requerido' });
+      if (!repoPath) return this.falta(res, 'Parámetro path es requerido');
       const repoValidado = this.validarRepo(repoPath);
       const archivo = file ? validarRutaArchivoEnRepositorio(repoValidado, file) : undefined;
       const diff = await this.gitUseCases.getDiff(repoValidado, archivo, staged);
-      res.json({ success: true, data: diff });
+      responderExito(res, diff, 'Diff obtenido');
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -112,11 +114,11 @@ export class GitController {
   async stage(req: Request, res: Response) {
     try {
       const { repoPath, file, all } = req.body;
-      if (!repoPath) return res.status(400).json({ success: false, error: 'repoPath es requerido' });
+      if (!repoPath) return this.falta(res, 'repoPath es requerido');
       const repoValidado = this.validarRepo(repoPath);
       const archivo = file ? validarRutaArchivoEnRepositorio(repoValidado, file) : undefined;
       await this.gitUseCases.stage(repoValidado, archivo, all);
-      res.json({ success: true, message: 'Archivos preparados en staging' });
+      responderExito(res, {}, 'Archivos preparados en staging');
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -125,11 +127,11 @@ export class GitController {
   async unstage(req: Request, res: Response) {
     try {
       const { repoPath, file } = req.body;
-      if (!repoPath || !file) return res.status(400).json({ success: false, error: 'repoPath y file son requeridos' });
+      if (!repoPath || !file) return this.falta(res, 'repoPath y file son requeridos');
       const repoValidado = this.validarRepo(repoPath);
       const archivo = validarRutaArchivoEnRepositorio(repoValidado, file);
       await this.gitUseCases.unstage(repoValidado, archivo);
-      res.json({ success: true, message: 'Archivo removido de staging' });
+      responderExito(res, {}, 'Archivo removido de staging');
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -138,9 +140,9 @@ export class GitController {
   async commit(req: Request, res: Response) {
     try {
       const { repoPath, message, description } = req.body;
-      if (!repoPath || !message) return res.status(400).json({ success: false, error: 'repoPath y message son requeridos' });
+      if (!repoPath || !message) return this.falta(res, 'repoPath y message son requeridos');
       const commitHash = await this.gitUseCases.commit(this.validarRepo(repoPath), message, description);
-      res.json({ success: true, data: { hash: commitHash }, message: 'Commit realizado exitosamente' });
+      responderExito(res, { hash: commitHash }, 'Commit realizado exitosamente');
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -149,9 +151,9 @@ export class GitController {
   async checkout(req: Request, res: Response) {
     try {
       const { repoPath, target } = req.body;
-      if (!repoPath || !target) return res.status(400).json({ success: false, error: 'repoPath y target son requeridos' });
+      if (!repoPath || !target) return this.falta(res, 'repoPath y target son requeridos');
       await this.gitUseCases.checkout(this.validarRepo(repoPath), target);
-      res.json({ success: true, message: `Cambiado a ${target}` });
+      responderExito(res, {}, `Cambiado a ${target}`);
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -160,9 +162,9 @@ export class GitController {
   async createBranch(req: Request, res: Response) {
     try {
       const { repoPath, branchName, startPoint } = req.body;
-      if (!repoPath || !branchName) return res.status(400).json({ success: false, error: 'repoPath y branchName son requeridos' });
+      if (!repoPath || !branchName) return this.falta(res, 'repoPath y branchName son requeridos');
       await this.gitUseCases.createBranch(this.validarRepo(repoPath), branchName, startPoint);
-      res.json({ success: true, message: `Rama ${branchName} creada con exito` });
+      responderExito(res, {}, `Rama ${branchName} creada con éxito`);
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -171,9 +173,9 @@ export class GitController {
   async pull(req: Request, res: Response) {
     try {
       const { repoPath } = req.body;
-      if (!repoPath) return res.status(400).json({ success: false, error: 'repoPath es requerido' });
+      if (!repoPath) return this.falta(res, 'repoPath es requerido');
       await this.gitUseCases.pull(this.validarRepo(repoPath));
-      res.json({ success: true, message: 'Pull completado con exito' });
+      responderExito(res, {}, 'Pull completado con éxito');
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -182,9 +184,9 @@ export class GitController {
   async push(req: Request, res: Response) {
     try {
       const { repoPath } = req.body;
-      if (!repoPath) return res.status(400).json({ success: false, error: 'repoPath es requerido' });
+      if (!repoPath) return this.falta(res, 'repoPath es requerido');
       await this.gitUseCases.push(this.validarRepo(repoPath));
-      res.json({ success: true, message: 'Push completado con exito' });
+      responderExito(res, {}, 'Push completado con éxito');
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -193,9 +195,9 @@ export class GitController {
   async getRemotes(req: Request, res: Response) {
     try {
       const repoPath = req.query.path as string;
-      if (!repoPath) return res.status(400).json({ success: false, error: 'Parametro path es requerido' });
+      if (!repoPath) return this.falta(res, 'Parámetro path es requerido');
       const remotes = await this.gitUseCases.getRemotes(this.validarRepo(repoPath));
-      res.json({ success: true, data: remotes });
+      responderExito(res, remotes, 'Remotos listados');
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -205,10 +207,10 @@ export class GitController {
     try {
       const { repoPath, name, url } = req.body;
       if (!repoPath || !name || !url) {
-        return res.status(400).json({ success: false, error: 'repoPath, name y url son requeridos' });
+        return this.falta(res, 'repoPath, name y url son requeridos');
       }
       await this.gitUseCases.addRemote(this.validarRepo(repoPath), name, url);
-      res.json({ success: true, message: `Remoto ${name} anadido` });
+      responderExito(res, {}, `Remoto ${name} añadido`);
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -218,10 +220,10 @@ export class GitController {
     try {
       const { repoPath, name } = req.body;
       if (!repoPath || !name) {
-        return res.status(400).json({ success: false, error: 'repoPath y name son requeridos' });
+        return this.falta(res, 'repoPath y name son requeridos');
       }
       await this.gitUseCases.removeRemote(this.validarRepo(repoPath), name);
-      res.json({ success: true, message: `Remoto ${name} eliminado` });
+      responderExito(res, {}, `Remoto ${name} eliminado`);
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -230,9 +232,9 @@ export class GitController {
   async fetch(req: Request, res: Response) {
     try {
       const { repoPath, prune } = req.body;
-      if (!repoPath) return res.status(400).json({ success: false, error: 'repoPath es requerido' });
+      if (!repoPath) return this.falta(res, 'repoPath es requerido');
       await this.gitUseCases.fetchAll(this.validarRepo(repoPath), prune !== false);
-      res.json({ success: true, message: 'Fetch completado' });
+      responderExito(res, {}, 'Fetch completado');
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -241,9 +243,9 @@ export class GitController {
   async getStashes(req: Request, res: Response) {
     try {
       const repoPath = req.query.path as string;
-      if (!repoPath) return res.status(400).json({ success: false, error: 'Parametro path es requerido' });
+      if (!repoPath) return this.falta(res, 'Parámetro path es requerido');
       const stashes = await this.gitUseCases.getStashes(this.validarRepo(repoPath));
-      res.json({ success: true, data: stashes });
+      responderExito(res, stashes, 'Stashes listados');
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -252,9 +254,9 @@ export class GitController {
   async saveStash(req: Request, res: Response) {
     try {
       const { repoPath, message } = req.body;
-      if (!repoPath) return res.status(400).json({ success: false, error: 'repoPath es requerido' });
+      if (!repoPath) return this.falta(res, 'repoPath es requerido');
       await this.gitUseCases.saveStash(this.validarRepo(repoPath), message);
-      res.json({ success: true, message: 'Stash guardado' });
+      responderExito(res, {}, 'Stash guardado');
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -263,9 +265,9 @@ export class GitController {
   async popStash(req: Request, res: Response) {
     try {
       const { repoPath, index } = req.body;
-      if (!repoPath) return res.status(400).json({ success: false, error: 'repoPath es requerido' });
+      if (!repoPath) return this.falta(res, 'repoPath es requerido');
       await this.gitUseCases.popStash(this.validarRepo(repoPath), index ?? 0);
-      res.json({ success: true, message: 'Stash aplicado y removido' });
+      responderExito(res, {}, 'Stash aplicado y removido');
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -274,9 +276,9 @@ export class GitController {
   async dropStash(req: Request, res: Response) {
     try {
       const { repoPath, index } = req.body;
-      if (!repoPath) return res.status(400).json({ success: false, error: 'repoPath es requerido' });
+      if (!repoPath) return this.falta(res, 'repoPath es requerido');
       await this.gitUseCases.dropStash(this.validarRepo(repoPath), index ?? 0);
-      res.json({ success: true, message: 'Stash eliminado' });
+      responderExito(res, {}, 'Stash eliminado');
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -285,9 +287,9 @@ export class GitController {
   async getTags(req: Request, res: Response) {
     try {
       const repoPath = req.query.path as string;
-      if (!repoPath) return res.status(400).json({ success: false, error: 'Parametro path es requerido' });
+      if (!repoPath) return this.falta(res, 'Parámetro path es requerido');
       const tags = await this.gitUseCases.getTags(this.validarRepo(repoPath));
-      res.json({ success: true, data: tags });
+      responderExito(res, tags, 'Tags listados');
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -296,9 +298,9 @@ export class GitController {
   async createTag(req: Request, res: Response) {
     try {
       const { repoPath, tagName, targetHash } = req.body;
-      if (!repoPath || !tagName) return res.status(400).json({ success: false, error: 'repoPath y tagName son requeridos' });
+      if (!repoPath || !tagName) return this.falta(res, 'repoPath y tagName son requeridos');
       await this.gitUseCases.createTag(this.validarRepo(repoPath), tagName, targetHash);
-      res.json({ success: true, message: `Tag "${tagName}" creado` });
+      responderExito(res, {}, `Tag "${tagName}" creado`);
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -307,9 +309,9 @@ export class GitController {
   async cherryPick(req: Request, res: Response) {
     try {
       const { repoPath, hash } = req.body;
-      if (!repoPath || !hash) return res.status(400).json({ success: false, error: 'repoPath y hash son requeridos' });
+      if (!repoPath || !hash) return this.falta(res, 'repoPath y hash son requeridos');
       await this.gitUseCases.cherryPick(this.validarRepo(repoPath), hash);
-      res.json({ success: true, message: `Cherry-pick de ${hash.substring(0, 7)} aplicado` });
+      responderExito(res, {}, `Cherry-pick de ${hash.substring(0, 7)} aplicado`);
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -318,9 +320,9 @@ export class GitController {
   async revert(req: Request, res: Response) {
     try {
       const { repoPath, hash } = req.body;
-      if (!repoPath || !hash) return res.status(400).json({ success: false, error: 'repoPath y hash son requeridos' });
+      if (!repoPath || !hash) return this.falta(res, 'repoPath y hash son requeridos');
       await this.gitUseCases.revert(this.validarRepo(repoPath), hash);
-      res.json({ success: true, message: `Commit ${hash.substring(0, 7)} revertido` });
+      responderExito(res, {}, `Commit ${hash.substring(0, 7)} revertido`);
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -329,9 +331,9 @@ export class GitController {
   async reset(req: Request, res: Response) {
     try {
       const { repoPath, type, target } = req.body;
-      if (!repoPath || !type || !target) return res.status(400).json({ success: false, error: 'repoPath, type y target son requeridos' });
+      if (!repoPath || !type || !target) return this.falta(res, 'repoPath, type y target son requeridos');
       await this.gitUseCases.reset(this.validarRepo(repoPath), type, target);
-      res.json({ success: true, message: `Reset (${type}) a ${target} ejecutado` });
+      responderExito(res, {}, `Reset (${type}) a ${target} ejecutado`);
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -341,11 +343,11 @@ export class GitController {
     try {
       const repoPath = req.query.path as string;
       const file = req.query.file as string;
-      if (!repoPath || !file) return res.status(400).json({ success: false, error: 'Parametros path y file son requeridos' });
+      if (!repoPath || !file) return this.falta(res, 'Parámetros path y file son requeridos');
       const repoValidado = this.validarRepo(repoPath);
       const archivo = validarRutaArchivoEnRepositorio(repoValidado, file);
       const conflict = await this.gitUseCases.getConflict(repoValidado, archivo);
-      res.json({ success: true, data: conflict });
+      responderExito(res, conflict, 'Conflicto obtenido');
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -355,19 +357,19 @@ export class GitController {
     try {
       const { repoPath, file, resolvedContent } = req.body;
       if (!repoPath || !file || resolvedContent === undefined) {
-        return res.status(400).json({ success: false, error: 'repoPath, file y resolvedContent son requeridos' });
+        return this.falta(res, 'repoPath, file y resolvedContent son requeridos');
       }
       const repoValidado = this.validarRepo(repoPath);
       const archivo = validarRutaArchivoEnRepositorio(repoValidado, file);
       await this.gitUseCases.resolveConflict(repoValidado, archivo, resolvedContent);
-      res.json({ success: true, message: `Conflicto en ${file} resuelto` });
+      responderExito(res, {}, `Conflicto en ${file} resuelto`);
     } catch (error: unknown) {
       this.responderError(res, error);
     }
   }
 
-  getLogs(req: Request, res: Response) {
+  getLogs(_req: Request, res: Response) {
     const logs = this.gitUseCases.getAuditLogs();
-    res.json({ success: true, data: logs });
+    responderExito(res, logs, 'Log de comandos');
   }
 }

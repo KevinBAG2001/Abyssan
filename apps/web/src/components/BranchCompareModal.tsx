@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { GitBranch, GitBranchComparison } from '../types/git';
 import { GitCompare, ArrowRight, Merge, X, ArrowUp, ArrowDown, FileText } from 'lucide-react';
-import { api } from '../services/api';
+import { httpGitApi } from '../infrastructure/api/HttpGitApi';
 
 interface BranchCompareModalProps {
   repoPath: string;
@@ -35,7 +35,7 @@ export const BranchCompareModal: React.FC<BranchCompareModalProps> = ({
     }
     setComparing(true);
     try {
-      const data = await api.compareBranches(repoPath, baseBranch, targetBranch);
+      const data = await httpGitApi.compareBranches(repoPath, baseBranch, targetBranch);
       setComparison(data);
     } catch {
       setComparison(null);

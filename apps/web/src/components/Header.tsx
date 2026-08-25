@@ -51,7 +51,7 @@ export const Header: React.FC<HeaderProps> = ({
             <FolderGit2 className="w-5 h-5 text-slate-950 font-bold" />
           </div>
           <span className="font-bold text-lg tracking-tight bg-gradient-to-r from-emerald-400 to-teal-200 bg-clip-text text-transparent">
-            WebKraken
+            Abyssan
           </span>
         </div>
 

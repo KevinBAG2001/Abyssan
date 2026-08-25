@@ -6,11 +6,11 @@ WORKDIR /app
 COPY .npmrc package.json pnpm-workspace.yaml ./
 COPY apps/web/package.json ./apps/web/
 
-# Instalamos pnpm globalmente
-RUN npm install -g pnpm
+# Habilitamos pnpm con Corepack (sin npm como gestor del monorepo)
+RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
 
 # Instalamos dependencias del frontend
-RUN pnpm install --filter @webkraken/web...
+RUN pnpm install --filter @abyssan/web...
 
 # Copiamos código fuente
 COPY apps/web ./apps/web

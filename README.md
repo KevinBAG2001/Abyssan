@@ -1,12 +1,14 @@
-
-
-   
-
-
+<p align="center">
+  <img src="./assets/logo.svg" alt="Abyssan" width="96" height="96">
+</p>
 
 # Abyssan
 
 **El grafo, el staging y la red de seguridad de un cliente Git de escritorio — en el navegador, en tu máquina, sin suscripción.**
+
+<p align="center">
+  <img src="./assets/banner.svg" alt="Abyssan — cliente gráfico de Git, gratuito y auto-hospedable">
+</p>
 
 Abyssan es un cliente gráfico auto-hospedable. Un backend Node opera los repositorios locales;  
 una SPA React muestra el DAG, prepara el commit y ejecuta merge, stash y conflictos sin terminal.
@@ -39,7 +41,9 @@ Git no se paga por “hacer `git`”. Se paga por tres cosas que el CLI resuelve
 
 ## Interfaz
 
-
+<p align="center">
+  <img src="./assets/layout.svg" alt="Esquema de la interfaz de Abyssan: sidebar de ramas, grafo DAG y panel de staging">
+</p>
 
 Esquema de producto (no es una captura). Layout de tres columnas, tema oscuro, escritorio-first (≥ 1280 px).
 
@@ -162,9 +166,9 @@ flowchart TB
 
 
 
-### Contrato de API (objetivo)
+### Contrato de API
 
-Migración en curso hacia un envelope único. El cliente debe hablar el mismo contrato que el servidor.
+Envelope único. El cliente (`HttpGitApi`) habla el mismo contrato que el servidor.
 
 ```json
 {
@@ -175,7 +179,7 @@ Migración en curso hacia un envelope único. El cliente debe hablar el mismo co
 }
 ```
 
-Healthcheck: `[GET /health](http://localhost:3001/health)` → `{ "status": "ok", ... }`.
+Healthcheck: [GET /health](http://localhost:3001/health) → `{ "status": "ok", ... }`.
 
 ### Estructura del monorepo
 
@@ -233,18 +237,22 @@ Copia `.env.example` a `.env` en la raíz y define la raíz de repositorios. **A
 ```env
 PROJECTS_ROOT=C:\Users\<usuario>\proyectos
 PORT=3001
+BIND_HOST=127.0.0.1
 NODE_ENV=development
 VITE_API_URL=http://localhost:3001
 VITE_WS_URL=ws://localhost:3001
 ```
 
 
-| Variable        | Rol                                            |
-| --------------- | ---------------------------------------------- |
+| Variable | Rol |
+|----------|-----|
 | `PROJECTS_ROOT` | Única raíz permitida para listar y mutar repos |
-| `PORT`          | HTTP y WebSocket del servidor (3001)           |
-| `VITE_API_URL`  | Origen REST del frontend                       |
-| `VITE_WS_URL`   | Origen WebSocket del frontend                  |
+| `PORT` | HTTP y WebSocket del servidor (3001) |
+| `BIND_HOST` | Default `127.0.0.1`. Si no es loopback, hay que definir token |
+| `ABYSSAN_API_TOKEN` | Token de instancia (obligatorio fuera de localhost) |
+| `VITE_API_URL` | Origen REST del frontend |
+| `VITE_WS_URL` | Origen WebSocket del frontend |
+| `VITE_ABYSSAN_API_TOKEN` | Mismo token, para que la SPA lo envíe |
 
 
 En Linux o dentro de Docker: `PROJECTS_ROOT=/workspace/proyectos`.
@@ -281,11 +289,11 @@ docker compose up --build
 
 | Servicio | URL                                            |
 | -------- | ---------------------------------------------- |
-| Interfaz | [http://localhost:5174](http://localhost:5174) |
-| API      | [http://localhost:3001](http://localhost:3001) |
+| Interfaz | [http://127.0.0.1:5174](http://127.0.0.1:5174) |
+| API      | [http://127.0.0.1:3001](http://127.0.0.1:3001) |
 
 
-El contenedor del servidor monta la carpeta de proyectos en `PROJECTS_ROOT=/workspace/proyectos`. Para **commit, push y el resto de escrituras Git**, el volumen debe ser de lectura-escritura.
+El contenedor del servidor monta la carpeta de proyectos en `PROJECTS_ROOT=/workspace/proyectos` **en lectura-escritura**. Compose publica los puertos solo en localhost del host. Como el proceso dentro del contenedor escucha `0.0.0.0`, hace falta `ABYSSAN_API_TOKEN` (default de desarrollo: `abyssan-local`). Cámbialo si expones la instancia en LAN.
 
 ---
 
@@ -303,7 +311,7 @@ Abyssan ejecuta Git sobre el filesystem del host. El modelo de amenaza de Daily 
 | Operaciones destructivas | Reset hard (y equivalentes) exigen confirmación en UI.                                        |
 | WebSocket                | Valida `WATCH_REPO`. Emite eventos de cambio, no diffs ni secretos.                           |
 | Credenciales             | No se versionan. SSH usa el agent del sistema.                                                |
-| Exposición de red        | Daily Driver asume **localhost**. Publicar `:3001` en LAN exige token de instancia (roadmap). |
+| Exposición de red        | Default **localhost**. Si `BIND_HOST` no es loopback, `ABYSSAN_API_TOKEN` es obligatorio. |
 
 
 No copies `.env` al repositorio. No registres diffs completos en logs de producción.
@@ -351,7 +359,7 @@ Fuera del norte cercano: worktrees, LFS, submódulos, GPG, GitKraken Cloud.
 5. **Confirmación antes de destruir.** Hard reset, discard y force-with-lease no son un `window.confirm` accidental.
 6. **Honestidad de estado.** Hoy es un prototipo avanzado (~flujo diario a nivel archivo). El Daily Driver es el primer “reemplazo de GitKraken local”, no el marketing del esqueleto.
 
-Los packages internos aún usan el scope `@webkraken/*` mientras se completa el rename de identidad (Fase 0). El nombre comercial del producto es **Abyssan**.
+Los packages internos usan el scope `@abyssan/*`. El nombre comercial del producto es **Abyssan**.
 
 ---
 

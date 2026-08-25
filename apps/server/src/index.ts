@@ -1,46 +1,70 @@
-// Austria: Servidor principal de WebKraken bajo arquitectura Domain-Driven Design (DDD)
+import { cargarEntorno } from './infrastructure/seguridad/cargarEntorno.js';
 import express from 'express';
 import cors from 'cors';
 import http from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import { gitRouter } from './interfaces/http/routes/GitRoutes.js';
 import { watcherAdapter } from './infrastructure/watcher/ChokidarWatcherAdapter.js';
+import { validarRutaRepositorio } from './infrastructure/seguridad/validarRutaRepositorio.js';
+import {
+  conexionWsAutorizada,
+  obtenerBindHost,
+  validarConfiguracionToken,
+} from './infrastructure/seguridad/tokenInstancia.js';
+import { middlewareTokenInstancia } from './interfaces/http/middlewareToken.js';
+
+cargarEntorno();
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = Number(process.env.PORT) || 3001;
+const BIND_HOST = obtenerBindHost();
+
+validarConfiguracionToken();
+
+if (!process.env.PROJECTS_ROOT?.trim()) {
+  console.error('[Abyssan] PROJECTS_ROOT no está configurado. Copia .env.example a .env en la raíz del repo.');
+  process.exit(1);
+}
 
 app.use(cors());
 app.use(express.json());
 
-// Montaje de rutas de la API de Git (Interfaces Layer)
-app.use('/api/git', gitRouter);
-
-// Endpoint de estado
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', architecture: 'Domain-Driven Design (DDD)', timestamp: new Date().toISOString() });
+app.get('/health', (_req, res) => {
+  res.json({
+    status: 'ok',
+    producto: 'Abyssan',
+    architecture: 'Domain-Driven Design (DDD)',
+    timestamp: new Date().toISOString(),
+  });
 });
 
-const server = http.createServer(app);
+app.use('/api', middlewareTokenInstancia);
+app.use('/api/git', gitRouter);
 
-// Servidor WebSocket para streaming de eventos de dominio en tiempo real
+const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
-wss.on('connection', (ws: WebSocket) => {
-  console.log('[WebKraken] Cliente WebSocket conectado');
+wss.on('connection', (ws: WebSocket, req) => {
+  if (!conexionWsAutorizada(req)) {
+    ws.close(4401, 'Token de instancia requerido');
+    return;
+  }
 
-  ws.on('message', async (message: string) => {
+  console.log('[Abyssan] Cliente WebSocket conectado');
+
+  ws.on('message', (message: string) => {
     try {
       const data = JSON.parse(message.toString());
       if (data.type === 'WATCH_REPO' && data.repoPath) {
+        let rutaValidada: string;
         try {
-          const { validarRutaRepositorio } = await import('./infrastructure/seguridad/validarRutaRepositorio.js');
-          validarRutaRepositorio(data.repoPath);
+          rutaValidada = validarRutaRepositorio(data.repoPath);
         } catch {
           ws.send(JSON.stringify({ type: 'ERROR', message: 'Ruta de repositorio no autorizada' }));
           return;
         }
-        console.log(`[WebKraken] Monitoreando repositorio: ${data.repoPath}`);
-        watcherAdapter.watchRepo(data.repoPath, (repoPath, eventType, filePath) => {
+        console.log(`[Abyssan] Monitoreando repositorio: ${rutaValidada}`);
+        watcherAdapter.watchRepo(rutaValidada, (repoPath, eventType, filePath) => {
           if (ws.readyState === WebSocket.OPEN) {
             ws.send(
               JSON.stringify({
@@ -55,16 +79,16 @@ wss.on('connection', (ws: WebSocket) => {
         });
       }
     } catch (err) {
-      console.error('[WebKraken] Error procesando mensaje WS:', err);
+      console.error('[Abyssan] Error procesando mensaje WS:', err);
     }
   });
 
   ws.on('close', () => {
-    console.log('[WebKraken] Cliente WebSocket desconectado');
+    console.log('[Abyssan] Cliente WebSocket desconectado');
   });
 });
 
-server.listen(PORT, () => {
-  console.log(`[WebKraken] Server DDD ejecutandose en http://localhost:${PORT}`);
-  console.log(`[WebKraken] WebSocket Server activo en ws://localhost:${PORT}`);
+server.listen(PORT, BIND_HOST, () => {
+  console.log(`[Abyssan] API en http://${BIND_HOST}:${PORT}`);
+  console.log(`[Abyssan] WebSocket en ws://${BIND_HOST}:${PORT}`);
 });
