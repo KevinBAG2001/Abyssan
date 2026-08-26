@@ -15,6 +15,8 @@ import {
   validarConfiguracionToken,
 } from './infrastructure/seguridad/tokenInstancia.js';
 import { middlewareTokenInstancia } from './interfaces/http/middlewareToken.js';
+import { hubWebSocket } from './infrastructure/ws/HubWebSocket.js';
+import { middlewareLimiteTasa } from './infrastructure/seguridad/limiteTasa.js';
 
 cargarEntorno();
 
@@ -31,6 +33,7 @@ if (!process.env.PROJECTS_ROOT?.trim()) {
 
 app.use(cors());
 app.use(express.json());
+app.use('/api', middlewareLimiteTasa);
 
 app.get('/health', (_req, res) => {
   res.json({
@@ -55,6 +58,8 @@ wss.on('connection', (ws: WebSocket, req) => {
     ws.close(4401, 'Token de instancia requerido');
     return;
   }
+
+  hubWebSocket.registrar(ws);
 
   console.log('[Abyssan] Cliente WebSocket conectado');
 

@@ -35,6 +35,7 @@ export const App: React.FC = () => {
     remotes,
     logs,
     setLogs,
+    operaciones,
     selectedCommit,
     setSelectedCommit,
     selectedFile,
@@ -68,6 +69,7 @@ export const App: React.FC = () => {
     descripcion: string;
     peligro?: boolean;
     etiqueta?: string;
+    nombreRequerido?: string;
     ejecutar: () => Promise<void>;
   } | null>(null);
   const [contextMenu, setContextMenu] = useState<{
@@ -95,8 +97,14 @@ export const App: React.FC = () => {
   };
 
   useEffect(() => {
-    if (selectedRepo) refrescarMeta(selectedRepo);
+    if (selectedRepo) void refrescarMeta(selectedRepo);
   }, [selectedRepo]);
+
+  useEffect(() => {
+    if (operaciones.some((o) => o.estado === 'en_cola' || o.estado === 'corriendo')) {
+      setIsConsoleOpen(true);
+    }
+  }, [operaciones]);
 
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
@@ -361,11 +369,16 @@ export const App: React.FC = () => {
 
   const handleReset = (type: 'soft' | 'mixed' | 'hard', hash: string) => {
     if (type === 'hard') {
+      const sucios = status?.files.length ?? 0;
+      const sucio = sucios > 0;
       setConfirmacion({
         titulo: 'Reset hard',
-        descripcion: `Se moverá HEAD a ${hash.substring(0, 7)} y se perderán los cambios no confirmados.`,
+        descripcion: sucio
+          ? `Se moverá HEAD a ${hash.substring(0, 7)} y se perderán ${sucios} cambio${sucios === 1 ? '' : 's'} no confirmado${sucios === 1 ? '' : 's'} del working tree y del índice.`
+          : `Se moverá HEAD a ${hash.substring(0, 7)}. El working tree está limpio.`,
         etiqueta: 'Reset hard',
         peligro: true,
+        nombreRequerido: sucio ? 'RESET' : undefined,
         ejecutar: () => ejecutarReset(type, hash),
       });
       return;
@@ -374,9 +387,10 @@ export const App: React.FC = () => {
   };
 
   const handleDiscard = (filePath: string) => {
+    const sucios = status?.files.length ?? 1;
     setConfirmacion({
       titulo: 'Descartar archivo',
-      descripcion: `Se perderán los cambios de «${filePath}» en el working tree. Esta acción no usa window.confirm.`,
+      descripcion: `Se perderán los cambios de «${filePath}» en el working tree (1 archivo). Hay ${sucios} cambio${sucios === 1 ? '' : 's'} no confirmado${sucios === 1 ? '' : 's'} en el repo.`,
       etiqueta: 'Descartar',
       peligro: true,
       ejecutar: async () => {
@@ -393,9 +407,10 @@ export const App: React.FC = () => {
   const handleDeleteBranch = (branchName: string) => {
     setConfirmacion({
       titulo: 'Borrar rama local',
-      descripcion: `Se eliminará la rama «${branchName}». No se puede borrar HEAD.`,
+      descripcion: `Se eliminará la rama «${branchName}». No se puede borrar HEAD. Si no está mergeada, el trabajo de esa rama queda solo en reflog.`,
       etiqueta: 'Borrar rama',
       peligro: true,
+      nombreRequerido: branchName,
       ejecutar: async () => {
         if (!selectedRepo) return;
         await httpGitApi.deleteLocalBranch(selectedRepo, branchName);
@@ -610,6 +625,7 @@ export const App: React.FC = () => {
 
       <GitConsoleDrawer
         logs={logs}
+        operaciones={operaciones}
         isOpen={isConsoleOpen}
         onToggle={() => setIsConsoleOpen(!isConsoleOpen)}
         onClear={() => setLogs([])}
@@ -711,6 +727,7 @@ export const App: React.FC = () => {
           descripcion={confirmacion.descripcion}
           etiquetaConfirmar={confirmacion.etiqueta}
           peligro={confirmacion.peligro}
+          nombreRequerido={confirmacion.nombreRequerido}
           onCancelar={() => setConfirmacion(null)}
           onConfirmar={() => {
             const ejec = confirmacion.ejecutar;

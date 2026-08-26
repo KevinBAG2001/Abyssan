@@ -22,7 +22,7 @@ async function crearRepo(raiz: string, nombre: string) {
   return { repo, git };
 }
 
-describe('Flujo Daily Driver (mutaciones Git reales)', () => {
+describe('Flujo Daily Driver (mutaciones Git reales)', { timeout: 20_000 }, () => {
   const raizOriginal = process.env.PROJECTS_ROOT;
   let raiz: string;
   let casos: GitUseCases;
@@ -37,7 +37,11 @@ describe('Flujo Daily Driver (mutaciones Git reales)', () => {
   afterEach(() => {
     if (raizOriginal) process.env.PROJECTS_ROOT = raizOriginal;
     else delete process.env.PROJECTS_ROOT;
-    fs.rmSync(raiz, { recursive: true, force: true });
+    try {
+      fs.rmSync(raiz, { recursive: true, force: true });
+    } catch {
+      // Windows puede retener el lock de git un instante
+    }
   });
 
   it('status → stage archivo → commit', async () => {

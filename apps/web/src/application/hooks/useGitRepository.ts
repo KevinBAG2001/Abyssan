@@ -13,6 +13,7 @@ import {
   CommandLogModel,
   FileStatusModel,
   ConflictModel,
+  GitOperacionModel,
 } from '../../domain/models/GitModels.js';
 
 function dePromesa<T>(r: PromiseSettledResult<T>, fallback: T): T {
@@ -29,6 +30,7 @@ export function useGitRepository() {
   const [stashes, setStashes] = useState<StashModel[]>([]);
   const [remotes, setRemotes] = useState<RemoteModel[]>([]);
   const [logs, setLogs] = useState<CommandLogModel[]>([]);
+  const [operaciones, setOperaciones] = useState<GitOperacionModel[]>([]);
 
   const [selectedCommit, setSelectedCommit] = useState<CommitModel | null>(null);
   const [selectedFile, setSelectedFile] = useState<FileStatusModel | null>(null);
@@ -69,6 +71,14 @@ export function useGitRepository() {
     try {
       const data = await httpGitApi.getLogs();
       setLogs(data);
+    } catch {
+      // Silencioso
+    }
+  };
+
+  const refreshOperaciones = async () => {
+    try {
+      setOperaciones(await httpGitApi.getOperaciones());
     } catch {
       // Silencioso
     }
@@ -127,6 +137,7 @@ export function useGitRepository() {
 
   useEffect(() => {
     void loadRepos();
+    void refreshOperaciones();
     wsClient.connect();
   }, [loadRepos]);
 
@@ -138,6 +149,18 @@ export function useGitRepository() {
     });
     return () => unsubscribe();
   }, [selectedRepo, refreshRepoData]);
+
+  useEffect(() => {
+    const unsubscribe = wsClient.onOperacion((datos) => {
+      const op = datos as GitOperacionModel;
+      if (!op?.id) return;
+      setOperaciones((prev) => {
+        const resto = prev.filter((p) => p.id !== op.id);
+        return [op, ...resto].slice(0, 80);
+      });
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (!selectedRepo) return;
@@ -161,6 +184,7 @@ export function useGitRepository() {
     remotes,
     logs,
     setLogs,
+    operaciones,
     selectedCommit,
     setSelectedCommit,
     selectedFile,
