@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ShieldAlert, X } from 'lucide-react';
 
 export type ModalConfirmacionProps = {
@@ -6,6 +6,7 @@ export type ModalConfirmacionProps = {
   descripcion: string;
   etiquetaConfirmar?: string;
   peligro?: boolean;
+  nombreRequerido?: string;
   onConfirmar: () => void;
   onCancelar: () => void;
 };
@@ -15,9 +16,13 @@ export const ModalConfirmacion: React.FC<ModalConfirmacionProps> = ({
   descripcion,
   etiquetaConfirmar = 'Confirmar',
   peligro = true,
+  nombreRequerido,
   onConfirmar,
   onCancelar,
 }) => {
+  const [escrito, setEscrito] = useState('');
+  const listo = !nombreRequerido || escrito === nombreRequerido;
+
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-[60] p-4 select-none">
       <div
@@ -42,6 +47,19 @@ export const ModalConfirmacion: React.FC<ModalConfirmacionProps> = ({
           </button>
         </div>
         <div className="p-4 text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">{descripcion}</div>
+        {nombreRequerido && (
+          <div className="px-4 pb-3">
+            <label className="block text-[11px] text-slate-400 mb-1">
+              Escribe <span className="font-mono text-rose-300">{nombreRequerido}</span> para confirmar
+            </label>
+            <input
+              autoFocus
+              value={escrito}
+              onChange={(e) => setEscrito(e.target.value)}
+              className="w-full bg-[#0f111a] border border-[#2e354e] rounded px-2 py-1.5 text-xs font-mono text-slate-200 focus:outline-none focus:border-rose-500/60"
+            />
+          </div>
+        )}
         <div className="p-4 pt-0 flex justify-end space-x-2">
           <button
             type="button"
@@ -52,8 +70,9 @@ export const ModalConfirmacion: React.FC<ModalConfirmacionProps> = ({
           </button>
           <button
             type="button"
+            disabled={!listo}
             onClick={onConfirmar}
-            className={`px-3 py-1.5 text-xs font-bold rounded ${
+            className={`px-3 py-1.5 text-xs font-bold rounded disabled:opacity-40 disabled:cursor-not-allowed ${
               peligro
                 ? 'bg-rose-500 hover:bg-rose-600 text-white'
                 : 'bg-amber-500 hover:bg-amber-600 text-slate-950'

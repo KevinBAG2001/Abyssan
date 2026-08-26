@@ -18,6 +18,7 @@ import {
   InfoAmendEntity,
   EntradaReflogEntity,
 } from '../../domain/entities/GitEntities.js';
+import type { EscuchaProgresoGit } from '../../domain/entities/GitOperacion.js';
 import { parsearHunksConflicto } from '../../application/conflictos/parsearConflictos.js';
 import { almacenCredencialesForja } from '../credenciales/AlmacenCredencialesForja.js';
 import { detectarForja, inyectarTokenHttps } from '../credenciales/inyectarTokenHttps.js';
@@ -45,11 +46,20 @@ function tieneMetadatosGit(dir: string): boolean {
 export class SimpleGitAdapter implements IGitRepository {
   constructor(private logRepository: ICommandLogRepository) {}
 
-  private getGitInstance(repoPath: string): SimpleGit {
+  private opcionesProgreso(onProgreso?: EscuchaProgresoGit) {
+    if (!onProgreso) return {};
+    return {
+      progress: ({ method, stage, progress }: { method: string; stage: string; progress: number }) => {
+        onProgreso({ etapa: stage || method, porcentaje: Number.isFinite(progress) ? progress : 0 });
+      },
+    };
+  }
+
+  private getGitInstance(repoPath: string, onProgreso?: EscuchaProgresoGit): SimpleGit {
     if (!fs.existsSync(repoPath)) {
       throw new Error(`El directorio no existe: ${repoPath}`);
     }
-    return simpleGit({ baseDir: repoPath });
+    return simpleGit({ baseDir: repoPath, ...this.opcionesProgreso(onProgreso) });
   }
 
   async isGitRepository(repoPath: string): Promise<boolean> {
@@ -359,9 +369,13 @@ export class SimpleGitAdapter implements IGitRepository {
     }
   }
 
-  async pull(repoPath: string, modo: 'merge' | 'rebase' = 'merge'): Promise<void> {
+  async pull(
+    repoPath: string,
+    modo: 'merge' | 'rebase' = 'merge',
+    onProgreso?: EscuchaProgresoGit
+  ): Promise<void> {
     const start = Date.now();
-    const git = this.getGitInstance(repoPath);
+    const git = this.getGitInstance(repoPath, onProgreso);
     const args = modo === 'rebase' ? ['--rebase'] : ['--no-rebase'];
     const remotoToken = await this.urlRemotoConToken(repoPath);
     try {
@@ -369,9 +383,9 @@ export class SimpleGitAdapter implements IGitRepository {
         const status = await git.status();
         const rama = status.current || 'HEAD';
         const flags = modo === 'rebase' ? ['--rebase'] : ['--no-rebase'];
-        await git.raw(['pull', ...flags, remotoToken, rama]);
+        await git.raw(['pull', ...flags, '--progress', remotoToken, rama]);
       } else {
-        await git.raw(['pull', ...args]);
+        await git.raw(['pull', ...args, '--progress']);
       }
       this.logRepository.addLog(`git pull ${args.join(' ')}`, Date.now() - start, true);
     } catch (err: any) {
@@ -380,16 +394,16 @@ export class SimpleGitAdapter implements IGitRepository {
     }
   }
 
-  async push(repoPath: string): Promise<void> {
+  async push(repoPath: string, onProgreso?: EscuchaProgresoGit): Promise<void> {
     const start = Date.now();
-    const git = this.getGitInstance(repoPath);
+    const git = this.getGitInstance(repoPath, onProgreso);
     const remotoToken = await this.urlRemotoConToken(repoPath);
     try {
       if (remotoToken) {
         const status = await git.status();
-        await git.push(remotoToken, status.current || 'HEAD');
+        await git.raw(['push', '--progress', remotoToken, status.current || 'HEAD']);
       } else {
-        await git.push();
+        await git.raw(['push', '--progress']);
       }
       this.logRepository.addLog('git push', Date.now() - start, true);
     } catch (err: any) {
@@ -452,14 +466,14 @@ export class SimpleGitAdapter implements IGitRepository {
     }
   }
 
-  async clonarRepositorio(url: string, destino: string): Promise<void> {
+  async clonarRepositorio(url: string, destino: string, onProgreso?: EscuchaProgresoGit): Promise<void> {
     const start = Date.now();
     if (fs.existsSync(destino) && fs.readdirSync(destino).length > 0) {
       throw new Error('La carpeta destino no está vacía');
     }
     const urlEfectiva = await this.urlConTokenSiAplica(url);
     try {
-      await simpleGit().clone(urlEfectiva, destino);
+      await simpleGit({ ...this.opcionesProgreso(onProgreso) }).clone(urlEfectiva, destino, ['--progress']);
       this.logRepository.addLog(`git clone ${url} ${destino}`, Date.now() - start, true);
     } catch (err: any) {
       this.logRepository.addLog(`git clone ${url}`, Date.now() - start, false, undefined, err.message);
@@ -633,16 +647,16 @@ export class SimpleGitAdapter implements IGitRepository {
     }
   }
 
-  async fetchAll(repoPath: string, prune = true): Promise<void> {
+  async fetchAll(repoPath: string, prune = true, onProgreso?: EscuchaProgresoGit): Promise<void> {
     const start = Date.now();
-    const git = this.getGitInstance(repoPath);
+    const git = this.getGitInstance(repoPath, onProgreso);
     const options = prune ? ['--all', '--prune'] : ['--all'];
     const remotoToken = await this.urlRemotoConToken(repoPath);
     try {
       if (remotoToken) {
-        await git.raw(['fetch', remotoToken, ...(prune ? ['--prune'] : [])]);
+        await git.raw(['fetch', '--progress', remotoToken, ...(prune ? ['--prune'] : [])]);
       } else {
-        await git.fetch(options);
+        await git.fetch([...options, '--progress']);
       }
       this.logRepository.addLog(`git fetch ${options.join(' ')}`, Date.now() - start, true);
     } catch (err: any) {

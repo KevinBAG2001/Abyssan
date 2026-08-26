@@ -9,6 +9,7 @@ import {
   BranchComparisonModel,
   ConflictModel,
   CommandLogModel,
+  GitOperacionModel,
 } from '../../domain/models/GitModels.js';
 
 export type InfoAmend = {
@@ -238,6 +239,10 @@ export class HttpGitApi {
 
   async getLogs(): Promise<CommandLogModel[]> {
     return this.pedir('/api/git/logs');
+  }
+
+  async getOperaciones(): Promise<GitOperacionModel[]> {
+    return this.pedir('/api/git/operaciones');
   }
 
   async discardArchivo(repoPath: string, file: string): Promise<void> {

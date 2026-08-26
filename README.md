@@ -4,14 +4,14 @@
 
 # Abyssan
 
-**El grafo, el staging y la red de seguridad de un cliente Git de escritorio — en el navegador, en tu máquina, sin suscripción.**
+**El cliente Git que te ayuda a entender qué va a pasar antes de ejecutar — grafo, staging y red de seguridad, en el navegador, en tu máquina, sin suscripción.**
 
 <p align="center">
   <img src="./assets/banner.svg" alt="Abyssan — cliente gráfico de Git, gratuito y auto-hospedable">
 </p>
 
 Abyssan es un cliente gráfico auto-hospedable. Un backend Node opera los repositorios locales;  
-una SPA React muestra el DAG, prepara el commit y ejecuta merge, stash y conflictos sin terminal.
+una SPA React muestra el DAG, prepara el commit y —en el horizonte Identidad— enseña el efecto de un merge **antes** de ejecutarlo.
 
 **[Inicio rápido](#inicio-rapido)**  ·  **[Arquitectura](#arquitectura)**  ·  **[Capacidades](#capacidades)**  ·  **[Documentación](#documentacion)**  ·  **[Licencia](#licencia)**
 
@@ -21,19 +21,20 @@ una SPA React muestra el DAG, prepara el commit y ejecuta merge, stash y conflic
 
 ## Por qué existe
 
-Git no se paga por “hacer `git`”. Se paga por tres cosas que el CLI resuelve mal:
+Git no se paga por “hacer `git`”. Los clientes gráficos maduros ya cubren el ratón. Abyssan se juega otra tesis: **Git visual + seguridad + comprensión**.
 
 
-| Pilar                  | Problema                                                          | Promesa de Abyssan                                                 |
-| ---------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------ |
-| **Leer historia**      | El log lineal no explica merges, HEAD ni el remoto de un vistazo. | Un **DAG** con lanes, refs y contexto.                             |
-| **Preparar el commit** | `git add -p` es potente y frágil.                                 | Staging visual, diff inmediato, commit consciente.                 |
-| **No romper el repo**  | Un reset o un merge mal leído cuesta horas.                       | Confirmaciones, estado visible, undo en el horizonte del producto. |
+| Pilar                     | Problema                                                          | Promesa de Abyssan                                                      |
+| ------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| **Ver historia**          | El log lineal no explica merges, HEAD ni el remoto de un vistazo. | Un **DAG** con lanes, refs y contexto.                                  |
+| **Preparar el commit**    | `git add -p` es potente y frágil.                                 | Staging visual, diff inmediato, commit consciente.                      |
+| **Entender antes**        | Un botón Merge no dice qué va a pasar.                            | Preview: mini-DAG, conflictos estimados, cancelar sin costo.            |
+| **No romper el repo**     | Un reset o un merge mal leído cuesta horas.                       | Confirmación contextual, journal de undo, auditoría.                    |
 
 
-**No es** un host de repositorios, un GitHub web, ni un clon de Boards / Insights / Teams. Es un **cliente Git local** con la densidad de un producto profesional y el código bajo control del usuario.
+**No es** un host de repositorios, un GitHub web, ni un clon de Boards / Insights / Teams. No es un producto de IA. Es un **cliente Git local** que enseña el efecto de una operación *antes* de ejecutarla.
 
-> **Norte del producto.** Tres capas, en escalera: *local* → *power* (hunks, rebase visual, blame) → *forjas* (OAuth y PRs/MRs). El primer “listo” es el **Daily Driver v1**: un día laboral a nivel archivo, gratis y auto-hospedable.
+> **Norte del producto.** Escalera ya recorrida: *local* → *power* → *forjas*. El siguiente “listo” es **Identidad**: preview, undo serio, modo aprendizaje y grafo que explica. Después: worktrees y forja como contexto de rama. Distro y plugins más tarde.
 
 ---
 
@@ -62,26 +63,25 @@ Esquema de producto (no es una captura). Layout de tres columnas, tema oscuro, e
 
 ## Capacidades
 
-Superficie actual del repositorio frente al Daily Driver.
+Superficie actual (Fases 0–3 cerradas) frente al siguiente listo: **Identidad**.
 
 
-| Dominio                           | Hoy                                 | Daily Driver                       |
-| --------------------------------- | ----------------------------------- | ---------------------------------- |
-| Repositorios bajo `PROJECTS_ROOT` | Listado (un nivel)                  | Clone, init, selector              |
-| Grafo DAG                         | Interactivo (esqueleto)             | Virtualizado, lanes de merge       |
-| Stage / unstage / commit          | Por archivo                         | Por archivo + discard + amend      |
-| Diff                              | Unificado con `+` / `-`             | Syntax highlight + split           |
-| Ramas y tags                      | Listar, checkout, crear             | Borrar, renombrar, tracking        |
-| Sync                              | Pull / push, CRUD de remotos, fetch | Fetch en header, pull merge/rebase |
-| Stash                             | Save / pop / drop                   | + apply                            |
-| Merge y comparación               | Merge `--no-ff`, compare            | + abort                            |
-| Conflictos                        | Resolución básica                   | 3-way multi-hunk                   |
-| Cherry-pick / revert / reset      | Soft / hard                         | + mixed + undo                     |
-| Tiempo real                       | WebSocket + chokidar                | Debounce estable                   |
-| Autenticación                     | Localhost (sin auth)                | Token si se publica en LAN         |
+| Dominio                           | Hoy (post Fase 3)                   | Identidad (Fase 4)                          |
+| --------------------------------- | ----------------------------------- | ------------------------------------------- |
+| Repositorios bajo `PROJECTS_ROOT` | Listado, clone, init, tabs          | + progreso de clone/fetch (ops largas)      |
+| Grafo DAG                         | Virtualizado, lanes, búsqueda texto | Highlight, merge-base, camino, comparar A…B |
+| Stage / unstage / commit          | Archivo + hunk + línea              | Igual (no-regresión)                        |
+| Diff                              | Shiki + unified / split             | “Ver cambios” desde el preview              |
+| Ramas y tags                      | CRUD, fetch, pull merge/rebase      | Preview antes de merge/rebase/reset         |
+| Merge / rebase                    | Merge, abort, rebase visual         | Informe *antes* de ejecutar                 |
+| Undo                              | Última operación en memoria         | Journal persistente + timeline              |
+| Aprendizaje                       | No                                  | Explain Mode (plantillas, sin IA)           |
+| Seguridad                         | Paths léxicos + token LAN           | realpath/symlinks, rate limit, auditoría    |
+| Forjas                            | Modal PRs/MRs + OAuth               | Contexto de rama en Fase 5                  |
+| Worktrees                         | No                                  | Fase 5                                      |
 
 
-Operaciones Git disponibles en API hoy: status, log, diff, stage, commit, checkout, branch, tag, stash, merge, cherry-pick, revert, reset, fetch, push, pull, remotos y conflictos.
+Operaciones Git disponibles en API hoy: status, log, diff, stage, commit, checkout, branch, tag, stash, merge, cherry-pick, revert, reset, fetch, push, pull, remotos, conflictos, hunks, blame, rebase, forjas.
 
 ---
 
@@ -286,7 +286,7 @@ Abre **[http://localhost:5174](http://localhost:5174)**, elige un repositorio ba
 | `Ctrl+Shift+A` | Stage all |
 | `Ctrl+Shift+P` | Paleta mínima (fetch / pull / push / commit / PRs) |
 
-Deshacer está en el header (no hay pila Ctrl+Z). El reflog corto vive en el drawer de consola.
+Deshacer está en el header (hoy: última operación). El horizonte Identidad es un journal persistente + timeline, no una pila Ctrl+Z ciega. El reflog corto vive en el drawer de consola.
 
 
 
@@ -362,29 +362,31 @@ No copies `.env` al repositorio. No registres diffs completos en logs de producc
 
 ## Roadmap
 
-Estimaciones en **semanas-persona** de trabajo enfocado, no en calendario.
+Estimaciones en **semanas-persona** de trabajo enfocado, no en calendario. Fases 0–3 **cerradas**.
 
 ```text
-  Fase 0          Fase 1               Fase 2            Fase 3         Fase 4
-  higiene  ──►  Daily Driver v1  ──►  power           ──►  forjas   ──►  distro
-  3–5 días       3–5 semanas          hunks · palette      OAuth         Compose
-                 ▲                    rebase visual        PRs / MRs     Tauri
-                 │
-            PRIMER LISTO
-         (flujo diario a nivel archivo)
+  0–3 hechas                    Fase 4 Identidad         Fase 5            Fase 6
+  higiene · Daily Driver  ──►  preview · undo serio  ──► worktrees    ──► distro
+  power · forjas                 explain · grafo           PR contexto      auth / Tauri
+                                      ▲
+                                      │
+                                SIGUIENTE LISTO
+                     (entender antes de ejecutar; no más botones)
 ```
 
 
-| Fase               | Entregable                                                              |
-| ------------------ | ----------------------------------------------------------------------- |
-| **0 Higiene**      | Un env, un cliente HTTP, tests verdes, Docker RW, identidad **Abyssan** |
-| **1 Daily Driver** | Clone/init, discard, 3-way, ramas, fetch, undo, grafo virtualizado      |
-| **2 Power**        | Stage por hunk/línea, command palette, tabs, blame, rebase visual       |
-| **3 Forjas**       | OAuth GitHub/GitLab y cola de pull/merge requests                       |
-| **4 Distro**       | Imagen de producción; escritorio Tauri opcional                         |
+| Fase               | Entregable                                                              | Estado |
+| ------------------ | ----------------------------------------------------------------------- | ------ |
+| **0 Higiene**      | Un env, un cliente HTTP, tests verdes, Docker RW, identidad **Abyssan** | Hecha |
+| **1 Daily Driver** | Clone/init, discard, 3-way, ramas, fetch, undo mínimo, grafo virtualizado | Hecha |
+| **2 Power**        | Stage por hunk/línea, command palette, tabs, blame, rebase visual       | Hecha |
+| **3 Forjas**       | OAuth GitHub/GitLab y cola de pull/merge requests                       | Hecha |
+| **4 Identidad**    | Preview, journal de undo, Explain Mode, grafo que enseña, seguridad     | **Ahora** |
+| **5 Superficie**   | Worktrees bajo `PROJECTS_ROOT`; PR/MR como contexto de rama             | Después |
+| **6 Plataforma**   | Compose prod; usuarios/roles si LAN real; Tauri opcional; plugins       | Después |
 
 
-Fuera del norte cercano: worktrees, LFS, submódulos, GPG, GitKraken Cloud.
+Fuera de este horizonte: IA, LFS, submódulos, GPG, GitKraken Cloud. Plugins solo en Fase 6 con sandbox.
 
 ---
 
@@ -397,7 +399,7 @@ Fuera del norte cercano: worktrees, LFS, submódulos, GPG, GitKraken Cloud.
 3. **pnpm exclusivo.** Lockfile `pnpm-lock.yaml`.
 4. **Español de producto.** UI, mensajes y nombres de negocio en español; términos Git de industria se mantienen cuando son estándar.
 5. **Confirmación antes de destruir.** Hard reset, discard y force-with-lease no son un `window.confirm` accidental.
-6. **Honestidad de estado.** Hoy es un prototipo avanzado (~flujo diario a nivel archivo). El Daily Driver es el primer “reemplazo de GitKraken local”, no el marketing del esqueleto.
+6. **Honestidad de estado.** Daily Driver + power + forjas ya corren. El siguiente listo no es “más botones”: es entender la operación antes de ejecutarla. El preview no miente (informe Git, no una VM).
 
 Los packages internos usan el scope `@abyssan/*`. El nombre comercial del producto es **Abyssan**.
 
@@ -411,4 +413,4 @@ Distribuido bajo **MIT**. Uso, copia, modificación y redistribución libres, co
 
 
 
-Abyssan — historia legible, commits conscientes, repos intactos.
+Abyssan — historia legible, operaciones comprendidas, repos intactos.

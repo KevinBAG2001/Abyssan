@@ -12,6 +12,7 @@ import {
   InfoAmendEntity,
   EntradaReflogEntity,
 } from '../entities/GitEntities.js';
+import type { EscuchaProgresoGit } from '../entities/GitOperacion.js';
 
 export interface IGitRepository {
   isGitRepository(repoPath: string): Promise<boolean>;
@@ -28,10 +29,10 @@ export interface IGitRepository {
   createBranch(repoPath: string, branchName: string, startPoint?: string): Promise<void>;
   deleteLocalBranch(repoPath: string, branchName: string): Promise<void>;
   renameLocalBranch(repoPath: string, nombreActual: string, nombreNuevo: string): Promise<void>;
-  pull(repoPath: string, modo?: 'merge' | 'rebase'): Promise<void>;
-  push(repoPath: string): Promise<void>;
+  pull(repoPath: string, modo?: 'merge' | 'rebase', onProgreso?: EscuchaProgresoGit): Promise<void>;
+  push(repoPath: string, onProgreso?: EscuchaProgresoGit): Promise<void>;
   discardArchivo(repoPath: string, filePath: string): Promise<void>;
-  clonarRepositorio(url: string, destino: string): Promise<void>;
+  clonarRepositorio(url: string, destino: string, onProgreso?: EscuchaProgresoGit): Promise<void>;
   inicializarRepositorio(destino: string): Promise<void>;
   abortarMerge(repoPath: string): Promise<void>;
   continuarMerge(repoPath: string): Promise<void>;
@@ -45,7 +46,7 @@ export interface IGitRepository {
   getRemotes(repoPath: string): Promise<RemoteEntity[]>;
   addRemote(repoPath: string, name: string, url: string): Promise<void>;
   removeRemote(repoPath: string, name: string): Promise<void>;
-  fetchAll(repoPath: string, prune?: boolean): Promise<void>;
+  fetchAll(repoPath: string, prune?: boolean, onProgreso?: EscuchaProgresoGit): Promise<void>;
   fetchRefspec(repoPath: string, remoto: string, refspec: string): Promise<void>;
 
   // Comparacion & Merge

@@ -377,6 +377,10 @@ export class GitController {
     responderExito(res, logs, 'Log de comandos');
   }
 
+  listarOperaciones(_req: Request, res: Response) {
+    responderExito(res, this.gitUseCases.listarOperaciones(), 'Operaciones Git');
+  }
+
   async discardArchivo(req: Request, res: Response) {
     try {
       const { repoPath, file } = req.body;
