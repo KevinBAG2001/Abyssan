@@ -1,8 +1,9 @@
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 
 /**
  * Valida que una ruta de repositorio esté contenida dentro de PROJECTS_ROOT.
- * Previene path traversal (../) y acceso a rutas arbitrarias del host.
+ * Canoniza con realpath: un symlink bajo la raíz que apunta fuera es 403.
  */
 export function obtenerRaizProyectos(): string {
   const raiz = process.env.PROJECTS_ROOT;
@@ -12,19 +13,66 @@ export function obtenerRaizProyectos(): string {
   return path.resolve(raiz);
 }
 
+function canonizarSiExiste(ruta: string): string {
+  try {
+    return fs.realpathSync.native(ruta);
+  } catch {
+    try {
+      return fs.realpathSync(ruta);
+    } catch {
+      return path.resolve(ruta);
+    }
+  }
+}
+
+/** Ruta canónica: sigue symlinks; si el destino aún no existe, canoniza el ancestro existente. */
+export function canonizarRuta(ruta: string): string {
+  const resuelto = path.resolve(ruta);
+  if (fs.existsSync(resuelto)) {
+    return canonizarSiExiste(resuelto);
+  }
+  let actual = resuelto;
+  const segmentos: string[] = [];
+  while (!fs.existsSync(actual)) {
+    const padre = path.dirname(actual);
+    if (padre === actual) break;
+    segmentos.unshift(path.basename(actual));
+    actual = padre;
+  }
+  const base = fs.existsSync(actual) ? canonizarSiExiste(actual) : path.resolve(actual);
+  return path.resolve(base, ...segmentos);
+}
+
+export function estaContenidaEnRaiz(candidato: string, raiz: string): boolean {
+  const raizNorm = path.resolve(raiz);
+  const candNorm = path.resolve(candidato);
+  if (process.platform === 'win32') {
+    const r = raizNorm.toLowerCase();
+    const c = candNorm.toLowerCase();
+    return c === r || c.startsWith(r + path.sep.toLowerCase()) || c.startsWith(r + '\\') || c.startsWith(r + '/');
+  }
+  return candNorm === raizNorm || candNorm.startsWith(raizNorm + path.sep);
+}
+
 export function validarRutaRepositorio(repoPath: string): string {
   if (!repoPath || typeof repoPath !== 'string') {
     throw new Error('La ruta del repositorio es requerida');
   }
 
-  const raiz = obtenerRaizProyectos();
-  const resuelto = path.resolve(repoPath);
+  const raizLexica = obtenerRaizProyectos();
+  const raizCanon = canonizarRuta(raizLexica);
+  const resueltoLexico = path.resolve(repoPath);
 
-  if (resuelto !== raiz && !resuelto.startsWith(raiz + path.sep)) {
+  if (!estaContenidaEnRaiz(resueltoLexico, raizLexica) && !estaContenidaEnRaiz(resueltoLexico, raizCanon)) {
     throw new Error('Ruta de repositorio no autorizada');
   }
 
-  return resuelto;
+  const canon = canonizarRuta(resueltoLexico);
+  if (!estaContenidaEnRaiz(canon, raizCanon)) {
+    throw new Error('Ruta de repositorio no autorizada');
+  }
+
+  return canon;
 }
 
 /** Absoluta en el host o con forma Windows (`C:\...`) aunque el server sea POSIX. */
@@ -49,7 +97,8 @@ export function validarRutaArchivoEnRepositorio(repoPath: string, filePath: stri
   }
 
   const archivoResuelto = path.resolve(repoResuelto, normalizado);
-  if (!archivoResuelto.startsWith(repoResuelto + path.sep) && archivoResuelto !== repoResuelto) {
+  const archivoCanon = fs.existsSync(archivoResuelto) ? canonizarRuta(archivoResuelto) : archivoResuelto;
+  if (!estaContenidaEnRaiz(archivoCanon, repoResuelto)) {
     throw new Error('Ruta de archivo fuera del repositorio');
   }
 
@@ -58,7 +107,7 @@ export function validarRutaArchivoEnRepositorio(repoPath: string, filePath: stri
 
 /**
  * Nombre de carpeta destino para clone/init: 1 o 2 segmentos bajo PROJECTS_ROOT.
- * Rechaza `..`, absolutas y separadores extraños.
+ * Rechaza `..`, absolutas y separadores extraños. Canoniza con realpath.
  */
 export function validarDestinoNuevo(nombreCarpeta: string): string {
   if (!nombreCarpeta || typeof nombreCarpeta !== 'string') {

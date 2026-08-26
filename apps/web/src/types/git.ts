@@ -98,3 +98,19 @@ export interface GitCommandLog {
   output?: string;
   error?: string;
 }
+
+export type GitOperacion = {
+  id: string;
+  tipo: string;
+  repo: string;
+  estado: 'en_cola' | 'corriendo' | 'exito' | 'fallo';
+  progreso: number;
+  etapa?: string;
+  timestamps: {
+    creada: string;
+    inicio?: string;
+    fin?: string;
+  };
+  error?: string;
+};
+

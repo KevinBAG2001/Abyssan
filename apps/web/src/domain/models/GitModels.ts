@@ -100,3 +100,21 @@ export interface CommandLogModel {
   output?: string;
   error?: string;
 }
+
+export type EstadoGitOperacion = 'en_cola' | 'corriendo' | 'exito' | 'fallo';
+
+export type GitOperacionModel = {
+  id: string;
+  tipo: string;
+  repo: string;
+  estado: EstadoGitOperacion;
+  progreso: number;
+  etapa?: string;
+  timestamps: {
+    creada: string;
+    inicio?: string;
+    fin?: string;
+  };
+  error?: string;
+};
+

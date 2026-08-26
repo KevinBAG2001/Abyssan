@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import os from 'node:os';
 import path from 'node:path';
+import fs from 'node:fs';
 import {
   validarRutaRepositorio,
   validarRutaArchivoEnRepositorio,
@@ -8,6 +9,7 @@ import {
   esRutaArchivoAbsoluta,
   validarDestinoNuevo,
   validarUrlClone,
+  canonizarRuta,
 } from '../validarRutaRepositorio.js';
 
 describe('validarRutaRepositorio', () => {
@@ -16,9 +18,11 @@ describe('validarRutaRepositorio', () => {
 
   beforeEach(() => {
     process.env.PROJECTS_ROOT = raiz;
+    fs.mkdirSync(raiz, { recursive: true });
   });
 
   afterEach(() => {
+    fs.rmSync(raiz, { recursive: true, force: true });
     if (raizOriginal) {
       process.env.PROJECTS_ROOT = raizOriginal;
     } else {
@@ -28,7 +32,7 @@ describe('validarRutaRepositorio', () => {
 
   it('debe permitir rutas dentro de PROJECTS_ROOT', () => {
     const repo = validarRutaRepositorio(path.join(raiz, 'abyssan'));
-    expect(repo).toBe(path.resolve(raiz, 'abyssan'));
+    expect(repo).toBe(canonizarRuta(path.join(raiz, 'abyssan')));
   });
 
   it('debe rechazar path traversal fuera de PROJECTS_ROOT', () => {
@@ -38,6 +42,24 @@ describe('validarRutaRepositorio', () => {
 
   it('debe rechazar rutas con .. que salen de la raíz', () => {
     expect(() => validarRutaRepositorio(path.join(raiz, '..', 'otro'))).toThrow('no autorizada');
+  });
+
+  it('rechaza un symlink cuyo destino sale de PROJECTS_ROOT', () => {
+    const fuera = fs.mkdtempSync(path.join(os.tmpdir(), 'abyssan-escape-'));
+    const trampa = path.join(raiz, 'trampa-symlink');
+    try {
+      const tipo = process.platform === 'win32' ? 'junction' : 'dir';
+      fs.symlinkSync(fuera, trampa, tipo);
+      expect(() => validarRutaRepositorio(trampa)).toThrow('no autorizada');
+    } catch (error) {
+      const codigo = error && typeof error === 'object' && 'code' in error ? String(error.code) : '';
+      if (codigo === 'EPERM' || codigo === 'ENOTSUP') {
+        return;
+      }
+      throw error;
+    } finally {
+      fs.rmSync(fuera, { recursive: true, force: true });
+    }
   });
 
   it('obtenerRaizProyectos debe fallar sin variable de entorno', () => {
@@ -76,7 +98,7 @@ describe('validarRutaRepositorio', () => {
 
   it('validarDestinoNuevo acepta una subcarpeta', () => {
     const dest = validarDestinoNuevo('nuevo-repo');
-    expect(dest).toBe(path.resolve(raiz, 'nuevo-repo'));
+    expect(dest).toBe(canonizarRuta(path.join(raiz, 'nuevo-repo')));
   });
 
   it('validarUrlClone rechaza file:// y rutas locales', () => {
