@@ -67,3 +67,4 @@ gitRouter.post('/conflict/resolve', (req, res) => gitController.resolveConflict(
 
 // Auditoria
 gitRouter.get('/logs', (req, res) => gitController.getLogs(req, res));
+gitRouter.get('/operaciones', (req, res) => gitController.listarOperaciones(req, res));
