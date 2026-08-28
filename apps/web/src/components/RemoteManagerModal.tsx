@@ -51,8 +51,10 @@ export const RemoteManagerModal: React.FC<RemoteManagerModalProps> = ({
               <span>Fetch Prune</span>
             </button>
             <button
+              type="button"
               onClick={onClose}
               className="p-1 hover:bg-[#23283b] text-slate-400 hover:text-white rounded transition-colors"
+              aria-label="Cerrar"
             >
               <X className="w-4 h-4" />
             </button>
@@ -63,20 +65,32 @@ export const RemoteManagerModal: React.FC<RemoteManagerModalProps> = ({
         <div className="p-4 border-b border-[#23283b] bg-[#141724]/50">
           <form onSubmit={handleAdd} className="space-y-3">
             <div className="grid grid-cols-3 gap-2">
-              <input
-                type="text"
-                value={remoteName}
-                onChange={(e) => setRemoteName(e.target.value)}
-                placeholder="Nombre (ej. origin)"
-                className="col-span-1 bg-[#10131e] border border-[#2e354e] rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500"
-              />
-              <input
-                type="text"
-                value={remoteUrl}
-                onChange={(e) => setRemoteUrl(e.target.value)}
-                placeholder="URL (https://github.com/...)"
-                className="col-span-2 bg-[#10131e] border border-[#2e354e] rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500"
-              />
+              <div className="col-span-1">
+                <label htmlFor="remoto-nombre" className="block text-[11px] text-slate-400 mb-1">
+                  Nombre
+                </label>
+                <input
+                  id="remoto-nombre"
+                  type="text"
+                  value={remoteName}
+                  onChange={(e) => setRemoteName(e.target.value)}
+                  placeholder="origin"
+                  className="w-full bg-[#10131e] border border-[#2e354e] rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500"
+                />
+              </div>
+              <div className="col-span-2">
+                <label htmlFor="remoto-url" className="block text-[11px] text-slate-400 mb-1">
+                  URL
+                </label>
+                <input
+                  id="remoto-url"
+                  type="text"
+                  value={remoteUrl}
+                  onChange={(e) => setRemoteUrl(e.target.value)}
+                  placeholder="https://github.com/…"
+                  className="w-full bg-[#10131e] border border-[#2e354e] rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500"
+                />
+              </div>
             </div>
             <div className="flex justify-end">
               <button

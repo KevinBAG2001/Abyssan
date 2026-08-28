@@ -37,8 +37,10 @@ export const StashManagerModal: React.FC<StashManagerModalProps> = ({
             <h3 className="font-bold text-sm text-white">Gestor de Stash</h3>
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="p-1 hover:bg-[#23283b] text-slate-400 hover:text-white rounded transition-colors"
+            aria-label="Cerrar"
           >
             <X className="w-4 h-4" />
           </button>
@@ -46,14 +48,20 @@ export const StashManagerModal: React.FC<StashManagerModalProps> = ({
 
         {/* Guardar nuevo Stash */}
         <div className="p-4 border-b border-[#23283b] bg-[#141724]/50">
-          <form onSubmit={handleSave} className="flex space-x-2">
-            <input
-              type="text"
-              value={stashMessage}
-              onChange={(e) => setStashMessage(e.target.value)}
-              placeholder="Mensaje descriptivo del Stash (opcional)..."
-              className="flex-1 bg-[#10131e] border border-[#2e354e] rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
-            />
+          <form onSubmit={handleSave} className="flex space-x-2 items-end">
+            <div className="flex-1">
+              <label htmlFor="stash-mensaje" className="block text-[11px] text-slate-400 mb-1">
+                Mensaje del stash
+              </label>
+              <input
+                id="stash-mensaje"
+                type="text"
+                value={stashMessage}
+                onChange={(e) => setStashMessage(e.target.value)}
+                placeholder="Opcional…"
+                className="w-full bg-[#10131e] border border-[#2e354e] rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+              />
+            </div>
             <button
               type="submit"
               disabled={loading}

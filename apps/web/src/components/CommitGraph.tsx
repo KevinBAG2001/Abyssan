@@ -103,18 +103,24 @@ export const CommitGraph: React.FC<CommitGraphProps> = ({
       <div className="h-10 bg-[#141724] border-b border-[#23283b] px-4 flex items-center justify-between select-none">
         <div className="flex items-center space-x-2 flex-1 max-w-md">
           <div className="relative w-full">
+            <label htmlFor="busqueda-commits" className="sr-only">
+              Buscar commits
+            </label>
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
             <input
+              id="busqueda-commits"
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar por mensaje, autor, hash o rama..."
+              placeholder="Mensaje, autor, hash o rama…"
               className="w-full bg-[#1b1f30] border border-[#2e354e] rounded-md pl-8 pr-7 py-1 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
             />
             {searchTerm && (
               <button
+                type="button"
                 onClick={() => setSearchTerm('')}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                aria-label="Limpiar búsqueda"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -241,7 +247,8 @@ function GrafoVirtualizado({
         const isSelected = selectedCommit?.hash === commit.hash;
         const nodeX = GRAPH_OFFSET_X + (commit.column || 0) * COL_WIDTH;
         return (
-          <div
+          <button
+            type="button"
             key={commit.hash}
             onClick={() => onSelectCommit(commit)}
             onContextMenu={(e) => {
@@ -249,7 +256,7 @@ function GrafoVirtualizado({
               onContextMenu(commit, { x: e.clientX, y: e.clientY });
             }}
             style={{ top: `${index * ROW_HEIGHT}px`, height: `${ROW_HEIGHT}px` }}
-            className={`absolute left-0 right-0 px-4 flex items-center text-xs cursor-pointer border-b border-white/[0.03] ${
+            className={`absolute left-0 right-0 px-4 flex items-center text-xs cursor-pointer border-b border-white/[0.03] text-left w-full ${
               isSelected
                 ? 'bg-emerald-500/10 border-emerald-500/30 text-white'
                 : 'hover:bg-[#161a29] text-slate-300'
@@ -301,7 +308,7 @@ function GrafoVirtualizado({
               })}
             </div>
             <div className="w-20 shrink-0 text-right font-mono text-[11px] text-slate-400">{commit.shortHash}</div>
-          </div>
+          </button>
         );
       })}
     </div>
