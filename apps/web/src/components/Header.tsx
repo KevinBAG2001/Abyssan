@@ -81,7 +81,11 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Selector de Repositorios */}
         <div className="relative">
+          <label htmlFor="selector-repo" className="sr-only">
+            Repositorio
+          </label>
           <select
+            id="selector-repo"
             value={selectedRepo || ''}
             onChange={(e) => onSelectRepo(e.target.value)}
             className="bg-[#1b1f30] hover:bg-[#23283b] text-slate-200 text-sm font-medium rounded-md px-3 py-1.5 border border-[#2e354e] focus:outline-none focus:border-emerald-500 cursor-pointer transition-colors"
@@ -105,9 +109,11 @@ export const Header: React.FC<HeaderProps> = ({
           </select>
         </div>
         <button
+          type="button"
           onClick={onOpenNacimiento}
           className="p-1.5 bg-[#1b1f30] hover:bg-[#23283b] text-slate-300 rounded-md border border-[#2e354e]"
           title="Clonar o inicializar repositorio"
+          aria-label="Clonar o inicializar repositorio"
         >
           <FolderPlus className="w-3.5 h-3.5 text-emerald-400" />
         </button>

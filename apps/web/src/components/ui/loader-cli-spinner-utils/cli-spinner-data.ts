@@ -51,5 +51,3 @@ export const CLI_SPINNERS: Record<CliSpinnerVariant, CliSpinnerDef> = {
     frames: ['◜', '◠', '◝', '◞', '◡', '◟'],
   },
 };
-
-export const CLI_SPINNER_VARIANTS = Object.keys(CLI_SPINNERS) as CliSpinnerVariant[];

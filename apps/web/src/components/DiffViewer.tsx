@@ -107,23 +107,26 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ diff, filePath, isStaged
     const lang = langDe(filePath);
     obtenerHighlighter()
       .then(async (hl) => {
+        const pares = await Promise.all(
+          parsedLines.map(async (linea) => {
+            if (linea.type === 'header' || linea.type === 'meta') return null;
+            if (!lang) return [linea.id, escapeHtml(linea.code)] as const;
+            try {
+              const html = await hl.codeToHtml(linea.code || ' ', { lang, theme: 'github-dark' });
+              const inner = html.replace(/^<pre[^>]*>/, '').replace(/<\/pre>$/, '');
+              const code = inner.replace(/^<code[^>]*>/, '').replace(/<\/code>$/, '');
+              return [linea.id, code] as const;
+            } catch {
+              return [linea.id, escapeHtml(linea.code)] as const;
+            }
+          })
+        );
+        if (cancelado) return;
         const mapa: Record<number, string> = {};
-        for (const linea of parsedLines) {
-          if (linea.type === 'header' || linea.type === 'meta') continue;
-          if (!lang) {
-            mapa[linea.id] = escapeHtml(linea.code);
-            continue;
-          }
-          try {
-            const html = await hl.codeToHtml(linea.code || ' ', { lang, theme: 'github-dark' });
-            const inner = html.replace(/^<pre[^>]*>/, '').replace(/<\/pre>$/, '');
-            const code = inner.replace(/^<code[^>]*>/, '').replace(/<\/code>$/, '');
-            mapa[linea.id] = code;
-          } catch {
-            mapa[linea.id] = escapeHtml(linea.code);
-          }
+        for (const par of pares) {
+          if (par) mapa[par[0]] = par[1];
         }
-        if (!cancelado) setHtmlPorLinea(mapa);
+        setHtmlPorLinea(mapa);
       })
       .catch(() => undefined);
     return () => {
@@ -196,8 +199,8 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ diff, filePath, isStaged
           </div>
         ) : (
           <div className="grid grid-cols-2 divide-x divide-[#23283b] min-w-[640px]">
-            {filasSplit.map((fila, i) => (
-              <React.Fragment key={i}>
+            {filasSplit.map((fila) => (
+              <React.Fragment key={`${fila.izq?.id ?? 'x'}-${fila.der?.id ?? 'y'}`}>
                 <CeldaSplit lado={fila.izq} html={fila.izq ? htmlPorLinea[fila.izq.id] : undefined} />
                 <CeldaSplit lado={fila.der} html={fila.der ? htmlPorLinea[fila.der.id] : undefined} />
               </React.Fragment>

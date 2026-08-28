@@ -43,12 +43,15 @@ export function useGitRepository() {
 
   const generacion = useRef(0);
   const archivoSeleccionado = useRef<FileStatusModel | null>(null);
-  archivoSeleccionado.current = selectedFile;
 
-  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+  useEffect(() => {
+    archivoSeleccionado.current = selectedFile;
+  }, [selectedFile]);
+
+  const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
-    setTimeout(() => setToast(null), 4000);
-  };
+    window.setTimeout(() => setToast(null), 4000);
+  }, []);
 
   const loadRepos = useCallback(async () => {
     setCargandoRepos(true);
@@ -65,7 +68,7 @@ export function useGitRepository() {
     } finally {
       setCargandoRepos(false);
     }
-  }, []);
+  }, [showToast]);
 
   const refreshLogs = async () => {
     try {
@@ -98,7 +101,6 @@ export function useGitRepository() {
       setCommits(dePromesa(rapidos[0], []));
       setBranches(dePromesa(rapidos[1], []));
       setRemotes(dePromesa(rapidos[2], []));
-      setLoading(false);
 
       const lentos = await Promise.allSettled([
         httpGitApi.getStatus(repoPath),
@@ -133,13 +135,36 @@ export function useGitRepository() {
     } finally {
       if (yo === generacion.current) setLoading(false);
     }
-  }, []);
+  }, [showToast]);
 
   useEffect(() => {
-    void loadRepos();
+    let vivo = true;
+    void (async () => {
+      setCargandoRepos(true);
+      try {
+        const data = await httpGitApi.getRepos();
+        if (vivo) {
+          setRepos(data);
+          setSelectedRepo((actual) => {
+            if (actual) return actual;
+            const firstGit = data.find((r) => r.isGitRepo) || data[0];
+            return firstGit?.path ?? null;
+          });
+        }
+      } catch (err: unknown) {
+        if (vivo) {
+          showToast(err instanceof Error ? err.message : 'Error cargando repositorios', 'error');
+        }
+      } finally {
+        if (vivo) setCargandoRepos(false);
+      }
+    })();
     void refreshOperaciones();
     wsClient.connect();
-  }, [loadRepos]);
+    return () => {
+      vivo = false;
+    };
+  }, [showToast]);
 
   useEffect(() => {
     const unsubscribe = wsClient.onRepoChange((data) => {
