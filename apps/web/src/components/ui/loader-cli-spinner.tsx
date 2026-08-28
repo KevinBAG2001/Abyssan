@@ -58,6 +58,5 @@ export function LoaderCliSpinner({
 }
 
 export type { CliSpinnerVariant } from '@/components/ui/loader-cli-spinner-utils/cli-spinner-data';
-export { CLI_SPINNER_VARIANTS } from '@/components/ui/loader-cli-spinner-utils/cli-spinner-data';
 
 export default LoaderCliSpinner;

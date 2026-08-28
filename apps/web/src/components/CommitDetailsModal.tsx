@@ -16,7 +16,7 @@ export const CommitDetailsModal: React.FC<CommitDetailsModalProps> = ({
   if (!commit) return null;
 
   return (
-    <div className="fixed inset-y-0 right-0 w-96 bg-[#141724] border-l border-[#23283b] shadow-2xl z-40 flex flex-col animate-in slide-in-from-right duration-200">
+    <div className="fixed inset-y-0 right-0 w-96 bg-[#141724] border-l border-[#23283b] shadow-2xl z-40 flex flex-col">
       {/* Encabezado del Modal */}
       <div className="p-4 border-b border-[#23283b] flex items-center justify-between">
         <div className="flex items-center space-x-2">
@@ -24,8 +24,10 @@ export const CommitDetailsModal: React.FC<CommitDetailsModalProps> = ({
           <span className="font-bold text-sm text-white">Detalles del Commit</span>
         </div>
         <button
+          type="button"
           onClick={onClose}
           className="p-1 hover:bg-[#23283b] text-slate-400 hover:text-white rounded transition-colors"
+          aria-label="Cerrar"
         >
           <X className="w-4 h-4" />
         </button>

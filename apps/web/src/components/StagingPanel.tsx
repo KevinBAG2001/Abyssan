@@ -33,6 +33,22 @@ interface StagingPanelProps {
   onAmend: (message: string) => void;
 }
 
+function iconoEstadoArchivo(fileStatus: GitFileStatus['status']) {
+  switch (fileStatus) {
+    case 'added':
+    case 'untracked':
+      return <FilePlus className="w-3.5 h-3.5 text-emerald-400 shrink-0" />;
+    case 'modified':
+      return <FileEdit className="w-3.5 h-3.5 text-amber-400 shrink-0" />;
+    case 'deleted':
+      return <FileX className="w-3.5 h-3.5 text-rose-400 shrink-0" />;
+    case 'conflicted':
+      return <AlertCircle className="w-3.5 h-3.5 text-rose-500 animate-pulse shrink-0" />;
+    default:
+      return <FileCode className="w-3.5 h-3.5 text-slate-400 shrink-0" />;
+  }
+}
+
 export const StagingPanel: React.FC<StagingPanelProps> = ({
   status,
   selectedFile,
@@ -60,22 +76,6 @@ export const StagingPanel: React.FC<StagingPanelProps> = ({
       onCommit(commitSummary.trim(), commitDescription.trim() || undefined);
       setCommitSummary('');
       setCommitDescription('');
-    }
-  };
-
-  const getStatusIcon = (fileStatus: GitFileStatus['status']) => {
-    switch (fileStatus) {
-      case 'added':
-      case 'untracked':
-        return <FilePlus className="w-3.5 h-3.5 text-emerald-400 shrink-0" />;
-      case 'modified':
-        return <FileEdit className="w-3.5 h-3.5 text-amber-400 shrink-0" />;
-      case 'deleted':
-        return <FileX className="w-3.5 h-3.5 text-rose-400 shrink-0" />;
-      case 'conflicted':
-        return <AlertCircle className="w-3.5 h-3.5 text-rose-500 animate-pulse shrink-0" />;
-      default:
-        return <FileCode className="w-3.5 h-3.5 text-slate-400 shrink-0" />;
     }
   };
 
@@ -142,14 +142,7 @@ export const StagingPanel: React.FC<StagingPanelProps> = ({
                 return (
                   <div
                     key={`unstaged-${file.path}`}
-                    onClick={() => {
-                      if (isConflicted) {
-                        onOpenConflictResolver(file.path);
-                      } else {
-                        onSelectFile(file);
-                      }
-                    }}
-                    className={`group flex items-center justify-between px-2 py-1.5 rounded text-xs cursor-pointer transition-colors ${
+                    className={`group flex items-center justify-between px-2 py-1.5 rounded text-xs transition-colors ${
                       isConflicted
                         ? 'bg-rose-950/20 text-rose-300 border border-rose-500/30'
                         : isSelected
@@ -157,10 +150,20 @@ export const StagingPanel: React.FC<StagingPanelProps> = ({
                         : 'text-slate-300 hover:bg-[#1b1f30]'
                     }`}
                   >
-                    <div className="flex items-center space-x-2 truncate pr-2">
-                      {getStatusIcon(file.status)}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isConflicted) {
+                          onOpenConflictResolver(file.path);
+                        } else {
+                          onSelectFile(file);
+                        }
+                      }}
+                      className="flex items-center space-x-2 truncate pr-2 text-left min-w-0 flex-1"
+                    >
+                      {iconoEstadoArchivo(file.status)}
                       <span className="truncate">{file.path}</span>
-                    </div>
+                    </button>
 
                     <div className="flex items-center space-x-1">
                       {isConflicted ? (
@@ -222,23 +225,27 @@ export const StagingPanel: React.FC<StagingPanelProps> = ({
                 return (
                   <div
                     key={`staged-${file.path}`}
-                    onClick={() => onSelectFile(file)}
-                    className={`group flex items-center justify-between px-2 py-1.5 rounded text-xs cursor-pointer transition-colors ${
+                    className={`group flex items-center justify-between px-2 py-1.5 rounded text-xs transition-colors ${
                       isSelected
                         ? 'bg-[#1e2337] text-emerald-300 border border-emerald-500/30'
                         : 'text-slate-300 hover:bg-[#1b1f30]'
                     }`}
                   >
-                    <div className="flex items-center space-x-2 truncate pr-2">
-                      {getStatusIcon(file.status)}
-                      <span className="truncate">{file.path}</span>
-                    </div>
                     <button
+                      type="button"
+                      onClick={() => onSelectFile(file)}
+                      className="flex items-center space-x-2 truncate pr-2 text-left min-w-0 flex-1"
+                    >
+                      {iconoEstadoArchivo(file.status)}
+                      <span className="truncate">{file.path}</span>
+                    </button>
+                    <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         onUnstageFile(file.path);
                       }}
-                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-rose-500/20 text-rose-400 rounded transition-all"
+                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-rose-500/20 text-rose-400 rounded transition-opacity"
                       title="Quitar de Staging"
                     >
                       <Minus className="w-3.5 h-3.5" />
@@ -256,26 +263,33 @@ export const StagingPanel: React.FC<StagingPanelProps> = ({
         <form onSubmit={handleCommitSubmit} className="space-y-2" onKeyDown={(e) => {
           if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') handleCommitSubmit(e);
         }}>
+          <label htmlFor="abyssan-commit-input" className="block text-[11px] text-slate-400">
+            Mensaje de commit
+          </label>
           <input
             id="abyssan-commit-input"
             type="text"
             value={commitSummary}
             onChange={(e) => setCommitSummary(e.target.value)}
-            placeholder="Mensaje de commit (resumen)…"
+            placeholder="Resumen…"
             className="w-full bg-[#1b1f30] border border-[#2e354e] rounded-md px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
           />
+          <label htmlFor="abyssan-commit-desc" className="block text-[11px] text-slate-400">
+            Descripción (opcional)
+          </label>
           <textarea
+            id="abyssan-commit-desc"
             value={commitDescription}
             onChange={(e) => setCommitDescription(e.target.value)}
             rows={2}
-            placeholder="Descripción extendida (opcional)…"
+            placeholder="Cuerpo extendido…"
             className="w-full bg-[#1b1f30] border border-[#2e354e] rounded-md px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 resize-none"
           />
           <div className="flex space-x-1.5">
             <button
               type="submit"
               disabled={!commitSummary.trim() || stagedFiles.length === 0 || loading}
-              className="flex-1 flex items-center justify-center space-x-1.5 py-2 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-slate-950 font-bold text-xs rounded-md shadow-lg shadow-emerald-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex-1 flex items-center justify-center space-x-1.5 py-2 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-slate-950 font-bold text-xs rounded-md shadow-lg shadow-emerald-500/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Send className="w-3.5 h-3.5" />
               <span>Commit ({stagedFiles.length})</span>
@@ -286,6 +300,7 @@ export const StagingPanel: React.FC<StagingPanelProps> = ({
               onClick={() => onAmend(commitSummary.trim())}
               className="px-2 py-2 bg-[#1b1f30] hover:bg-[#23283b] text-amber-300 rounded-md border border-[#2e354e] disabled:opacity-40"
               title="Enmendar el último commit"
+              aria-label="Enmendar el último commit"
             >
               <Pencil className="w-3.5 h-3.5" />
             </button>

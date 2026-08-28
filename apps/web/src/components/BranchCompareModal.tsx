@@ -22,31 +22,33 @@ export const BranchCompareModal: React.FC<BranchCompareModalProps> = ({
 }) => {
   const [baseBranch, setBaseBranch] = useState(currentBranch);
   const [targetBranch, setTargetBranch] = useState(
-    branches.find((b) => b.name !== currentBranch)?.name || currentBranch
+    () => branches.find((b) => b.name !== currentBranch)?.name || currentBranch
   );
   const [comparison, setComparison] = useState<GitBranchComparison | null>(null);
   const [comparing, setComparing] = useState(false);
   const [noFf, setNoFf] = useState(false);
 
-  const fetchComparison = async () => {
-    if (!baseBranch || !targetBranch || baseBranch === targetBranch) {
-      setComparison(null);
-      return;
-    }
-    setComparing(true);
-    try {
-      const data = await httpGitApi.compareBranches(repoPath, baseBranch, targetBranch);
-      setComparison(data);
-    } catch {
-      setComparison(null);
-    } finally {
-      setComparing(false);
-    }
-  };
-
   useEffect(() => {
-    fetchComparison();
-  }, [baseBranch, targetBranch]);
+    let vivo = true;
+    void (async () => {
+      if (!baseBranch || !targetBranch || baseBranch === targetBranch) {
+        if (vivo) setComparison(null);
+        return;
+      }
+      setComparing(true);
+      try {
+        const data = await httpGitApi.compareBranches(repoPath, baseBranch, targetBranch);
+        if (vivo) setComparison(data);
+      } catch {
+        if (vivo) setComparison(null);
+      } finally {
+        if (vivo) setComparing(false);
+      }
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, [repoPath, baseBranch, targetBranch]);
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 select-none">
@@ -58,8 +60,10 @@ export const BranchCompareModal: React.FC<BranchCompareModalProps> = ({
             <h3 className="font-bold text-sm text-white">Comparador de Ramas & Fusion</h3>
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="p-1 hover:bg-[#23283b] text-slate-400 hover:text-white rounded transition-colors"
+            aria-label="Cerrar"
           >
             <X className="w-4 h-4" />
           </button>
@@ -69,10 +73,11 @@ export const BranchCompareModal: React.FC<BranchCompareModalProps> = ({
         <div className="p-4 border-b border-[#23283b] bg-[#141724]/50 flex items-center justify-between space-x-3">
           {/* Rama Base (Destino) */}
           <div className="flex-1">
-            <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
+            <label htmlFor="rama-base" className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
               Rama Base (Destino de fusion)
             </label>
             <select
+              id="rama-base"
               value={baseBranch}
               onChange={(e) => setBaseBranch(e.target.value)}
               className="w-full bg-[#10131e] border border-[#2e354e] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-500"
@@ -91,10 +96,11 @@ export const BranchCompareModal: React.FC<BranchCompareModalProps> = ({
 
           {/* Rama Target (Origen) */}
           <div className="flex-1">
-            <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
+            <label htmlFor="rama-origen" className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
               Rama a Comparar / Fusionar (Origen)
             </label>
             <select
+              id="rama-origen"
               value={targetBranch}
               onChange={(e) => setTargetBranch(e.target.value)}
               className="w-full bg-[#10131e] border border-[#2e354e] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-500"
@@ -195,7 +201,7 @@ export const BranchCompareModal: React.FC<BranchCompareModalProps> = ({
               }
             }}
             disabled={!comparison || comparison.aheadCount === 0 || loading}
-            className="flex items-center space-x-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white font-bold text-xs rounded-lg shadow-lg shadow-purple-600/20 transition-all disabled:opacity-50"
+            className="flex items-center space-x-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white font-bold text-xs rounded-lg shadow-lg shadow-purple-600/20 transition-colors disabled:opacity-50"
           >
             <Merge className="w-4 h-4" />
             <span>Fusionar en {baseBranch}</span>

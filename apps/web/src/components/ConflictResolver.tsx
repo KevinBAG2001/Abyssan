@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { GitConflictData } from '../types/git';
 import { Check, ArrowLeft, Code2, ShieldAlert, Ban } from 'lucide-react';
 
@@ -23,10 +23,6 @@ export const ConflictResolver: React.FC<ConflictResolverProps> = ({
   const hunks = conflictData.hunks || [];
   const baseDisponible = conflictData.baseDisponible ?? Boolean(conflictData.baseContent);
 
-  useEffect(() => {
-    setResolvedText(conflictData.rawConflict);
-  }, [conflictData]);
-
   const handleAcceptCurrent = () => setResolvedText(conflictData.currentContent);
   const handleAcceptIncoming = () => setResolvedText(conflictData.incomingContent);
   const handleAcceptBoth = () => {
@@ -42,8 +38,10 @@ export const ConflictResolver: React.FC<ConflictResolverProps> = ({
       <div className="h-12 bg-[#141724] border-b border-[#23283b] px-4 flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <button
+            type="button"
             onClick={onCancel}
             className="p-1.5 hover:bg-[#23283b] text-slate-400 hover:text-white rounded-md transition-colors"
+            aria-label="Volver"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
@@ -105,11 +103,12 @@ export const ConflictResolver: React.FC<ConflictResolverProps> = ({
           {conflictData.currentContent}
         </Columna>
         <div className="flex flex-col h-full overflow-hidden bg-[#0d0f17]">
-          <div className="p-2.5 bg-emerald-950/30 border-b border-emerald-900/30 text-xs font-semibold text-emerald-400 flex items-center space-x-1.5">
+          <label htmlFor="resultado-conflicto" className="p-2.5 bg-emerald-950/30 border-b border-emerald-900/30 text-xs font-semibold text-emerald-400 flex items-center space-x-1.5">
             <Code2 className="w-3.5 h-3.5" />
             <span>Resultado (editable)</span>
-          </div>
+          </label>
           <textarea
+            id="resultado-conflicto"
             value={resolvedText}
             onChange={(e) => setResolvedText(e.target.value)}
             className="flex-1 w-full bg-transparent p-3 font-mono text-xs text-slate-100 resize-none focus:outline-none leading-relaxed"

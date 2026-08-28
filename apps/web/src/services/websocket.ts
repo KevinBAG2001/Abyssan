@@ -1,5 +1,7 @@
+import { tokenInstanciaCliente } from '../infrastructure/config/entornoCliente';
+
 const WS_BASE = import.meta.env.VITE_WS_URL || 'ws://localhost:3001';
-const TOKEN_INSTANCIA = import.meta.env.VITE_ABYSSAN_API_TOKEN as string | undefined;
+const TOKEN_INSTANCIA = tokenInstanciaCliente;
 
 type RepoChangeCallback = (data: { repoPath: string; eventType: string; filePath: string }) => void;
 type OperacionCallback = (data: unknown) => void;
