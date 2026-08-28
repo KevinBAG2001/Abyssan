@@ -80,7 +80,12 @@ export const ModalNacimientoRepo: React.FC<ModalNacimientoRepoProps> = ({
             <FolderGit2 className="w-5 h-5 text-emerald-400" />
             <h3 className="font-bold text-sm text-white">Nuevo repositorio</h3>
           </div>
-          <button onClick={onClose} className="p-1 hover:bg-[#23283b] text-slate-400 hover:text-white rounded">
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1 hover:bg-[#23283b] text-slate-400 hover:text-white rounded"
+            aria-label="Cerrar"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -106,19 +111,31 @@ export const ModalNacimientoRepo: React.FC<ModalNacimientoRepoProps> = ({
 
         <form onSubmit={enviar} className="p-4 space-y-3">
           {tab === 'clone' && (
+            <div>
+              <label htmlFor="clone-url" className="block text-[11px] text-slate-400 mb-1">
+                URL HTTPS
+              </label>
+              <input
+                id="clone-url"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="https://github.com/org/repo.git"
+                className="w-full bg-[#10131e] border border-[#2e354e] rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+          )}
+          <div>
+            <label htmlFor="clone-carpeta" className="block text-[11px] text-slate-400 mb-1">
+              Carpeta bajo PROJECTS_ROOT
+            </label>
             <input
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://github.com/org/repo.git"
+              id="clone-carpeta"
+              value={carpeta}
+              onChange={(e) => setCarpeta(e.target.value)}
+              placeholder="nombre-del-repo"
               className="w-full bg-[#10131e] border border-[#2e354e] rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
             />
-          )}
-          <input
-            value={carpeta}
-            onChange={(e) => setCarpeta(e.target.value)}
-            placeholder="Nombre de carpeta bajo PROJECTS_ROOT"
-            className="w-full bg-[#10131e] border border-[#2e354e] rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
-          />
+          </div>
 
           <div className="rounded-lg border border-[#2e354e] bg-[#141724] p-3 space-y-2">
             <div className="flex items-center space-x-1.5 text-[11px] font-semibold text-slate-400 uppercase">

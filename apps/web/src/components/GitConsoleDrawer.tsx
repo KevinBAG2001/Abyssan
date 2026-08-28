@@ -52,12 +52,13 @@ export const GitConsoleDrawer: React.FC<GitConsoleDrawerProps> = ({
   const enVuelo = operaciones.filter((o) => o.estado === 'en_cola' || o.estado === 'corriendo');
 
   return (
-    <div className="border-t border-[#23283b] bg-[#0d0f17] flex flex-col transition-all duration-200 select-none">
-      <div
-        onClick={onToggle}
-        className="h-8 bg-[#141724] px-4 flex items-center justify-between cursor-pointer hover:bg-[#181c2d] transition-colors"
-      >
-        <div className="flex items-center space-x-2 text-xs font-semibold text-slate-300">
+    <div className="border-t border-[#23283b] bg-[#0d0f17] flex flex-col transition-[height] duration-200 select-none">
+      <div className="h-8 bg-[#141724] px-4 flex items-center justify-between hover:bg-[#181c2d] transition-colors">
+        <button
+          type="button"
+          onClick={onToggle}
+          className="flex items-center space-x-2 text-xs font-semibold text-slate-300 min-w-0 flex-1 text-left"
+        >
           <Terminal className="w-3.5 h-3.5 text-emerald-400" />
           <span>Consola de Comandos Git</span>
           <span className="px-1.5 py-0.2 rounded-full bg-[#23283b] text-[10px] text-slate-400 font-mono">
@@ -69,15 +70,13 @@ export const GitConsoleDrawer: React.FC<GitConsoleDrawerProps> = ({
               {enVuelo.length} en curso
             </span>
           )}
-        </div>
+        </button>
 
         <div className="flex items-center space-x-3">
           {isOpen && (
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onClear();
-              }}
+              type="button"
+              onClick={onClear}
               className="text-[11px] text-slate-400 hover:text-rose-400 flex items-center space-x-1 transition-colors"
               title="Limpiar Consola"
             >
@@ -85,7 +84,9 @@ export const GitConsoleDrawer: React.FC<GitConsoleDrawerProps> = ({
               <span>Limpiar</span>
             </button>
           )}
-          {isOpen ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronUp className="w-4 h-4 text-slate-400" />}
+          <button type="button" onClick={onToggle} aria-label={isOpen ? 'Cerrar consola' : 'Abrir consola'}>
+            {isOpen ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronUp className="w-4 h-4 text-slate-400" />}
+          </button>
         </div>
       </div>
 
@@ -137,8 +138,8 @@ export const GitConsoleDrawer: React.FC<GitConsoleDrawerProps> = ({
             {reflog.length > 0 && (
               <div className="mb-2 pb-2 border-b border-[#23283b]">
                 <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Reflog (últimas)</div>
-                {reflog.slice(0, 12).map((r, i) => (
-                  <div key={`${r.hash}-${i}`} className="flex space-x-2 text-slate-400 py-0.5">
+                {reflog.slice(0, 12).map((r) => (
+                  <div key={`${r.hash}-${r.selector}-${r.fecha}`} className="flex space-x-2 text-slate-400 py-0.5">
                     <span className="text-emerald-400 font-mono w-14 shrink-0">{r.hash}</span>
                     <span className="truncate">{r.mensaje}</span>
                   </div>

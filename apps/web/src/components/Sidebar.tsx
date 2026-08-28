@@ -62,16 +62,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Ramas & Tags</span>
         <div className="flex items-center space-x-1">
           <button
+            type="button"
             onClick={() => setShowNewTagModal(true)}
             className="p-1 hover:bg-[#23283b] text-slate-400 hover:text-amber-400 rounded transition-colors"
             title="Crear Nuevo Tag"
+            aria-label="Crear nuevo tag"
           >
             <Tag className="w-3.5 h-3.5" />
           </button>
           <button
+            type="button"
             onClick={() => setShowNewBranchModal(true)}
             className="p-1 hover:bg-[#23283b] text-slate-400 hover:text-emerald-400 rounded transition-colors"
             title="Crear Nueva Rama"
+            aria-label="Crear nueva rama"
           >
             <Plus className="w-4 h-4" />
           </button>
@@ -81,14 +85,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="flex-1 overflow-y-auto p-2 space-y-3">
         {/* Ramas Locales */}
         <div>
-          <div
+          <button
+            type="button"
             onClick={() => setLocalExpanded(!localExpanded)}
-            className="flex items-center space-x-1.5 px-2 py-1 text-xs font-semibold text-slate-300 hover:text-white cursor-pointer rounded hover:bg-[#1b1f30] transition-colors"
+            className="flex items-center space-x-1.5 px-2 py-1 text-xs font-semibold text-slate-300 hover:text-white rounded hover:bg-[#1b1f30] transition-colors w-full text-left"
+            aria-expanded={localExpanded}
           >
             {localExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
             <GitBranch className="w-3.5 h-3.5 text-emerald-400" />
             <span>Locales ({localBranches.length})</span>
-          </div>
+          </button>
 
           {localExpanded && (
             <div className="mt-1 space-y-0.5 pl-4">
@@ -97,14 +103,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 return (
                   <div
                     key={branch.name}
-                    onClick={() => !isCurrent && onCheckout(branch.name)}
-                    className={`group flex items-center justify-between px-2 py-1 rounded text-xs cursor-pointer transition-colors ${
+                    className={`group flex items-center justify-between px-2 py-1 rounded text-xs transition-colors ${
                       isCurrent
                         ? 'bg-emerald-500/15 text-emerald-300 font-semibold border border-emerald-500/20'
                         : 'text-slate-400 hover:text-slate-200 hover:bg-[#1b1f30]'
                     }`}
                   >
-                    <span className="truncate">{branch.name}</span>
+                    <button
+                      type="button"
+                      disabled={isCurrent}
+                      onClick={() => !isCurrent && onCheckout(branch.name)}
+                      className="truncate text-left flex-1 min-w-0 disabled:cursor-default"
+                    >
+                      {branch.name}
+                    </button>
                     <div className="flex items-center shrink-0 ml-1 space-x-0.5">
                       {isCurrent && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}
                       <button
@@ -143,14 +155,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Ramas Remotas */}
         <div>
-          <div
+          <button
+            type="button"
             onClick={() => setRemoteExpanded(!remoteExpanded)}
-            className="flex items-center space-x-1.5 px-2 py-1 text-xs font-semibold text-slate-300 hover:text-white cursor-pointer rounded hover:bg-[#1b1f30] transition-colors"
+            className="flex items-center space-x-1.5 px-2 py-1 text-xs font-semibold text-slate-300 hover:text-white rounded hover:bg-[#1b1f30] transition-colors w-full text-left"
+            aria-expanded={remoteExpanded}
           >
             {remoteExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
             <GitFork className="w-3.5 h-3.5 text-sky-400" />
             <span>Remotas ({remoteBranches.length})</span>
-          </div>
+          </button>
 
           {remoteExpanded && (
             <div className="mt-1 space-y-0.5 pl-4">
@@ -168,14 +182,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Tags */}
         <div>
-          <div
+          <button
+            type="button"
             onClick={() => setTagsExpanded(!tagsExpanded)}
-            className="flex items-center space-x-1.5 px-2 py-1 text-xs font-semibold text-slate-300 hover:text-white cursor-pointer rounded hover:bg-[#1b1f30] transition-colors"
+            className="flex items-center space-x-1.5 px-2 py-1 text-xs font-semibold text-slate-300 hover:text-white rounded hover:bg-[#1b1f30] transition-colors w-full text-left"
+            aria-expanded={tagsExpanded}
           >
             {tagsExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
             <Tag className="w-3.5 h-3.5 text-amber-400" />
             <span>Tags ({tags.length})</span>
-          </div>
+          </button>
 
           {tagsExpanded && (
             <div className="mt-1 space-y-0.5 pl-4">
@@ -205,7 +221,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
               La rama se creará a partir de la posición actual ({currentBranch}).
             </p>
             <form onSubmit={handleCreateBranch} className="space-y-4">
+              <label htmlFor="nueva-rama" className="block text-[11px] text-slate-400">
+                Nombre de la rama
+              </label>
               <input
+                id="nueva-rama"
                 type="text"
                 value={newBranchName}
                 onChange={(e) => setNewBranchName(e.target.value)}
@@ -241,7 +261,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <h3 className="text-sm font-bold text-white mb-1">Crear Nuevo Tag</h3>
             <p className="text-xs text-slate-400 mb-4">Etiqueta la versión en la posición actual de Git.</p>
             <form onSubmit={handleCreateTag} className="space-y-4">
+              <label htmlFor="nuevo-tag" className="block text-[11px] text-slate-400">
+                Nombre del tag
+              </label>
               <input
+                id="nuevo-tag"
                 type="text"
                 value={newTagName}
                 onChange={(e) => setNewTagName(e.target.value)}

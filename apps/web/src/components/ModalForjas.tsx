@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ExternalLink, GitPullRequest, KeyRound, X } from 'lucide-react';
+import { GitPullRequest, KeyRound, X } from 'lucide-react';
 import {
   CuentaForja,
   httpGitApi,
@@ -7,6 +7,9 @@ import {
   SolicitudForjaCreada,
 } from '../infrastructure/api/HttpGitApi';
 import { GitBranch } from '../types/git';
+
+import { PanelListaForjas } from './PanelListaForjas';
+import { FormularioCrearForja } from './FormularioCrearForja';
 
 interface ModalForjasProps {
   repoPath: string;
@@ -16,16 +19,6 @@ interface ModalForjasProps {
   onError: (mensaje: string) => void;
   onExito: (mensaje: string) => void;
   onCheckoutHecho: () => void;
-}
-
-function claseLineaDiff(line: string): string {
-  if (line.startsWith('+++') || line.startsWith('---') || line.startsWith('diff ') || line.startsWith('index ')) {
-    return 'text-slate-500';
-  }
-  if (line.startsWith('+')) return 'text-emerald-400 bg-emerald-500/5';
-  if (line.startsWith('-')) return 'text-rose-400 bg-rose-500/5';
-  if (line.startsWith('@@')) return 'text-sky-400';
-  return 'text-slate-300';
 }
 
 export const ModalForjas: React.FC<ModalForjasProps> = ({
@@ -55,7 +48,13 @@ export const ModalForjas: React.FC<ModalForjasProps> = ({
   const [creando, setCreando] = useState(false);
   const [creada, setCreada] = useState<SolicitudForjaCreada | null>(null);
 
-  const locales = useMemo(() => ramas.filter((r) => !r.isRemote).map((r) => r.name), [ramas]);
+  const locales = useMemo(() => {
+    const nombres: string[] = [];
+    for (const r of ramas) {
+      if (!r.isRemote) nombres.push(r.name);
+    }
+    return nombres;
+  }, [ramas]);
   const basesSugeridas = useMemo(() => {
     const preferidas = ['main', 'master', 'develop'];
     return [...new Set([...preferidas.filter((n) => locales.includes(n)), ...locales])];
@@ -92,10 +91,45 @@ export const ModalForjas: React.FC<ModalForjasProps> = ({
   };
 
   useEffect(() => {
-    void cargarCuentas();
-    void cargarSolicitudes();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [repoPath]);
+    let vivo = true;
+    void (async () => {
+      try {
+        const d = await httpGitApi.listarForjas();
+        if (vivo) {
+          setCuentas(d.cuentas);
+          setGithubOk(d.githubConfigurado);
+          setGitlabOk(d.gitlabConfigurado);
+        }
+      } catch {
+        /* OAuth opcional */
+      }
+    })();
+    void (async () => {
+      setCargandoLista(true);
+      setAvisoForja(null);
+      try {
+        const d = await httpGitApi.listarSolicitudesForja(repoPath);
+        if (vivo) {
+          setSolicitudes(d.solicitudes);
+          setProveedor(d.origin.proveedor);
+          setSeleccion(null);
+          setDiff('');
+        }
+      } catch (err: unknown) {
+        if (vivo) {
+          const mensaje = err instanceof Error ? err.message : 'La forja no responde.';
+          setAvisoForja(mensaje);
+          setSolicitudes([]);
+          onError(mensaje);
+        }
+      } finally {
+        if (vivo) setCargandoLista(false);
+      }
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, [repoPath, onError]);
 
   useEffect(() => {
     if (!base) {
@@ -189,7 +223,12 @@ export const ModalForjas: React.FC<ModalForjasProps> = ({
             <GitPullRequest className="w-5 h-5 text-sky-400" />
             <h3 className="font-bold text-sm text-white">Forjas — {etiqueta} del origin</h3>
           </div>
-          <button onClick={onClose} className="p-1 hover:bg-[#23283b] text-slate-400 hover:text-white rounded">
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1 hover:bg-[#23283b] text-slate-400 hover:text-white rounded"
+            aria-label="Cerrar"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -249,141 +288,33 @@ export const ModalForjas: React.FC<ModalForjasProps> = ({
         </div>
 
         {tab === 'lista' ? (
-          <div className="flex flex-1 min-h-0">
-            <div className="w-72 border-r border-[#23283b] overflow-y-auto">
-              {cargandoLista && <p className="p-3 text-xs text-slate-500">Consultando la forja…</p>}
-              {avisoForja && (
-                <p className="p-3 text-[11px] text-amber-300 border-b border-[#23283b]">{avisoForja}</p>
-              )}
-              {!cargandoLista && solicitudes.length === 0 && !avisoForja && (
-                <p className="p-3 text-xs text-slate-500">No hay solicitudes abiertas.</p>
-              )}
-              {solicitudes.map((s) => (
-                <button
-                  key={`${s.proveedor}-${s.numero}`}
-                  onClick={() => void abrirDiff(s)}
-                  className={`w-full text-left px-3 py-2.5 border-b border-[#23283b] hover:bg-[#23283b] ${
-                    seleccion?.numero === s.numero ? 'bg-[#23283b]' : ''
-                  }`}
-                >
-                  <div className="text-[11px] font-semibold text-slate-200 truncate">
-                    #{s.numero} {s.titulo}
-                  </div>
-                  <div className="text-[10px] text-slate-500 mt-0.5">
-                    {s.ramaOrigen} → {s.ramaDestino}
-                    {s.esFork ? ' · fork' : ''}
-                  </div>
-                </button>
-              ))}
-            </div>
-            <div className="flex-1 flex flex-col min-w-0">
-              {seleccion ? (
-                <>
-                  <div className="px-3 py-2 border-b border-[#23283b] flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-white truncate">{seleccion.titulo}</p>
-                      <p className="text-[10px] text-slate-500">
-                        {seleccion.autor} · {seleccion.ramaOrigen} → {seleccion.ramaDestino}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <a
-                        href={seleccion.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="p-1.5 text-slate-400 hover:text-white"
-                        title="Abrir en la forja"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </a>
-                      <button
-                        type="button"
-                        disabled={checkoutEnCurso}
-                        onClick={() => void checkout()}
-                        className="px-2.5 py-1 text-[11px] font-bold bg-sky-500 hover:bg-sky-600 text-slate-950 rounded disabled:opacity-40"
-                      >
-                        Checkout rama
-                      </button>
-                    </div>
-                  </div>
-                  <div className="flex-1 overflow-auto bg-[#10131e] p-2">
-                    {cargandoDiff ? (
-                      <p className="text-xs text-slate-500 px-2">Cargando diff…</p>
-                    ) : (
-                      <pre className="text-[11px] font-mono leading-5">
-                        {(diff || 'Sin diff.').split('\n').map((line, i) => (
-                          <div key={i} className={`px-2 whitespace-pre-wrap ${claseLineaDiff(line)}`}>
-                            {line || ' '}
-                          </div>
-                        ))}
-                      </pre>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <p className="p-4 text-xs text-slate-500">Selecciona una solicitud para ver el diff.</p>
-              )}
-            </div>
-          </div>
+          <PanelListaForjas
+            cargandoLista={cargandoLista}
+            avisoForja={avisoForja}
+            solicitudes={solicitudes}
+            seleccion={seleccion}
+            diff={diff}
+            cargandoDiff={cargandoDiff}
+            checkoutEnCurso={checkoutEnCurso}
+            onAbrir={(s) => void abrirDiff(s)}
+            onCheckout={() => void checkout()}
+          />
         ) : (
-          <form onSubmit={crear} className="p-4 space-y-3 overflow-y-auto">
-            <p className="text-[11px] text-slate-400">
-              La rama <span className="text-emerald-300 font-semibold">{ramaActual}</span> debe existir en el
-              remoto (push previo). Si la forja no responde, commit y push locales siguen disponibles.
-            </p>
-            <input
-              value={titulo}
-              onChange={(e) => setTitulo(e.target.value)}
-              placeholder="Título"
-              className="w-full bg-[#10131e] border border-[#2e354e] rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500"
-            />
-            <textarea
-              value={cuerpo}
-              onChange={(e) => setCuerpo(e.target.value)}
-              placeholder="Descripción (opcional)"
-              rows={4}
-              className="w-full bg-[#10131e] border border-[#2e354e] rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 resize-none"
-            />
-            <label className="block text-[11px] text-slate-400">
-              Rama destino (base)
-              <select
-                value={base}
-                onChange={(e) => setBase(e.target.value)}
-                className="mt-1 w-full bg-[#10131e] border border-[#2e354e] rounded-lg px-3 py-2 text-xs text-white focus:outline-none"
-              >
-                {basesSugeridas.map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {creada && (
-              <a
-                href={creada.url}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center space-x-1 text-xs text-sky-300 hover:underline"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-                <span>
-                  Abierta #{creada.numero}: {creada.titulo}
-                </span>
-              </a>
-            )}
-            <div className="flex justify-end space-x-2 pt-1">
-              <button type="button" onClick={onClose} className="px-3 py-1.5 text-xs text-slate-400">
-                Cerrar
-              </button>
-              <button
-                type="submit"
-                disabled={creando || !titulo.trim() || ramaActual === base}
-                className="px-3 py-1.5 text-xs font-bold bg-sky-500 hover:bg-sky-600 text-slate-950 rounded disabled:opacity-40"
-              >
-                Crear {proveedor === 'gitlab' ? 'MR' : 'PR'}
-              </button>
-            </div>
-          </form>
+          <FormularioCrearForja
+            ramaActual={ramaActual}
+            titulo={titulo}
+            cuerpo={cuerpo}
+            base={base}
+            basesSugeridas={basesSugeridas}
+            creando={creando}
+            creada={creada}
+            etiquetaCrear={`Crear ${proveedor === 'gitlab' ? 'MR' : 'PR'}`}
+            onTitulo={setTitulo}
+            onCuerpo={setCuerpo}
+            onBase={setBase}
+            onSubmit={crear}
+            onClose={onClose}
+          />
         )}
       </div>
     </div>

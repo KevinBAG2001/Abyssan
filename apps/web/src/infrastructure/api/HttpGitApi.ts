@@ -11,6 +11,7 @@ import {
   CommandLogModel,
   GitOperacionModel,
 } from '../../domain/models/GitModels.js';
+import { tokenInstanciaCliente } from '../config/entornoCliente.js';
 
 export type InfoAmend = {
   esNuestro: boolean;
@@ -63,7 +64,7 @@ export type SolicitudForjaCreada = {
 };
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-const TOKEN_INSTANCIA = import.meta.env.VITE_ABYSSAN_API_TOKEN as string | undefined;
+const TOKEN_INSTANCIA = tokenInstanciaCliente;
 
 type Envelope<T> = {
   exito: boolean;
@@ -86,6 +87,16 @@ export class HttpGitApi {
       ...init,
       headers: this.cabeceras(init?.headers),
     });
+    if (!res.ok) {
+      let mensaje = `Error HTTP ${res.status}`;
+      try {
+        const cuerpo = (await res.json()) as Envelope<T>;
+        if (cuerpo.mensaje) mensaje = cuerpo.mensaje;
+      } catch {
+        /* cuerpo no JSON */
+      }
+      throw new Error(mensaje);
+    }
     const cuerpo = (await res.json()) as Envelope<T>;
     if (!cuerpo.exito) {
       throw new Error(cuerpo.mensaje || `Error HTTP ${res.status}`);
