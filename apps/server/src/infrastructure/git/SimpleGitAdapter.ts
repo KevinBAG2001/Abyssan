@@ -17,6 +17,8 @@ import {
   FileChangeEntity,
   InfoAmendEntity,
   EntradaReflogEntity,
+  PreviewOperacionEntity,
+  ArchivoAfectadoPreview,
 } from '../../domain/entities/GitEntities.js';
 import type { EscuchaProgresoGit } from '../../domain/entities/GitOperacion.js';
 import { parsearHunksConflicto } from '../../application/conflictos/parsearConflictos.js';
@@ -398,14 +400,22 @@ export class SimpleGitAdapter implements IGitRepository {
     const start = Date.now();
     const git = this.getGitInstance(repoPath, onProgreso);
     const remotoToken = await this.urlRemotoConToken(repoPath);
+    const status = await git.status();
+    const rama = status.current || 'HEAD';
+    const sinUpstream = !status.tracking;
     try {
       if (remotoToken) {
-        const status = await git.status();
-        await git.raw(['push', '--progress', remotoToken, status.current || 'HEAD']);
+        const args = sinUpstream
+          ? ['push', '--set-upstream', '--progress', remotoToken, rama]
+          : ['push', '--progress', remotoToken, rama];
+        await git.raw(args);
       } else {
-        await git.raw(['push', '--progress']);
+        const args = sinUpstream
+          ? ['push', '--set-upstream', '--progress', 'origin', rama]
+          : ['push', '--progress'];
+        await git.raw(args);
       }
-      this.logRepository.addLog('git push', Date.now() - start, true);
+      this.logRepository.addLog(`git push${sinUpstream ? ' --set-upstream' : ''}`, Date.now() - start, true);
     } catch (err: any) {
       this.logRepository.addLog('git push', Date.now() - start, false, undefined, err.message);
       throw err;
@@ -901,5 +911,325 @@ export class SimpleGitAdapter implements IGitRepository {
     const fullPath = path.join(repoPath, filePath);
     fs.writeFileSync(fullPath, resolvedContent, 'utf8');
     await this.stageFile(repoPath, filePath);
+  }
+
+  // --- Identidad del autor git ---
+
+  async obtenerIdentidad(repoPath: string): Promise<{ nombre: string; correo: string; alcance: 'local' | 'global' }> {
+    const git = this.getGitInstance(repoPath);
+    let nombre = '';
+    let correo = '';
+    let alcance: 'local' | 'global' = 'global';
+
+    try { nombre = (await git.raw(['config', '--local', 'user.name'])).trim(); } catch { /* sin config local */ }
+    try { correo = (await git.raw(['config', '--local', 'user.email'])).trim(); } catch { /* sin config local */ }
+
+    if (nombre || correo) {
+      alcance = 'local';
+    } else {
+      try { nombre = (await git.raw(['config', '--global', 'user.name'])).trim(); } catch { /* sin config global */ }
+      try { correo = (await git.raw(['config', '--global', 'user.email'])).trim(); } catch { /* sin config global */ }
+    }
+
+    return { nombre, correo, alcance };
+  }
+
+  async configurarIdentidad(repoPath: string, nombre: string, correo: string, global: boolean): Promise<void> {
+    const start = Date.now();
+    const git = this.getGitInstance(repoPath);
+    const scope = global ? '--global' : '--local';
+    try {
+      await git.raw(['config', scope, 'user.name', nombre]);
+      await git.raw(['config', scope, 'user.email', correo]);
+      this.logRepository.addLog(`git config ${scope} user.name/email`, Date.now() - start, true);
+    } catch (err: any) {
+      this.logRepository.addLog(`git config ${scope} user.name/email`, Date.now() - start, false, undefined, err.message);
+      throw err;
+    }
+  }
+
+  // --- Preview de operaciones peligrosas (no mutante) ---
+
+  private async obtenerCommitsEntre(git: SimpleGit, desde: string, hasta: string): Promise<CommitEntity[]> {
+    try {
+      const raw = await git.raw([
+        'log', `${desde}..${hasta}`,
+        '--pretty=format:%H%x00%h%x00%P%x00%an%x00%ae%x00%ad%x00%s%x01',
+        '--date=iso-strict',
+      ]);
+      if (!raw.trim()) return [];
+      return raw.split('\x01').filter((c) => c.trim()).map((linea) => {
+        const [hash, shortHash, parentsStr, authorName, authorEmail, date, message] = linea.split('\x00');
+        return {
+          hash: hash?.trim() || '', shortHash: shortHash?.trim() || '',
+          parents: parentsStr ? parentsStr.trim().split(' ').filter(Boolean) : [],
+          authorName: authorName || '', authorEmail: authorEmail || '',
+          date: date || '', message: message || '',
+        };
+      });
+    } catch { return []; }
+  }
+
+  private parsearArchivosDeNumstat(numstat: string): ArchivoAfectadoPreview[] {
+    return numstat.split('\n').filter((l) => l.trim()).map((linea) => {
+      const [added, deleted, filePath] = linea.split('\t');
+      const tipo: ArchivoAfectadoPreview['tipo'] =
+        added === '0' && deleted !== '0' ? 'eliminado'
+        : added !== '0' && deleted === '0' ? 'agregado'
+        : 'modificado';
+      return { path: filePath || '', tipo };
+    }).filter((a) => a.path);
+  }
+
+  async previewMerge(repoPath: string, sourceBranch: string): Promise<PreviewOperacionEntity> {
+    const git = this.getGitInstance(repoPath);
+    const riesgos: string[] = [];
+    const conflictos: string[] = [];
+    let viable = true;
+
+    const status = await git.status();
+    const ramaActual = status.current || 'HEAD';
+    if (status.files.length > 0) {
+      riesgos.push('Hay cambios sin commitear que podrían interferir con el merge.');
+    }
+
+    // merge-base
+    let mergeBase: string;
+    try {
+      mergeBase = (await git.raw(['merge-base', ramaActual, sourceBranch])).trim();
+    } catch {
+      return {
+        operacion: 'merge', viable: false, conflictos: [], commitsAfectados: [],
+        archivosAfectados: [], riesgos: [`No se encontró ancestro común entre ${ramaActual} y ${sourceBranch}.`],
+        resumen: `No se puede hacer merge: sin ancestro común.`,
+      };
+    }
+
+    // Detectar conflictos con merge-tree (Git 2.38+)
+    try {
+      const result = await git.raw(['merge-tree', '--write-tree', '--no-messages', ramaActual, sourceBranch]);
+      const lineas = result.trim().split('\n');
+      const treeHash = lineas[0];
+      // Si hay archivos conflictivos, se listan después del hash
+      for (let i = 1; i < lineas.length; i++) {
+        const l = lineas[i].trim();
+        if (l) conflictos.push(l);
+      }
+    } catch (err: any) {
+      // merge-tree retorna exit code 1 si hay conflictos (Git 2.38+)
+      const salida = err.message || '';
+      const lineas = salida.split('\n');
+      for (const l of lineas) {
+        const trimmed = l.trim();
+        if (trimmed && !trimmed.startsWith('CONFLICT') && trimmed.length === 40) continue;
+        if (trimmed.startsWith('CONFLICT')) {
+          const match = trimmed.match(/CONFLICT \([^)]+\): .* (\S+)$/);
+          if (match) conflictos.push(match[1]);
+          else conflictos.push(trimmed);
+        }
+      }
+      if (conflictos.length === 0) {
+        // Fallback: usar diff para estimar
+        try {
+          const diffNames = await git.raw(['diff', '--name-only', `${ramaActual}...${sourceBranch}`]);
+          const archivosSource = new Set(diffNames.trim().split('\n').filter(Boolean));
+          const diffLocal = await git.raw(['diff', '--name-only', `${mergeBase}..${ramaActual}`]);
+          const archivosLocal = new Set(diffLocal.trim().split('\n').filter(Boolean));
+          for (const f of archivosSource) {
+            if (archivosLocal.has(f)) conflictos.push(f);
+          }
+        } catch { /* sin estimación */ }
+      }
+    }
+
+    if (conflictos.length > 0) {
+      riesgos.push(`${conflictos.length} archivo(s) en conflicto requieren resolución manual.`);
+    }
+
+    const commitsAfectados = await this.obtenerCommitsEntre(git, ramaActual, sourceBranch);
+
+    let archivosAfectados: ArchivoAfectadoPreview[] = [];
+    try {
+      const numstat = await git.raw(['diff', '--numstat', `${ramaActual}...${sourceBranch}`]);
+      archivosAfectados = this.parsearArchivosDeNumstat(numstat);
+      // Marcar los que tienen conflicto
+      const setConflictos = new Set(conflictos);
+      archivosAfectados = archivosAfectados.map((a) =>
+        setConflictos.has(a.path) ? { ...a, tipo: 'conflicto' as const } : a
+      );
+    } catch { /* sin detalle de archivos */ }
+
+    const resumen = conflictos.length > 0
+      ? `Merge de ${sourceBranch} → ${ramaActual}: ${commitsAfectados.length} commit(s), ${conflictos.length} conflicto(s).`
+      : `Merge de ${sourceBranch} → ${ramaActual}: ${commitsAfectados.length} commit(s), sin conflictos.`;
+
+    return { operacion: 'merge', viable, conflictos, commitsAfectados, archivosAfectados, riesgos, resumen };
+  }
+
+  async previewReset(repoPath: string, type: 'soft' | 'mixed' | 'hard', target: string): Promise<PreviewOperacionEntity> {
+    const git = this.getGitInstance(repoPath);
+    const riesgos: string[] = [];
+
+    const headHash = (await git.raw(['rev-parse', 'HEAD'])).trim();
+    const targetHash = (await git.raw(['rev-parse', target])).trim();
+
+    if (headHash === targetHash) {
+      return {
+        operacion: 'reset', viable: true, conflictos: [], commitsAfectados: [],
+        archivosAfectados: [], riesgos: [],
+        resumen: `HEAD ya apunta a ${target.substring(0, 7)}. El reset no tendrá efecto.`,
+      };
+    }
+
+    const commitsPerdidos = await this.obtenerCommitsEntre(git, targetHash, headHash);
+
+    if (type === 'hard') {
+      riesgos.push('reset --hard descarta todos los cambios del working tree y staging. Esta operación es destructiva.');
+      const status = await git.status();
+      if (status.files.length > 0) {
+        riesgos.push(`${status.files.length} archivo(s) con cambios locales serán descartados permanentemente.`);
+      }
+    } else if (type === 'mixed') {
+      riesgos.push('reset --mixed mueve los cambios de los commits al working tree (unstaged).');
+    } else {
+      riesgos.push('reset --soft mantiene todos los cambios en staging.');
+    }
+
+    if (commitsPerdidos.length > 0) {
+      riesgos.push(`${commitsPerdidos.length} commit(s) dejarán de ser alcanzables desde HEAD (recuperables vía reflog).`);
+    }
+
+    // Comprobar si algún commit ya está en remoto
+    try {
+      const remoteBranches = await git.raw(['branch', '-r', '--contains', headHash]);
+      if (remoteBranches.trim()) {
+        riesgos.push('Algunos commits ya están en el remoto; un push posterior requerirá --force.');
+      }
+    } catch { /* sin info de remoto */ }
+
+    let archivosAfectados: ArchivoAfectadoPreview[] = [];
+    try {
+      const numstat = await git.raw(['diff', '--numstat', `${targetHash}..${headHash}`]);
+      archivosAfectados = this.parsearArchivosDeNumstat(numstat);
+    } catch { /* sin detalle */ }
+
+    return {
+      operacion: 'reset', viable: true, conflictos: [],
+      commitsAfectados: commitsPerdidos, archivosAfectados, riesgos,
+      resumen: `Reset --${type} a ${target.substring(0, 7)}: ${commitsPerdidos.length} commit(s) retrocedidos, ${archivosAfectados.length} archivo(s) afectados.`,
+    };
+  }
+
+  async previewCherryPick(repoPath: string, hash: string): Promise<PreviewOperacionEntity> {
+    const git = this.getGitInstance(repoPath);
+    const riesgos: string[] = [];
+
+    // Obtener info del commit
+    const commitInfo: CommitEntity[] = await this.obtenerCommitsEntre(git, `${hash}~1`, hash).catch((): CommitEntity[] => []);
+    if (commitInfo.length === 0) {
+      try {
+        const raw = await git.raw(['log', '-1', '--pretty=format:%H%x00%h%x00%P%x00%an%x00%ae%x00%ad%x00%s', hash]);
+        const [h, sh, p, an, ae, d, m] = raw.split('\x00');
+        commitInfo.push({
+          hash: h || '', shortHash: sh || '',
+          parents: p ? p.trim().split(' ').filter(Boolean) : [],
+          authorName: an || '', authorEmail: ae || '', date: d || '', message: m || '',
+        });
+      } catch { /* sin info */ }
+    }
+
+    // Estimar archivos afectados
+    let archivosAfectados: ArchivoAfectadoPreview[] = [];
+    try {
+      const numstat = await git.raw(['diff', '--numstat', `${hash}~1`, hash]);
+      archivosAfectados = this.parsearArchivosDeNumstat(numstat);
+    } catch { /* sin detalle */ }
+
+    // Estimar conflictos: archivos tocados por el commit que también difieren en HEAD
+    const conflictos: string[] = [];
+    try {
+      const archivosCommit = new Set(archivosAfectados.map((a) => a.path));
+      const status = await git.status();
+      for (const f of status.modified) {
+        if (archivosCommit.has(f)) conflictos.push(f);
+      }
+      // Verificar si ya existe en HEAD con diferencias
+      const headDiff = await git.raw(['diff', '--name-only', 'HEAD']);
+      for (const f of headDiff.trim().split('\n').filter(Boolean)) {
+        if (archivosCommit.has(f) && !conflictos.includes(f)) conflictos.push(f);
+      }
+    } catch { /* sin estimación */ }
+
+    if (conflictos.length > 0) {
+      riesgos.push(`${conflictos.length} archivo(s) podrían generar conflictos.`);
+      archivosAfectados = archivosAfectados.map((a) =>
+        conflictos.includes(a.path) ? { ...a, tipo: 'conflicto' as const } : a
+      );
+    }
+
+    const status = await git.status();
+    if (status.files.length > 0) {
+      riesgos.push('Hay cambios sin commitear que podrían interferir.');
+    }
+
+    return {
+      operacion: 'cherry-pick', viable: true, conflictos,
+      commitsAfectados: commitInfo, archivosAfectados, riesgos,
+      resumen: `Cherry-pick de ${hash.substring(0, 7)}: ${archivosAfectados.length} archivo(s) afectados.`,
+    };
+  }
+
+  async previewRevert(repoPath: string, hash: string): Promise<PreviewOperacionEntity> {
+    const git = this.getGitInstance(repoPath);
+    const riesgos: string[] = [];
+
+    const commitInfo: CommitEntity[] = [];
+    try {
+      const raw = await git.raw(['log', '-1', '--pretty=format:%H%x00%h%x00%P%x00%an%x00%ae%x00%ad%x00%s', hash]);
+      const [h, sh, p, an, ae, d, m] = raw.split('\x00');
+      commitInfo.push({
+        hash: h || '', shortHash: sh || '',
+        parents: p ? p.trim().split(' ').filter(Boolean) : [],
+        authorName: an || '', authorEmail: ae || '', date: d || '', message: m || '',
+      });
+    } catch { /* sin info */ }
+
+    if (commitInfo[0]?.parents?.length > 1) {
+      riesgos.push('El commit es un merge commit; revert de merges puede tener efectos inesperados.');
+    }
+
+    let archivosAfectados: ArchivoAfectadoPreview[] = [];
+    try {
+      const numstat = await git.raw(['diff', '--numstat', `${hash}~1`, hash]);
+      archivosAfectados = this.parsearArchivosDeNumstat(numstat).map((a) => ({
+        ...a,
+        tipo: a.tipo === 'agregado' ? 'eliminado' as const
+            : a.tipo === 'eliminado' ? 'agregado' as const
+            : a.tipo,
+      }));
+    } catch { /* sin detalle */ }
+
+    // Estimar conflictos
+    const conflictos: string[] = [];
+    try {
+      const archivosRevert = new Set(archivosAfectados.map((a) => a.path));
+      const diffSinceCommit = await git.raw(['diff', '--name-only', hash, 'HEAD']);
+      for (const f of diffSinceCommit.trim().split('\n').filter(Boolean)) {
+        if (archivosRevert.has(f)) conflictos.push(f);
+      }
+    } catch { /* sin estimación */ }
+
+    if (conflictos.length > 0) {
+      riesgos.push(`${conflictos.length} archivo(s) modificados después del commit podrían generar conflictos.`);
+      archivosAfectados = archivosAfectados.map((a) =>
+        conflictos.includes(a.path) ? { ...a, tipo: 'conflicto' as const } : a
+      );
+    }
+
+    return {
+      operacion: 'revert', viable: true, conflictos,
+      commitsAfectados: commitInfo, archivosAfectados, riesgos,
+      resumen: `Revert de ${hash.substring(0, 7)}: ${archivosAfectados.length} archivo(s) afectados, creará un nuevo commit.`,
+    };
   }
 }

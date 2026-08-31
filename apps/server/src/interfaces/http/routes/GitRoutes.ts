@@ -61,6 +61,13 @@ gitRouter.get('/reflog', (req, res) => gitController.obtenerReflog(req, res));
 gitRouter.get('/deshacer', (req, res) => gitController.obtenerUltimaOperacion(req, res));
 gitRouter.post('/deshacer', (req, res) => gitController.deshacer(req, res));
 
+// Identidad git
+gitRouter.get('/identity', (req, res) => gitController.obtenerIdentidad(req, res));
+gitRouter.post('/identity', (req, res) => gitController.configurarIdentidad(req, res));
+
+// Preview de operaciones peligrosas
+gitRouter.post('/preview', (req, res) => gitController.previewOperacion(req, res));
+
 // Conflictos
 gitRouter.get('/conflict', (req, res) => gitController.getConflict(req, res));
 gitRouter.post('/conflict/resolve', (req, res) => gitController.resolveConflict(req, res));
