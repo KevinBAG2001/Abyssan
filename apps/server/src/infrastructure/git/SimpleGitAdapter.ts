@@ -400,14 +400,22 @@ export class SimpleGitAdapter implements IGitRepository {
     const start = Date.now();
     const git = this.getGitInstance(repoPath, onProgreso);
     const remotoToken = await this.urlRemotoConToken(repoPath);
+    const status = await git.status();
+    const rama = status.current || 'HEAD';
+    const sinUpstream = !status.tracking;
     try {
       if (remotoToken) {
-        const status = await git.status();
-        await git.raw(['push', '--progress', remotoToken, status.current || 'HEAD']);
+        const args = sinUpstream
+          ? ['push', '--set-upstream', '--progress', remotoToken, rama]
+          : ['push', '--progress', remotoToken, rama];
+        await git.raw(args);
       } else {
-        await git.raw(['push', '--progress']);
+        const args = sinUpstream
+          ? ['push', '--set-upstream', '--progress', 'origin', rama]
+          : ['push', '--progress'];
+        await git.raw(args);
       }
-      this.logRepository.addLog('git push', Date.now() - start, true);
+      this.logRepository.addLog(`git push${sinUpstream ? ' --set-upstream' : ''}`, Date.now() - start, true);
     } catch (err: any) {
       this.logRepository.addLog('git push', Date.now() - start, false, undefined, err.message);
       throw err;
