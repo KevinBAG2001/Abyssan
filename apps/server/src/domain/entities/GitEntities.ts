@@ -105,6 +105,25 @@ export interface BranchComparisonEntity {
   diffSummary: string;
 }
 
+// --- Preview de operaciones peligrosas (no mutante) ---
+
+export type TipoOperacionPreview = 'merge' | 'rebase' | 'reset' | 'cherry-pick' | 'revert' | 'force-push';
+
+export interface ArchivoAfectadoPreview {
+  path: string;
+  tipo: 'modificado' | 'agregado' | 'eliminado' | 'conflicto';
+}
+
+export interface PreviewOperacionEntity {
+  operacion: TipoOperacionPreview;
+  viable: boolean;
+  conflictos: string[];
+  commitsAfectados: CommitEntity[];
+  archivosAfectados: ArchivoAfectadoPreview[];
+  riesgos: string[];
+  resumen: string;
+}
+
 export interface CommandLogEntity {
   id: string;
   timestamp: string;

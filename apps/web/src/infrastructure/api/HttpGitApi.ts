@@ -10,6 +10,8 @@ import {
   ConflictModel,
   CommandLogModel,
   GitOperacionModel,
+  PreviewOperacionModel,
+  TipoOperacionPreview,
 } from '../../domain/models/GitModels.js';
 import { tokenInstanciaCliente } from '../config/entornoCliente.js';
 
@@ -254,6 +256,31 @@ export class HttpGitApi {
 
   async getOperaciones(): Promise<GitOperacionModel[]> {
     return this.pedir('/api/git/operaciones');
+  }
+
+  async obtenerIdentidad(repoPath: string): Promise<{ nombre: string; correo: string; alcance: 'local' | 'global' }> {
+    return this.pedir(`/api/git/identity?path=${encodeURIComponent(repoPath)}`);
+  }
+
+  async configurarIdentidad(
+    repoPath: string,
+    nombre: string,
+    correo: string,
+    global = false
+  ): Promise<void> {
+    await this.post('/api/git/identity', { repoPath, nombre, correo, global });
+  }
+
+  async previewOperacion(
+    repoPath: string,
+    operacion: TipoOperacionPreview,
+    params: { sourceBranch?: string; type?: 'soft' | 'mixed' | 'hard'; target?: string; hash?: string } = {}
+  ): Promise<PreviewOperacionModel> {
+    return this.pedir('/api/git/preview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ repoPath, operacion, ...params }),
+    });
   }
 
   async discardArchivo(repoPath: string, file: string): Promise<void> {

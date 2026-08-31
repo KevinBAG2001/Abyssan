@@ -514,6 +514,49 @@ export class GitController {
     }
   }
 
+  async obtenerIdentidad(req: Request, res: Response) {
+    try {
+      const repoPath = req.query.path as string;
+      if (!repoPath) return this.falta(res, 'Parámetro path es requerido');
+      const identidad = await this.gitUseCases.obtenerIdentidad(this.validarRepo(repoPath));
+      responderExito(res, identidad, 'Identidad git');
+    } catch (error: unknown) {
+      this.responderError(res, error);
+    }
+  }
+
+  async configurarIdentidad(req: Request, res: Response) {
+    try {
+      const { repoPath, nombre, correo, global: esGlobal } = req.body;
+      if (!repoPath || !nombre || !correo) {
+        return this.falta(res, 'repoPath, nombre y correo son requeridos');
+      }
+      await this.gitUseCases.configurarIdentidad(this.validarRepo(repoPath), nombre, correo, Boolean(esGlobal));
+      responderExito(res, {}, `Identidad configurada (${esGlobal ? 'global' : 'local'})`);
+    } catch (error: unknown) {
+      this.responderError(res, error);
+    }
+  }
+
+  async previewOperacion(req: Request, res: Response) {
+    try {
+      const { repoPath, operacion, sourceBranch, type, target, hash } = req.body;
+      if (!repoPath || !operacion) return this.falta(res, 'repoPath y operacion son requeridos');
+      const operacionesValidas = ['merge', 'rebase', 'reset', 'cherry-pick', 'revert', 'force-push'];
+      if (!operacionesValidas.includes(operacion)) {
+        return this.falta(res, `Operación inválida. Válidas: ${operacionesValidas.join(', ')}`);
+      }
+      const preview = await this.gitUseCases.previewOperacion(
+        this.validarRepo(repoPath),
+        operacion,
+        { sourceBranch, type, target, hash }
+      );
+      responderExito(res, preview, `Preview de ${operacion}`);
+    } catch (error: unknown) {
+      this.responderError(res, error);
+    }
+  }
+
   async deshacer(req: Request, res: Response) {
     try {
       const { repoPath } = req.body;
