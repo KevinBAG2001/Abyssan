@@ -101,6 +101,25 @@ export interface CommandLogModel {
   error?: string;
 }
 
+// --- Preview de operaciones peligrosas ---
+
+export type TipoOperacionPreview = 'merge' | 'rebase' | 'reset' | 'cherry-pick' | 'revert' | 'force-push';
+
+export interface ArchivoAfectadoPreview {
+  path: string;
+  tipo: 'modificado' | 'agregado' | 'eliminado' | 'conflicto';
+}
+
+export interface PreviewOperacionModel {
+  operacion: TipoOperacionPreview;
+  viable: boolean;
+  conflictos: string[];
+  commitsAfectados: CommitModel[];
+  archivosAfectados: ArchivoAfectadoPreview[];
+  riesgos: string[];
+  resumen: string;
+}
+
 export type EstadoGitOperacion = 'en_cola' | 'corriendo' | 'exito' | 'fallo';
 
 export type GitOperacionModel = {

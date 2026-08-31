@@ -11,6 +11,8 @@ import {
   BranchComparisonEntity,
   InfoAmendEntity,
   EntradaReflogEntity,
+  PreviewOperacionEntity,
+  TipoOperacionPreview,
 } from '../entities/GitEntities.js';
 import type { EscuchaProgresoGit } from '../entities/GitOperacion.js';
 
@@ -71,4 +73,14 @@ export interface IGitRepository {
   // Conflictos
   getConflictDetails(repoPath: string, filePath: string): Promise<ConflictEntity>;
   resolveConflict(repoPath: string, filePath: string, resolvedContent: string): Promise<void>;
+
+  // Identidad del autor git
+  obtenerIdentidad(repoPath: string): Promise<{ nombre: string; correo: string; alcance: 'local' | 'global' }>;
+  configurarIdentidad(repoPath: string, nombre: string, correo: string, global: boolean): Promise<void>;
+
+  // Preview de operaciones peligrosas (no mutante)
+  previewMerge(repoPath: string, sourceBranch: string): Promise<PreviewOperacionEntity>;
+  previewReset(repoPath: string, type: 'soft' | 'mixed' | 'hard', target: string): Promise<PreviewOperacionEntity>;
+  previewCherryPick(repoPath: string, hash: string): Promise<PreviewOperacionEntity>;
+  previewRevert(repoPath: string, hash: string): Promise<PreviewOperacionEntity>;
 }

@@ -16,6 +16,8 @@ import {
   CommandLogEntity,
   InfoAmendEntity,
   EntradaReflogEntity,
+  PreviewOperacionEntity,
+  TipoOperacionPreview,
 } from '../../domain/entities/GitEntities.js';
 import {
   registroUltimaOperacion,
@@ -450,6 +452,45 @@ export class GitUseCases {
 
   async resolveConflict(repoPath: string, filePath: string, resolvedContent: string): Promise<void> {
     await this.gitRepository.resolveConflict(repoPath, filePath, resolvedContent);
+  }
+
+  // --- Identidad del autor git ---
+
+  async obtenerIdentidad(repoPath: string): Promise<{ nombre: string; correo: string; alcance: 'local' | 'global' }> {
+    return this.gitRepository.obtenerIdentidad(repoPath);
+  }
+
+  async configurarIdentidad(repoPath: string, nombre: string, correo: string, global: boolean): Promise<void> {
+    return this.gitRepository.configurarIdentidad(repoPath, nombre, correo, global);
+  }
+
+  // --- Preview de operaciones peligrosas (no mutante) ---
+
+  async previewOperacion(
+    repoPath: string,
+    operacion: TipoOperacionPreview,
+    params: { sourceBranch?: string; type?: 'soft' | 'mixed' | 'hard'; target?: string; hash?: string }
+  ): Promise<PreviewOperacionEntity> {
+    switch (operacion) {
+      case 'merge': {
+        if (!params.sourceBranch) throw new Error('sourceBranch es requerido para preview de merge');
+        return this.gitRepository.previewMerge(repoPath, params.sourceBranch);
+      }
+      case 'reset': {
+        if (!params.type || !params.target) throw new Error('type y target son requeridos para preview de reset');
+        return this.gitRepository.previewReset(repoPath, params.type, params.target);
+      }
+      case 'cherry-pick': {
+        if (!params.hash) throw new Error('hash es requerido para preview de cherry-pick');
+        return this.gitRepository.previewCherryPick(repoPath, params.hash);
+      }
+      case 'revert': {
+        if (!params.hash) throw new Error('hash es requerido para preview de revert');
+        return this.gitRepository.previewRevert(repoPath, params.hash);
+      }
+      default:
+        throw new Error(`Operación de preview no soportada: ${operacion}`);
+    }
   }
 
   getAuditLogs(): CommandLogEntity[] {
