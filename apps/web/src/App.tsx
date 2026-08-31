@@ -7,6 +7,7 @@ import { DiffViewer } from './components/DiffViewer';
 import { ConflictResolver } from './components/ConflictResolver';
 import { GitConsoleDrawer } from './components/GitConsoleDrawer';
 import { CapaModalesApp } from './components/CapaModalesApp';
+import { ModalIdentidadGit } from './components/ModalIdentidadGit';
 import { useGitRepository } from './application/hooks/useGitRepository';
 import { useMutacionesGit } from './application/hooks/useMutacionesGit';
 import { GitCommit } from './types/git';
@@ -35,6 +36,7 @@ export const App: React.FC = () => {
   const [nacimientoAbierto, setNacimientoAbierto] = useState(false);
   const [forjasAbiertas, setForjasAbiertas] = useState(false);
   const [paletaAbierta, setPaletaAbierta] = useState(false);
+  const [identidadAbierta, setIdentidadAbierta] = useState(false);
   const [modoPull, setModoPull] = useState<'merge' | 'rebase'>(
     () => (localStorage.getItem(CLAVE_PULL) as 'merge' | 'rebase') || 'merge'
   );
@@ -126,6 +128,7 @@ export const App: React.FC = () => {
         onOpenNacimiento={() => setNacimientoAbierto(true)}
         onOpenForjas={() => setForjasAbiertas(true)}
         onDeshacer={() => void mut.handleDeshacer()}
+        onOpenIdentidad={() => setIdentidadAbierta(true)}
         modoPull={modoPull}
         onCambiarModoPull={(modo) => {
           setModoPull(modo);
@@ -274,6 +277,15 @@ export const App: React.FC = () => {
         onCerrarPaleta={() => setPaletaAbierta(false)}
         onPaleta={onPaleta}
       />
+
+      {identidadAbierta && git.selectedRepo && (
+        <ModalIdentidadGit
+          repoPath={git.selectedRepo}
+          onClose={() => setIdentidadAbierta(false)}
+          onGuardado={() => git.showToast('Identidad git configurada', 'success')}
+          onError={(m) => git.showToast(m, 'error')}
+        />
+      )}
     </div>
   );
 };
