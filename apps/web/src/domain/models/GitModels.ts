@@ -137,3 +137,34 @@ export type GitOperacionModel = {
   error?: string;
 };
 
+export type TipoOperacionJournal =
+  | 'crearRama'
+  | 'borrarRama'
+  | 'renombrarRama'
+  | 'commit'
+  | 'amend'
+  | 'reset'
+  | 'discard'
+  | 'checkout'
+  | 'merge'
+  | 'clone'
+  | 'init'
+  | 'cherry-pick'
+  | 'revert'
+  | 'pull'
+  | 'push';
+
+export type EntradaJournal = {
+  id: string;
+  tipo: TipoOperacionJournal;
+  descripcion: string;
+  puedeDeshacer: boolean;
+  motivoBloqueo?: string;
+  comandoGit: string;
+  estadoAnterior: string;
+  timestamp: string;
+  deshecha: boolean;
+  esPunta: boolean;
+  archivosSnapshot: number;
+};
+

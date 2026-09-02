@@ -15,6 +15,7 @@ import {
   FolderPlus,
   GitPullRequest,
   User,
+  History,
 } from 'lucide-react';
 import { GitRepoSummary, GitRepoStatus } from '../types/git';
 
@@ -36,6 +37,7 @@ interface HeaderProps {
   onOpenNacimiento: () => void;
   onOpenForjas: () => void;
   onDeshacer: () => void;
+  onOpenTimeline: () => void;
   onOpenIdentidad: () => void;
   modoPull: 'merge' | 'rebase';
   onCambiarModoPull: (modo: 'merge' | 'rebase') => void;
@@ -61,6 +63,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenNacimiento,
   onOpenForjas,
   onDeshacer,
+  onOpenTimeline,
   onOpenIdentidad,
   modoPull,
   onCambiarModoPull,
@@ -236,6 +239,14 @@ export const Header: React.FC<HeaderProps> = ({
             title="Configurar identidad git (user.name / user.email)"
           >
             <User className="w-3.5 h-3.5 text-teal-400" />
+          </button>
+
+          <button
+            onClick={onOpenTimeline}
+            className="p-1.5 bg-[#1b1f30] hover:bg-[#23283b] text-slate-300 rounded-md border border-[#2e354e] transition-colors"
+            title="Timeline de operaciones (Time Machine)"
+          >
+            <History className="w-3.5 h-3.5 text-purple-400" />
           </button>
 
           <button

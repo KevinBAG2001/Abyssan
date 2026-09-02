@@ -59,6 +59,7 @@ gitRouter.get('/amend-info', (req, res) => gitController.obtenerInfoAmend(req, r
 gitRouter.post('/amend', (req, res) => gitController.enmendarCommit(req, res));
 gitRouter.get('/reflog', (req, res) => gitController.obtenerReflog(req, res));
 gitRouter.get('/deshacer', (req, res) => gitController.obtenerUltimaOperacion(req, res));
+gitRouter.get('/journal', (req, res) => gitController.listarJournal(req, res));
 gitRouter.post('/deshacer', (req, res) => gitController.deshacer(req, res));
 
 // Identidad git

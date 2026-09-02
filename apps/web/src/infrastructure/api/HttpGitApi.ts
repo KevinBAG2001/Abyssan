@@ -12,6 +12,7 @@ import {
   GitOperacionModel,
   PreviewOperacionModel,
   TipoOperacionPreview,
+  EntradaJournal,
 } from '../../domain/models/GitModels.js';
 import { tokenInstanciaCliente } from '../config/entornoCliente.js';
 
@@ -30,11 +31,15 @@ export type EntradaReflog = {
 };
 
 export type UltimaOperacion = {
+  id?: string;
   tipo?: string;
   repoPath?: string;
   descripcion?: string;
   puedeDeshacer: boolean;
   motivoBloqueo?: string;
+  comandoGit?: string;
+  estadoAnterior?: string;
+  timestamp?: string;
 };
 
 export type CuentaForja = { proveedor: 'github' | 'gitlab'; usuario?: string };
@@ -237,7 +242,12 @@ export class HttpGitApi {
   }
 
   async reset(repoPath: string, type: 'soft' | 'mixed' | 'hard', target: string): Promise<void> {
-    await this.post('/api/git/reset', { repoPath, type, target });
+    await this.post('/api/git/reset', {
+      repoPath,
+      type,
+      target,
+      confirmado: type === 'hard',
+    });
   }
 
   async getConflict(repoPath: string, file: string): Promise<ConflictModel> {
@@ -284,11 +294,11 @@ export class HttpGitApi {
   }
 
   async discardArchivo(repoPath: string, file: string): Promise<void> {
-    await this.post('/api/git/discard', { repoPath, file });
+    await this.post('/api/git/discard', { repoPath, file, confirmado: true });
   }
 
   async abortarMerge(repoPath: string): Promise<void> {
-    await this.post('/api/git/merge/abort', { repoPath });
+    await this.post('/api/git/merge/abort', { repoPath, confirmado: true });
   }
 
   async continuarMerge(repoPath: string): Promise<void> {
@@ -312,7 +322,7 @@ export class HttpGitApi {
   }
 
   async deleteLocalBranch(repoPath: string, branchName: string): Promise<void> {
-    await this.post('/api/git/branch/delete', { repoPath, branchName });
+    await this.post('/api/git/branch/delete', { repoPath, branchName, confirmado: true });
   }
 
   async renameLocalBranch(repoPath: string, nombreActual: string, nombreNuevo: string): Promise<void> {
@@ -340,8 +350,12 @@ export class HttpGitApi {
     return this.pedir(`/api/git/deshacer?path=${encodeURIComponent(repoPath)}`);
   }
 
-  async deshacer(repoPath: string): Promise<void> {
-    await this.post('/api/git/deshacer', { repoPath });
+  async getJournal(repoPath: string): Promise<EntradaJournal[]> {
+    return this.pedir(`/api/git/journal?path=${encodeURIComponent(repoPath)}`);
+  }
+
+  async deshacer(repoPath: string, id?: string): Promise<void> {
+    await this.post('/api/git/deshacer', { repoPath, ...(id ? { id } : {}) });
   }
 
   async listarForjas(): Promise<{

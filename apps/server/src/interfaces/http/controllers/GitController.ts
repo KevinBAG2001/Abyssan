@@ -9,6 +9,7 @@ import {
 } from '../../../infrastructure/seguridad/validarRutaRepositorio.js';
 import { codigoHttpDeError, responderExito, responderFallo } from '../respuestaApi.js';
 import { mensajeErrorGit } from '../../../application/git/mensajeErrorGit.js';
+import { exigirConfirmacion } from '../../../infrastructure/seguridad/confirmacionDestructiva.js';
 
 export class GitController {
   constructor(private gitUseCases: GitUseCases) {}
@@ -334,8 +335,9 @@ export class GitController {
 
   async reset(req: Request, res: Response) {
     try {
-      const { repoPath, type, target } = req.body;
+      const { repoPath, type, target, confirmado } = req.body;
       if (!repoPath || !type || !target) return this.falta(res, 'repoPath, type y target son requeridos');
+      if (type === 'hard') exigirConfirmacion(confirmado);
       await this.gitUseCases.reset(this.validarRepo(repoPath), type, target);
       responderExito(res, {}, `Reset (${type}) a ${target} ejecutado`);
     } catch (error: unknown) {
@@ -383,8 +385,9 @@ export class GitController {
 
   async discardArchivo(req: Request, res: Response) {
     try {
-      const { repoPath, file } = req.body;
+      const { repoPath, file, confirmado } = req.body;
       if (!repoPath || !file) return this.falta(res, 'repoPath y file son requeridos');
+      exigirConfirmacion(confirmado);
       const repoValidado = this.validarRepo(repoPath);
       const archivo = validarRutaArchivoEnRepositorio(repoValidado, file);
       await this.gitUseCases.discardArchivo(repoValidado, archivo);
@@ -396,8 +399,9 @@ export class GitController {
 
   async abortarMerge(req: Request, res: Response) {
     try {
-      const { repoPath } = req.body;
+      const { repoPath, confirmado } = req.body;
       if (!repoPath) return this.falta(res, 'repoPath es requerido');
+      exigirConfirmacion(confirmado);
       await this.gitUseCases.abortarMerge(this.validarRepo(repoPath));
       responderExito(res, {}, 'Merge abortado');
     } catch (error: unknown) {
@@ -443,8 +447,9 @@ export class GitController {
 
   async deleteLocalBranch(req: Request, res: Response) {
     try {
-      const { repoPath, branchName } = req.body;
+      const { repoPath, branchName, confirmado } = req.body;
       if (!repoPath || !branchName) return this.falta(res, 'repoPath y branchName son requeridos');
+      exigirConfirmacion(confirmado);
       await this.gitUseCases.deleteLocalBranch(this.validarRepo(repoPath), branchName);
       responderExito(res, {}, `Rama ${branchName} eliminada`);
     } catch (error: unknown) {
@@ -514,6 +519,31 @@ export class GitController {
     }
   }
 
+  listarJournal(req: Request, res: Response) {
+    try {
+      const repoPath = req.query.path as string;
+      if (!repoPath) return this.falta(res, 'Parámetro path es requerido');
+      const entradas = this.gitUseCases.listarJournal(this.validarRepo(repoPath));
+      responderExito(res, entradas, 'Journal de operaciones');
+    } catch (error: unknown) {
+      this.responderError(res, error);
+    }
+  }
+
+  async deshacer(req: Request, res: Response) {
+    try {
+      const { repoPath, id } = req.body;
+      if (!repoPath) return this.falta(res, 'repoPath es requerido');
+      if (id !== undefined && (typeof id !== 'string' || id.length === 0)) {
+        return this.falta(res, 'id de journal inválido');
+      }
+      await this.gitUseCases.deshacer(this.validarRepo(repoPath), id);
+      responderExito(res, {}, 'Operación deshecha');
+    } catch (error: unknown) {
+      this.responderError(res, error);
+    }
+  }
+
   async obtenerIdentidad(req: Request, res: Response) {
     try {
       const repoPath = req.query.path as string;
@@ -552,17 +582,6 @@ export class GitController {
         { sourceBranch, type, target, hash }
       );
       responderExito(res, preview, `Preview de ${operacion}`);
-    } catch (error: unknown) {
-      this.responderError(res, error);
-    }
-  }
-
-  async deshacer(req: Request, res: Response) {
-    try {
-      const { repoPath } = req.body;
-      if (!repoPath) return this.falta(res, 'repoPath es requerido');
-      await this.gitUseCases.deshacer(this.validarRepo(repoPath));
-      responderExito(res, {}, 'Operación deshecha');
     } catch (error: unknown) {
       this.responderError(res, error);
     }
