@@ -5,6 +5,9 @@ on:
     branches: [main, qa, dev]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   verificar:
     runs-on: ubuntu-latest
@@ -15,7 +18,7 @@ jobs:
           version: 9
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
       - name: Instalar dependencias
         run: pnpm install --frozen-lockfile

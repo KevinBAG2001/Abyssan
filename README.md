@@ -333,7 +333,7 @@ docker compose ps
 | API      | [http://127.0.0.1:3001](http://127.0.0.1:3001) |
 
 
-El contenedor del servidor monta la carpeta de proyectos en `PROJECTS_ROOT=/workspace/proyectos` **en lectura-escritura**. Compose publica los puertos solo en localhost del host. Como el proceso dentro del contenedor escucha `0.0.0.0`, hace falta `ABYSSAN_API_TOKEN` (default de desarrollo: `abyssan-local`). Cámbialo si expones la instancia en LAN.
+El contenedor del servidor monta proyectos en `PROJECTS_ROOT=/workspace/proyectos` **en lectura-escritura** (`ABYSSAN_PROJECTS_HOST`, por defecto el checkout). Compose publica los puertos solo en localhost del host. Como el proceso dentro del contenedor escucha `0.0.0.0`, **hace falta** `ABYSSAN_API_TOKEN` en `.env` (sin default). No re-publiques los puertos sin `127.0.0.1`.
 
 ---
 
@@ -348,10 +348,11 @@ Abyssan ejecuta Git sobre el filesystem del host. El modelo de amenaza de Daily 
 | ------------------------ | --------------------------------------------------------------------------------------------- |
 | Sandbox de rutas         | Todo `repoPath` pasa por `validarRutaRepositorio`. Fuera de `PROJECTS_ROOT` → **403**.        |
 | Superficie Git           | Solo operaciones vía `simple-git`. Sin shell arbitrario.                                      |
-| Operaciones destructivas | Reset hard (y equivalentes) exigen confirmación en UI.                                        |
-| WebSocket                | Valida `WATCH_REPO`. Emite eventos de cambio, no diffs ni secretos.                           |
+| Operaciones destructivas | Confirmación en UI **y** `confirmado: true` en el API (reset hard, discard, borrar rama, abortar merge). |
+| CORS / Origin            | Solo la SPA en `:5174` (o `CORS_ORIGINS`). Mutación con Origin ajeno → **403**. |
+| WebSocket                | Valida `WATCH_REPO` y Origin. Emite eventos de cambio, no diffs ni secretos.                  |
 | Credenciales             | No se versionan. SSH usa el agent del sistema.                                                |
-| Exposición de red        | Default **localhost**. Si `BIND_HOST` no es loopback, `ABYSSAN_API_TOKEN` es obligatorio. |
+| Exposición de red        | Default **localhost**. Vite en `127.0.0.1`. Si `BIND_HOST` no es loopback, `ABYSSAN_API_TOKEN` es obligatorio. |
 
 
 No copies `.env` al repositorio. No registres diffs completos en logs de producción.
@@ -405,6 +406,22 @@ Los packages internos usan el scope `@abyssan/*`. El nombre comercial del produc
 
 ---
 
+
+
+## Documentación
+
+La documentación técnica versionada está en `docs/wiki/` y `documents/wiki/`. La política de reporte de vulnerabilidades está en la raíz. Plan de elevación: [documents/seguridad/PLAN-ELEVACION.md](./documents/seguridad/PLAN-ELEVACION.md).
+
+- [Home de la documentación](./docs/wiki/Home.md)
+- [Instalación y configuración](./docs/wiki/Instalacion-y-configuracion.md)
+- [Arquitectura](./docs/wiki/Arquitectura.md)
+- [Referencia de API](./docs/wiki/Referencia-de-API.md)
+- [Seguridad (política de reporte)](./SECURITY.md)
+- [Seguridad técnica](./docs/wiki/Seguridad.md)
+- [Contribución](./docs/wiki/Contribucion.md)
+- [Roadmap](./docs/wiki/Roadmap.md)
+
+El detalle de producto y fases sigue en [docs/PLAN-TRABAJO.md](./docs/PLAN-TRABAJO.md). No trates el roadmap como inventario de funciones ya terminadas.
 
 
 ## Licencia

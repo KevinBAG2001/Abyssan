@@ -6,7 +6,7 @@ import { simpleGit } from 'simple-git';
 import { SimpleGitAdapter } from '../../infrastructure/git/SimpleGitAdapter.js';
 import { InMemoryCommandLogAdapter } from '../../infrastructure/logging/InMemoryCommandLogAdapter.js';
 import { GitUseCases } from '../use-cases/GitUseCases.js';
-import { registroUltimaOperacion } from '../deshacer/RegistroUltimaOperacion.js';
+import { JournalOperaciones } from '../deshacer/JournalOperaciones.js';
 import { validarDestinoNuevo } from '../../infrastructure/seguridad/validarRutaRepositorio.js';
 
 async function crearRepo(raiz: string, nombre: string) {
@@ -29,9 +29,10 @@ describe('Flujo Daily Driver (mutaciones Git reales)', { timeout: 20_000 }, () =
 
   beforeEach(async () => {
     raiz = fs.mkdtempSync(path.join(os.tmpdir(), 'abyssan-dd-'));
+    const dirJournal = fs.mkdtempSync(path.join(os.tmpdir(), 'abyssan-journal-'));
     process.env.PROJECTS_ROOT = raiz;
-    registroUltimaOperacion.limpiar();
-    casos = new GitUseCases(new SimpleGitAdapter(new InMemoryCommandLogAdapter()), new InMemoryCommandLogAdapter());
+    const journal = new JournalOperaciones(dirJournal);
+    casos = new GitUseCases(new SimpleGitAdapter(new InMemoryCommandLogAdapter()), new InMemoryCommandLogAdapter(), journal);
   });
 
   afterEach(() => {
