@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { httpGitApi, type EntradaReflog, type UltimaOperacion } from '../../infrastructure/api/HttpGitApi';
-import type { ConflictModel, FileStatusModel, RepositoryStatusModel } from '../../domain/models/GitModels';
+import type { ConflictModel, EntradaJournal, FileStatusModel, RepositoryStatusModel } from '../../domain/models/GitModels';
 
 export type ConfirmacionPendiente = {
   titulo: string;
@@ -33,19 +33,23 @@ export function useMutacionesGit({
   setConflictData,
 }: DepsMutaciones) {
   const [ultimaOp, setUltimaOp] = useState<UltimaOperacion>({ puedeDeshacer: false });
+  const [journal, setJournal] = useState<EntradaJournal[]>([]);
   const [reflog, setReflog] = useState<EntradaReflog[]>([]);
   const [confirmacion, setConfirmacion] = useState<ConfirmacionPendiente | null>(null);
 
   const refrescarMeta = useCallback(async (repoPath: string) => {
     try {
-      const [op, rf] = await Promise.all([
+      const [op, rf, jn] = await Promise.all([
         httpGitApi.getUltimaOperacion(repoPath),
         httpGitApi.getReflog(repoPath),
+        httpGitApi.getJournal(repoPath),
       ]);
       setUltimaOp(op);
       setReflog(rf);
+      setJournal(jn);
     } catch {
       setUltimaOp({ puedeDeshacer: false, motivoBloqueo: 'No se pudo leer la última operación' });
+      setJournal([]);
     }
   }, []);
 
@@ -60,17 +64,20 @@ export function useMutacionesGit({
     let vivo = true;
     void (async () => {
       try {
-        const [op, rf] = await Promise.all([
+        const [op, rf, jn] = await Promise.all([
           httpGitApi.getUltimaOperacion(selectedRepo),
           httpGitApi.getReflog(selectedRepo),
+          httpGitApi.getJournal(selectedRepo),
         ]);
         if (vivo) {
           setUltimaOp(op);
           setReflog(rf);
+          setJournal(jn);
         }
       } catch {
         if (vivo) {
           setUltimaOp({ puedeDeshacer: false, motivoBloqueo: 'No se pudo leer la última operación' });
+          setJournal([]);
         }
       }
     })();
@@ -438,10 +445,10 @@ export function useMutacionesGit({
     }
   };
 
-  const handleDeshacer = async () => {
+  const handleDeshacer = async (id?: string) => {
     if (!selectedRepo) return;
     try {
-      await httpGitApi.deshacer(selectedRepo);
+      await httpGitApi.deshacer(selectedRepo, id);
       showToast('Operación deshecha', 'success');
       await afterMutacion();
     } catch (err: unknown) {
@@ -451,6 +458,7 @@ export function useMutacionesGit({
 
   return {
     ultimaOp,
+    journal,
     reflog,
     confirmacion,
     setConfirmacion,

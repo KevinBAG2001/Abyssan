@@ -25,6 +25,14 @@ describe('contrato API { exito, mensaje, datos, meta }', () => {
     expect(codigoHttpDeError(new Error('Ruta de repositorio no autorizada'))).toBe(403);
   });
 
+  it('un origen CORS rechazado se mapea a 403', () => {
+    expect(codigoHttpDeError(new Error('Origen no permitido'))).toBe(403);
+  });
+
+  it('falta de confirmación destructiva se mapea a 400', () => {
+    expect(codigoHttpDeError(new Error('Confirmación requerida para esta operación destructiva'))).toBe(400);
+  });
+
   it('un error genérico se mapea a 500', () => {
     expect(codigoHttpDeError(new Error('fatal: not a git repository'))).toBe(500);
   });

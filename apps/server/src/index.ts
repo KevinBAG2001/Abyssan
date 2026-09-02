@@ -15,8 +15,14 @@ import {
   validarConfiguracionToken,
 } from './infrastructure/seguridad/tokenInstancia.js';
 import { middlewareTokenInstancia } from './interfaces/http/middlewareToken.js';
+import { middlewareOrigenMutacion } from './interfaces/http/middlewareOrigen.js';
 import { hubWebSocket } from './infrastructure/ws/HubWebSocket.js';
 import { middlewareLimiteTasa } from './infrastructure/seguridad/limiteTasa.js';
+import {
+  extraerOrigin,
+  listarOrigenesPermitidos,
+  origenDePeticionPermitido,
+} from './infrastructure/seguridad/origenesPermitidos.js';
 
 cargarEntorno();
 
@@ -31,9 +37,20 @@ if (!process.env.PROJECTS_ROOT?.trim()) {
   process.exit(1);
 }
 
-app.use(cors());
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (origenDePeticionPermitido(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(null, false);
+    },
+  })
+);
 app.use(express.json());
 app.use('/api', middlewareLimiteTasa);
+app.use('/api', middlewareOrigenMutacion);
 
 app.get('/health', (_req, res) => {
   res.json({
@@ -56,6 +73,10 @@ const wss = new WebSocketServer({ server });
 wss.on('connection', (ws: WebSocket, req) => {
   if (!conexionWsAutorizada(req)) {
     ws.close(4401, 'Token de instancia requerido');
+    return;
+  }
+  if (!origenDePeticionPermitido(extraerOrigin(req.headers.origin))) {
+    ws.close(4403, 'Origen no permitido');
     return;
   }
 
@@ -102,4 +123,5 @@ wss.on('connection', (ws: WebSocket, req) => {
 server.listen(PORT, BIND_HOST, () => {
   console.log(`[Abyssan] API en http://${BIND_HOST}:${PORT}`);
   console.log(`[Abyssan] WebSocket en ws://${BIND_HOST}:${PORT}`);
+  console.log(`[Abyssan] CORS: ${listarOrigenesPermitidos().join(', ')}`);
 });

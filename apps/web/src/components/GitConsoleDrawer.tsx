@@ -137,7 +137,9 @@ export const GitConsoleDrawer: React.FC<GitConsoleDrawerProps> = ({
           <div className="p-3 space-y-1">
             {reflog.length > 0 && (
               <div className="mb-2 pb-2 border-b border-[#23283b]">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Reflog (últimas)</div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                  Reflog (red de emergencia)
+                </div>
                 {reflog.slice(0, 12).map((r) => (
                   <div key={`${r.hash}-${r.selector}-${r.fecha}`} className="flex space-x-2 text-slate-400 py-0.5">
                     <span className="text-emerald-400 font-mono w-14 shrink-0">{r.hash}</span>
