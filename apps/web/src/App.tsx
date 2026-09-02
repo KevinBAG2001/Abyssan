@@ -8,6 +8,7 @@ import { ConflictResolver } from './components/ConflictResolver';
 import { GitConsoleDrawer } from './components/GitConsoleDrawer';
 import { CapaModalesApp } from './components/CapaModalesApp';
 import { ModalIdentidadGit } from './components/ModalIdentidadGit';
+import { PanelTimeline } from './components/PanelTimeline';
 import { useGitRepository } from './application/hooks/useGitRepository';
 import { useMutacionesGit } from './application/hooks/useMutacionesGit';
 import { GitCommit } from './types/git';
@@ -37,6 +38,7 @@ export const App: React.FC = () => {
   const [forjasAbiertas, setForjasAbiertas] = useState(false);
   const [paletaAbierta, setPaletaAbierta] = useState(false);
   const [identidadAbierta, setIdentidadAbierta] = useState(false);
+  const [timelineAbierta, setTimelineAbierta] = useState(false);
   const [modoPull, setModoPull] = useState<'merge' | 'rebase'>(
     () => (localStorage.getItem(CLAVE_PULL) as 'merge' | 'rebase') || 'merge'
   );
@@ -54,7 +56,7 @@ export const App: React.FC = () => {
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
     if (q.get('oauth') === 'ok') git.showToast('Cuenta de forja conectada', 'success');
-    if (q.get('oauth') === 'error') git.showToast('OAuth falló. Revisa CLIENT_ID/SECRET.', 'error');
+    if (q.get('oauth') === 'error') git.showToast('OAuth falló. Revisa las credenciales de la forja.', 'error');
     if (q.has('oauth')) window.history.replaceState({}, '', window.location.pathname);
   }, [git.showToast]);
 
@@ -128,6 +130,7 @@ export const App: React.FC = () => {
         onOpenNacimiento={() => setNacimientoAbierto(true)}
         onOpenForjas={() => setForjasAbiertas(true)}
         onDeshacer={() => void mut.handleDeshacer()}
+        onOpenTimeline={() => setTimelineAbierta(true)}
         onOpenIdentidad={() => setIdentidadAbierta(true)}
         modoPull={modoPull}
         onCambiarModoPull={(modo) => {
@@ -277,6 +280,16 @@ export const App: React.FC = () => {
         onCerrarPaleta={() => setPaletaAbierta(false)}
         onPaleta={onPaleta}
       />
+
+      {timelineAbierta && (
+        <PanelTimeline
+          abierta={timelineAbierta}
+          entradas={mut.journal}
+          loading={git.loading}
+          onCerrar={() => setTimelineAbierta(false)}
+          onDeshacer={(id) => void mut.handleDeshacer(id)}
+        />
+      )}
 
       {identidadAbierta && git.selectedRepo && (
         <ModalIdentidadGit

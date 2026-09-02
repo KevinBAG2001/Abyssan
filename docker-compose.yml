@@ -15,11 +15,24 @@ services:
       - BIND_HOST=0.0.0.0
       - NODE_ENV=development
       - PROJECTS_ROOT=/workspace/proyectos
-      - ABYSSAN_API_TOKEN=${ABYSSAN_API_TOKEN:-abyssan-local}
+      - CORS_ORIGINS=http://localhost:5174,http://127.0.0.1:5174
+      - ABYSSAN_API_TOKEN=${ABYSSAN_API_TOKEN:?Defina ABYSSAN_API_TOKEN en el archivo .env}
     volumes:
-      # RW: commit, stage y el resto de escrituras Git deben funcionar en Compose
-      - ../:/workspace/proyectos
+      # Por defecto solo este checkout. Para varios repos: ABYSSAN_PROJECTS_HOST en .env
+      - ${ABYSSAN_PROJECTS_HOST:-.}:/workspace/proyectos
       - ./apps/server/src:/app/apps/server/src
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3001/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     networks:
       - abyssan-net
 
@@ -37,13 +50,14 @@ services:
     environment:
       - VITE_API_URL=http://localhost:3001
       - VITE_WS_URL=ws://localhost:3001
-      - VITE_ABYSSAN_API_TOKEN=${ABYSSAN_API_TOKEN:-abyssan-local}
+      - VITE_ABYSSAN_API_TOKEN=${ABYSSAN_API_TOKEN:?Defina ABYSSAN_API_TOKEN en el archivo .env}
     volumes:
       - ./apps/web/src:/app/apps/web/src
       - ./apps/web/index.html:/app/apps/web/index.html
       - ./apps/web/vite.config.ts:/app/apps/web/vite.config.ts
     depends_on:
-      - server
+      server:
+        condition: service_healthy
     networks:
       - abyssan-net
 

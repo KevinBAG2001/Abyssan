@@ -30,11 +30,16 @@ export function codigoHttpDeError(error: unknown): number {
   if (
     mensaje.includes('no autorizada') ||
     mensaje.includes('no válida') ||
-    mensaje.includes('fuera del repositorio')
+    mensaje.includes('fuera del repositorio') ||
+    mensaje.includes('Origen no permitido')
   ) {
     return 403;
   }
-  if (mensaje.includes('No se puede borrar la rama activa') || mensaje.includes('son requeridos')) {
+  if (
+    mensaje.includes('No se puede borrar la rama activa') ||
+    mensaje.includes('son requeridos') ||
+    mensaje.includes('Confirmación requerida')
+  ) {
     return 400;
   }
   if (mensaje.includes('ya está en el remoto')) {
