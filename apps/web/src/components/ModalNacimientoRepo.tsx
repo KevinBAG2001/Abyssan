@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { FolderGit2, GitFork, X, KeyRound } from 'lucide-react';
 import { httpGitApi, CuentaForja } from '../infrastructure/api/HttpGitApi';
+import { ModalCapa } from './ui/modal-capa';
+import { ui } from '../lib/diseno';
 
 interface ModalNacimientoRepoProps {
   onClose: () => void;
@@ -73,73 +75,71 @@ export const ModalNacimientoRepo: React.FC<ModalNacimientoRepoProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 select-none">
-      <div className="bg-[#181c2d] border border-[#2e354e] rounded-xl w-full max-w-lg shadow-2xl overflow-hidden">
-        <div className="p-4 border-b border-[#23283b] flex items-center justify-between bg-[#141724]">
-          <div className="flex items-center space-x-2">
-            <FolderGit2 className="w-5 h-5 text-emerald-400" />
-            <h3 className="font-bold text-sm text-white">Nuevo repositorio</h3>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1 hover:bg-[#23283b] text-slate-400 hover:text-white rounded"
-            aria-label="Cerrar"
-          >
-            <X className="w-4 h-4" />
-          </button>
+    <ModalCapa ancho="lg" onCerrar={onClose} labelledBy="titulo-nacimiento" className="bg-surface-container select-none">
+      <div className="p-4 border-b border-outline-variant flex items-center justify-between bg-surface-container-high/50">
+        <div className="flex items-center gap-2">
+          <FolderGit2 className="w-5 h-5 text-primary" />
+          <h3 id="titulo-nacimiento" className="text-headline-sm text-on-surface">Repository Target</h3>
         </div>
+        <button type="button" onClick={onClose} className={ui.btnIcono} aria-label="Cerrar">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
 
-        <div className="flex border-b border-[#23283b]">
-          <button
-            className={`flex-1 py-2 text-xs font-semibold ${
-              tab === 'clone' ? 'text-emerald-300 border-b-2 border-emerald-400' : 'text-slate-400'
-            }`}
-            onClick={() => setTab('clone')}
-          >
-            Clonar HTTPS
-          </button>
-          <button
-            className={`flex-1 py-2 text-xs font-semibold ${
-              tab === 'init' ? 'text-emerald-300 border-b-2 border-emerald-400' : 'text-slate-400'
-            }`}
-            onClick={() => setTab('init')}
-          >
-            Init carpeta vacía
-          </button>
-        </div>
+      <div className="flex bg-surface-container-lowest p-1 m-4 rounded border border-outline-variant relative">
+        <button
+          type="button"
+          className={`flex-1 py-2 text-label-md font-medium rounded-sm transition-colors flex items-center justify-center gap-1.5 ${
+            tab === 'clone' ? 'bg-surface-container-high text-primary' : 'text-on-surface-variant hover:text-on-surface'
+          }`}
+          onClick={() => setTab('clone')}
+        >
+          <GitFork className="w-3.5 h-3.5" />
+          Clonar repositorio
+        </button>
+        <button
+          type="button"
+          className={`flex-1 py-2 text-label-md font-medium rounded-sm transition-colors flex items-center justify-center gap-1.5 ${
+            tab === 'init' ? 'bg-surface-container-high text-primary' : 'text-on-surface-variant hover:text-on-surface'
+          }`}
+          onClick={() => setTab('init')}
+        >
+          Inicializar nuevo
+        </button>
+      </div>
 
-        <form onSubmit={enviar} className="p-4 space-y-3">
+      <form onSubmit={enviar} className="px-4 pb-4 space-y-4">
           {tab === 'clone' && (
             <div>
-              <label htmlFor="clone-url" className="block text-[11px] text-slate-400 mb-1">
-                URL HTTPS
+              <label htmlFor="clone-url" className="block text-label-caps text-on-surface-variant mb-1">
+                URL del repositorio
               </label>
               <input
                 id="clone-url"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="https://github.com/org/repo.git"
-                className="w-full bg-[#10131e] border border-[#2e354e] rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                className={ui.inputUnderline}
               />
             </div>
           )}
           <div>
-            <label htmlFor="clone-carpeta" className="block text-[11px] text-slate-400 mb-1">
-              Carpeta bajo PROJECTS_ROOT
+            <label htmlFor="clone-carpeta" className="block text-label-caps text-on-surface-variant mb-1">
+              Ruta de destino (PROJECTS_ROOT)
             </label>
             <input
               id="clone-carpeta"
               value={carpeta}
               onChange={(e) => setCarpeta(e.target.value)}
-              placeholder="nombre-del-repo"
-              className="w-full bg-[#10131e] border border-[#2e354e] rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+              placeholder="org/repo_name"
+              className={ui.inputUnderline}
             />
+            <p className="text-label-md text-on-surface-variant/70 mt-1">Máximo dos niveles de profundidad.</p>
           </div>
 
-          <div className="rounded-lg border border-[#2e354e] bg-[#141724] p-3 space-y-2">
-            <div className="flex items-center space-x-1.5 text-[11px] font-semibold text-slate-400 uppercase">
-              <KeyRound className="w-3.5 h-3.5 text-amber-400" />
+          <div className="rounded-lg border border-outline-variant bg-surface-container-low p-3 space-y-2">
+            <div className="flex items-center space-x-1.5 text-[11px] font-semibold text-on-surface-variant uppercase">
+              <KeyRound className="w-3.5 h-3.5 text-ember" />
               <span>Cuentas para repos privados</span>
             </div>
             {(['github', 'gitlab'] as const).map((p) => {
@@ -147,12 +147,12 @@ export const ModalNacimientoRepo: React.FC<ModalNacimientoRepoProps> = ({
               const configurado = p === 'github' ? githubOk : gitlabOk;
               return (
                 <div key={p} className="flex items-center justify-between text-xs">
-                  <span className="text-slate-300">
+                  <span className="text-on-surface-variant">
                     {p === 'github' ? 'GitHub' : 'GitLab'}
                     {cuenta?.usuario ? ` · ${cuenta.usuario}` : ''}
                   </span>
                   {cuenta ? (
-                    <button type="button" onClick={() => desconectar(p)} className="text-rose-400 hover:underline">
+                    <button type="button" onClick={() => desconectar(p)} className="text-error hover:underline">
                       Desconectar
                     </button>
                   ) : (
@@ -160,7 +160,7 @@ export const ModalNacimientoRepo: React.FC<ModalNacimientoRepoProps> = ({
                       type="button"
                       disabled={!configurado}
                       onClick={() => conectar(p)}
-                      className="text-emerald-400 hover:underline disabled:text-slate-600 disabled:no-underline"
+                      className="text-primary hover:underline disabled:text-on-surface-variant/50 disabled:no-underline"
                       title={configurado ? `Conectar ${p}` : 'Falta CLIENT_ID en .env'}
                     >
                       {configurado ? 'Conectar' : 'Sin client OAuth'}
@@ -171,21 +171,19 @@ export const ModalNacimientoRepo: React.FC<ModalNacimientoRepoProps> = ({
             })}
           </div>
 
-          <div className="flex justify-end space-x-2 pt-1">
-            <button type="button" onClick={onClose} className="px-3 py-1.5 text-xs text-slate-400">
+          <div className="flex justify-end gap-2 border-t border-outline-variant pt-4">
+            <button type="button" onClick={onClose} className="px-4 py-2 text-label-md text-on-surface-variant hover:text-on-surface">
               Cancelar
             </button>
             <button
               type="submit"
               disabled={cargando || !carpeta.trim() || (tab === 'clone' && !url.trim())}
-              className="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-slate-950 rounded disabled:opacity-40"
+              className={ui.btnPrimario}
             >
               <GitFork className="w-3.5 h-3.5" />
-              <span>{tab === 'clone' ? 'Clonar' : 'Inicializar'}</span>
+              {tab === 'clone' ? 'Comenzar clonación' : 'Inicializar'}
             </button>
           </div>
-        </form>
-      </div>
-    </div>
+        </form>    </ModalCapa>
   );
 };

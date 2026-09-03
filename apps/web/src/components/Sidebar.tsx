@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { GitBranch, GitFork, Plus, Tag, ChevronDown, ChevronRight, CheckCircle2, Trash2, Pencil } from 'lucide-react';
 import { GitBranch as IGitBranch, GitTag } from '../types/git';
+import { ui } from '../lib/diseno';
+import { cn } from '../lib/utils';
+import { ModalCapa } from './ui/modal-capa';
 
 interface SidebarProps {
   branches: IGitBranch[];
@@ -56,16 +59,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   return (
-    <aside className="w-64 bg-[#141724] border-r border-[#23283b] flex flex-col h-full select-none">
-      {/* Título de Sección y Botón Nueva Rama */}
-      <div className="p-3 border-b border-[#23283b] flex items-center justify-between">
-        <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Ramas & Tags</span>
-        <div className="flex items-center space-x-1">
+    <aside className="w-sidebar min-w-[200px] max-w-[280px] shrink-0 bg-surface-container-low border-r border-outline-variant flex flex-col h-full select-none max-lg:min-w-[180px]">
+      <div className="px-4 py-3 border-b border-outline-variant flex items-center justify-between">
+        <span className={ui.labelCaps}>Ramas & Tags</span>
+        <div className="flex items-center gap-0.5">
           <button
             type="button"
             onClick={() => setShowNewTagModal(true)}
-            className="p-1 hover:bg-[#23283b] text-slate-400 hover:text-amber-400 rounded transition-colors"
-            title="Crear Nuevo Tag"
+            className="p-1 hover:bg-surface-container-high text-on-surface-variant hover:text-gold rounded transition-colors"
+            title="Crear nuevo tag"
             aria-label="Crear nuevo tag"
           >
             <Tag className="w-3.5 h-3.5" />
@@ -73,8 +75,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             type="button"
             onClick={() => setShowNewBranchModal(true)}
-            className="p-1 hover:bg-[#23283b] text-slate-400 hover:text-emerald-400 rounded transition-colors"
-            title="Crear Nueva Rama"
+            className="p-1 hover:bg-surface-container-high text-on-surface-variant hover:text-primary rounded transition-colors"
+            title="Crear nueva rama"
             aria-label="Crear nueva rama"
           >
             <Plus className="w-4 h-4" />
@@ -82,43 +84,43 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2 space-y-3">
-        {/* Ramas Locales */}
+      <div className="flex-1 overflow-y-auto py-2 space-y-3 min-h-0">
         <div>
           <button
             type="button"
             onClick={() => setLocalExpanded(!localExpanded)}
-            className="flex items-center space-x-1.5 px-2 py-1 text-xs font-semibold text-slate-300 hover:text-white rounded hover:bg-[#1b1f30] transition-colors w-full text-left"
+            className="flex items-center gap-1.5 px-4 py-1.5 text-label-md font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high/50 transition-colors w-full text-left"
             aria-expanded={localExpanded}
           >
             {localExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-            <GitBranch className="w-3.5 h-3.5 text-emerald-400" />
+            <GitBranch className="w-3.5 h-3.5 text-primary" />
             <span>Locales ({localBranches.length})</span>
           </button>
 
           {localExpanded && (
-            <div className="mt-1 space-y-0.5 pl-4">
+            <div className="mt-0.5">
               {localBranches.map((branch) => {
                 const isCurrent = branch.current || branch.name === currentBranch;
                 return (
                   <div
                     key={branch.name}
-                    className={`group flex items-center justify-between px-2 py-1 rounded text-xs transition-colors ${
+                    className={cn(
+                      'group flex items-center justify-between pl-4 pr-2 py-1.5 text-label-md transition-colors',
                       isCurrent
-                        ? 'bg-emerald-500/15 text-emerald-300 font-semibold border border-emerald-500/20'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-[#1b1f30]'
-                    }`}
+                        ? ui.ramaActiva
+                        : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high/40 border-l-2 border-transparent'
+                    )}
                   >
                     <button
                       type="button"
                       disabled={isCurrent}
                       onClick={() => !isCurrent && onCheckout(branch.name)}
-                      className="truncate text-left flex-1 min-w-0 disabled:cursor-default"
+                      className="truncate text-left flex-1 min-w-0 font-mono text-code-sm disabled:cursor-default"
                     >
                       {branch.name}
                     </button>
-                    <div className="flex items-center shrink-0 ml-1 space-x-0.5">
-                      {isCurrent && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}
+                    <div className="flex items-center shrink-0 ml-1 gap-0.5">
+                      {isCurrent && <CheckCircle2 className="w-3.5 h-3.5 text-primary" />}
                       <button
                         type="button"
                         title="Renombrar rama"
@@ -129,7 +131,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             onRenameBranch(branch.name, nuevo.trim());
                           }
                         }}
-                        className="opacity-0 group-hover:opacity-100 p-0.5 text-slate-500 hover:text-amber-300"
+                        className="opacity-0 group-hover:opacity-100 p-0.5 text-on-surface-variant hover:text-ember"
                       >
                         <Pencil className="w-3 h-3" />
                       </button>
@@ -141,7 +143,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           e.stopPropagation();
                           if (!isCurrent) onDeleteBranch(branch.name);
                         }}
-                        className="opacity-0 group-hover:opacity-100 p-0.5 text-slate-500 hover:text-rose-400 disabled:opacity-30"
+                        className="opacity-0 group-hover:opacity-100 p-0.5 text-on-surface-variant hover:text-error disabled:opacity-30"
                       >
                         <Trash2 className="w-3 h-3" />
                       </button>
@@ -153,57 +155,55 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
 
-        {/* Ramas Remotas */}
         <div>
           <button
             type="button"
             onClick={() => setRemoteExpanded(!remoteExpanded)}
-            className="flex items-center space-x-1.5 px-2 py-1 text-xs font-semibold text-slate-300 hover:text-white rounded hover:bg-[#1b1f30] transition-colors w-full text-left"
+            className="flex items-center gap-1.5 px-4 py-1.5 text-label-md font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high/50 transition-colors w-full text-left"
             aria-expanded={remoteExpanded}
           >
             {remoteExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-            <GitFork className="w-3.5 h-3.5 text-sky-400" />
+            <GitFork className="w-3.5 h-3.5 text-secondary" />
             <span>Remotas ({remoteBranches.length})</span>
           </button>
 
           {remoteExpanded && (
-            <div className="mt-1 space-y-0.5 pl-4">
+            <div className="mt-0.5">
               {remoteBranches.map((branch) => (
                 <div
                   key={branch.name}
-                  className="flex items-center justify-between px-2 py-1 rounded text-xs text-slate-400 hover:text-slate-200 hover:bg-[#1b1f30] cursor-default transition-colors"
+                  className="flex items-center px-4 py-1.5 text-label-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high/40 border-l-2 border-transparent transition-colors"
                 >
-                  <span className="truncate">{branch.name.replace('remotes/', '')}</span>
+                  <span className="truncate font-mono text-code-sm">{branch.name.replace('remotes/', '')}</span>
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        {/* Tags */}
         <div>
           <button
             type="button"
             onClick={() => setTagsExpanded(!tagsExpanded)}
-            className="flex items-center space-x-1.5 px-2 py-1 text-xs font-semibold text-slate-300 hover:text-white rounded hover:bg-[#1b1f30] transition-colors w-full text-left"
+            className="flex items-center gap-1.5 px-4 py-1.5 text-label-md font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high/50 transition-colors w-full text-left"
             aria-expanded={tagsExpanded}
           >
             {tagsExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-            <Tag className="w-3.5 h-3.5 text-amber-400" />
+            <Tag className="w-3.5 h-3.5 text-gold" />
             <span>Tags ({tags.length})</span>
           </button>
 
           {tagsExpanded && (
-            <div className="mt-1 space-y-0.5 pl-4">
+            <div className="mt-0.5">
               {tags.length === 0 ? (
-                <div className="text-[11px] text-slate-500 italic px-2">Sin tags</div>
+                <div className="text-code-sm text-on-surface-variant/60 italic px-4 py-1">Sin tags</div>
               ) : (
                 tags.map((tag) => (
                   <div
                     key={tag.name}
-                    className="flex items-center justify-between px-2 py-1 rounded text-xs text-amber-300/80 hover:text-amber-200 hover:bg-[#1b1f30] transition-colors cursor-default"
+                    className="flex items-center px-4 py-1.5 text-label-md text-gold/90 hover:text-gold hover:bg-surface-container-high/40 border-l-2 border-transparent transition-colors"
                   >
-                    <span className="truncate font-mono">{tag.name}</span>
+                    <span className="truncate font-mono text-code-sm">{tag.name}</span>
                   </div>
                 ))
               )}
@@ -212,16 +212,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      {/* Modal Nueva Rama */}
       {showNewBranchModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-[#1b1f30] border border-[#2e354e] rounded-xl p-5 w-full max-w-sm shadow-2xl">
-            <h3 className="text-sm font-bold text-white mb-1">Crear Nueva Rama</h3>
-            <p className="text-xs text-slate-400 mb-4">
+        <ModalCapa ancho="sm" onCerrar={() => setShowNewBranchModal(false)} labelledBy="titulo-nueva-rama">
+          <div className="p-5">
+            <h3 id="titulo-nueva-rama" className="text-headline-sm text-on-surface mb-1">Crear nueva rama</h3>
+            <p className="text-body-md text-on-surface-variant mb-4">
               La rama se creará a partir de la posición actual ({currentBranch}).
             </p>
             <form onSubmit={handleCreateBranch} className="space-y-4">
-              <label htmlFor="nueva-rama" className="block text-[11px] text-slate-400">
+              <label htmlFor="nueva-rama" className="block text-label-caps text-on-surface-variant">
                 Nombre de la rama
               </label>
               <input
@@ -230,38 +229,29 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 value={newBranchName}
                 onChange={(e) => setNewBranchName(e.target.value)}
                 placeholder="ej. feature/nueva-vista"
-                className="w-full bg-[#141724] border border-[#2e354e] rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                className={ui.input}
                 autoFocus
               />
-              <div className="flex justify-end space-x-2">
-                <button
-                  type="button"
-                  onClick={() => setShowNewBranchModal(false)}
-                  className="px-3 py-1.5 text-xs text-slate-400 hover:text-white rounded transition-colors"
-                >
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => setShowNewBranchModal(false)} className="px-3 py-1.5 text-label-md text-on-surface-variant hover:text-on-surface rounded transition-colors">
                   Cancelar
                 </button>
-                <button
-                  type="submit"
-                  disabled={!newBranchName.trim() || loading}
-                  className="px-3 py-1.5 text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-slate-950 rounded transition-colors disabled:opacity-50"
-                >
-                  Crear Rama
+                <button type="submit" disabled={!newBranchName.trim() || loading} className={ui.btnPrimario}>
+                  Crear rama
                 </button>
               </div>
             </form>
           </div>
-        </div>
+        </ModalCapa>
       )}
 
-      {/* Modal Nuevo Tag */}
       {showNewTagModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-[#1b1f30] border border-[#2e354e] rounded-xl p-5 w-full max-w-sm shadow-2xl">
-            <h3 className="text-sm font-bold text-white mb-1">Crear Nuevo Tag</h3>
-            <p className="text-xs text-slate-400 mb-4">Etiqueta la versión en la posición actual de Git.</p>
+        <ModalCapa ancho="sm" onCerrar={() => setShowNewTagModal(false)} labelledBy="titulo-nuevo-tag">
+          <div className="p-5">
+            <h3 id="titulo-nuevo-tag" className="text-headline-sm text-on-surface mb-1">Crear nuevo tag</h3>
+            <p className="text-body-md text-on-surface-variant mb-4">Etiqueta la versión en la posición actual de Git.</p>
             <form onSubmit={handleCreateTag} className="space-y-4">
-              <label htmlFor="nuevo-tag" className="block text-[11px] text-slate-400">
+              <label htmlFor="nuevo-tag" className="block text-label-caps text-on-surface-variant">
                 Nombre del tag
               </label>
               <input
@@ -270,28 +260,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 value={newTagName}
                 onChange={(e) => setNewTagName(e.target.value)}
                 placeholder="ej. v1.0.0"
-                className="w-full bg-[#141724] border border-[#2e354e] rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                className={ui.input}
                 autoFocus
               />
-              <div className="flex justify-end space-x-2">
-                <button
-                  type="button"
-                  onClick={() => setShowNewTagModal(false)}
-                  className="px-3 py-1.5 text-xs text-slate-400 hover:text-white rounded transition-colors"
-                >
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => setShowNewTagModal(false)} className="px-3 py-1.5 text-label-md text-on-surface-variant hover:text-on-surface rounded transition-colors">
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={!newTagName.trim() || loading}
-                  className="px-3 py-1.5 text-xs font-semibold bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-slate-950 rounded transition-colors disabled:opacity-50"
+                  className="px-4 py-1.5 text-label-md font-medium bg-gold text-void rounded hover:brightness-110 transition-all disabled:opacity-40"
                 >
-                  Crear Tag
+                  Crear tag
                 </button>
               </div>
             </form>
           </div>
-        </div>
+        </ModalCapa>
       )}
     </aside>
   );

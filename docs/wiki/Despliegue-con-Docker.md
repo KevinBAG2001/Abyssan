@@ -13,7 +13,7 @@ Red: bridge `abyssan-net`. `web` declara `depends_on: server`. `restart: unless-
 
 ## Imágenes
 
-Ambas: `FROM node:22-alpine`. pnpm vía Corepack **9.15.9**. El server instala `git` con apk. Comando: `pnpm dev` (server) y `pnpm dev --host` (web). Es un arranque de **desarrollo** dentro del contenedor, no `pnpm start` sobre `dist/`.
+Ambas: `FROM node:22-alpine`. pnpm vía Corepack **11.25.0**. El server instala `git` con apk. Comando: `pnpm dev` (server) y `pnpm dev --host` (web). Es un arranque de **desarrollo** dentro del contenedor, no `pnpm start` sobre `dist/`.
 
 ## Variables
 
@@ -33,6 +33,28 @@ Ambas: `FROM node:22-alpine`. pnpm vía Corepack **9.15.9**. El server instala `
 - `VITE_ABYSSAN_API_TOKEN` = el mismo token
 
 Define `ABYSSAN_API_TOKEN` en el `.env` del host. Compose no arranca sin ese valor.
+
+### Cómo generar el token
+
+No hay registro ni portal: es un secreto que **tú creas** y repites en ambas variables del `.env`:
+
+```env
+ABYSSAN_API_TOKEN=pega-aqui-tu-secreto
+VITE_ABYSSAN_API_TOKEN=pega-aqui-tu-secreto
+```
+
+Generar uno aleatorio:
+
+```powershell
+# Windows (PowerShell)
+[Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 }))
+```
+
+```bash
+openssl rand -base64 32
+```
+
+Tras cambiar `VITE_ABYSSAN_API_TOKEN`, reconstruye o reinicia el contenedor `web` para que Vite lo incorpore.
 
 ## Volúmenes
 

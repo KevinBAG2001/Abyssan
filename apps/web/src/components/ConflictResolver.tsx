@@ -34,23 +34,23 @@ export const ConflictResolver: React.FC<ConflictResolverProps> = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#0d0f17] overflow-hidden select-none">
-      <div className="h-12 bg-[#141724] border-b border-[#23283b] px-4 flex items-center justify-between">
+    <div className="flex-1 flex flex-col h-full bg-void overflow-hidden select-none">
+      <div className="h-12 bg-surface-container-low border-b border-outline-variant px-4 flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <button
             type="button"
             onClick={onCancel}
-            className="p-1.5 hover:bg-[#23283b] text-slate-400 hover:text-white rounded-md transition-colors"
+            className="p-1.5 hover:bg-surface-container-highest text-on-surface-variant hover:text-on-surface rounded-md transition-colors"
             aria-label="Volver"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div className="flex items-center space-x-2">
-            <ShieldAlert className="w-4 h-4 text-amber-400" />
-            <span className="text-xs font-bold text-white">Conflicto 3-way:</span>
-            <span className="text-xs font-mono text-emerald-400">{conflictData.filePath}</span>
+            <ShieldAlert className="w-4 h-4 text-ember" />
+            <span className="text-xs font-bold text-on-surface">Conflicto 3-way:</span>
+            <span className="text-xs font-mono text-primary">{conflictData.filePath}</span>
             {hunks.length > 1 && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300">
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-ember/20 text-ember">
                 {hunks.length} bloques
               </span>
             )}
@@ -60,7 +60,7 @@ export const ConflictResolver: React.FC<ConflictResolverProps> = ({
           {isMerging && onAbortMerge && (
             <button
               onClick={onAbortMerge}
-              className="flex items-center space-x-1 px-2.5 py-1 text-xs bg-rose-950/40 hover:bg-rose-900/50 text-rose-300 font-semibold rounded border border-rose-500/30"
+              className="flex items-center space-x-1 px-2.5 py-1 text-xs bg-error-container/40 hover:bg-rose-900/50 text-error font-semibold rounded border border-error/30"
             >
               <Ban className="w-3 h-3" />
               <span>Abortar merge</span>
@@ -68,26 +68,26 @@ export const ConflictResolver: React.FC<ConflictResolverProps> = ({
           )}
           <button
             onClick={handleAcceptCurrent}
-            className="px-2.5 py-1 text-xs bg-[#1b1f30] hover:bg-[#23283b] text-sky-400 font-semibold rounded border border-sky-500/30"
+            className="px-2.5 py-1 text-xs bg-surface-container-high hover:bg-surface-container-highest text-secondary font-semibold rounded border border-secondary/30"
           >
             Aceptar actual
           </button>
           <button
             onClick={handleAcceptIncoming}
-            className="px-2.5 py-1 text-xs bg-[#1b1f30] hover:bg-[#23283b] text-purple-400 font-semibold rounded border border-purple-500/30"
+            className="px-2.5 py-1 text-xs bg-surface-container-high hover:bg-surface-container-highest text-tertiary-fixed-dim font-semibold rounded border border-tertiary-fixed-dim/30"
           >
             Aceptar entrante
           </button>
           <button
             onClick={handleAcceptBoth}
-            className="px-2.5 py-1 text-xs bg-[#1b1f30] hover:bg-[#23283b] text-slate-300 font-semibold rounded border border-[#2e354e]"
+            className="px-2.5 py-1 text-xs bg-surface-container-high hover:bg-surface-container-highest text-on-surface-variant font-semibold rounded border border-outline-variant"
           >
             Aceptar ambos
           </button>
           <button
             onClick={() => onResolve(resolvedText)}
             disabled={loading}
-            className="flex items-center space-x-1.5 px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs rounded disabled:opacity-50"
+            className="flex items-center space-x-1.5 px-3 py-1 bg-primary-container hover:brightness-110 text-on-primary font-bold text-xs rounded disabled:opacity-50"
           >
             <Check className="w-3.5 h-3.5" />
             <span>Resolver y stage</span>
@@ -95,15 +95,15 @@ export const ConflictResolver: React.FC<ConflictResolverProps> = ({
         </div>
       </div>
 
-      <div className="flex-1 grid grid-cols-4 divide-x divide-[#23283b] overflow-hidden">
+      <div className="flex-1 grid grid-cols-4 divide-x divide-outline-variant overflow-hidden">
         <Columna titulo="Base" tono="slate" vacio={!baseDisponible ? 'No disponible (sin ancestor)' : undefined}>
           {conflictData.baseContent}
         </Columna>
         <Columna titulo="Actual (ours / HEAD)" tono="sky">
           {conflictData.currentContent}
         </Columna>
-        <div className="flex flex-col h-full overflow-hidden bg-[#0d0f17]">
-          <label htmlFor="resultado-conflicto" className="p-2.5 bg-emerald-950/30 border-b border-emerald-900/30 text-xs font-semibold text-emerald-400 flex items-center space-x-1.5">
+        <div className="flex flex-col h-full overflow-hidden bg-void">
+          <label htmlFor="resultado-conflicto" className="p-2.5 bg-primary-container/30 border-b border-primary/30 text-label-md font-semibold text-primary flex items-center gap-1.5">
             <Code2 className="w-3.5 h-3.5" />
             <span>Resultado (editable)</span>
           </label>
@@ -111,7 +111,7 @@ export const ConflictResolver: React.FC<ConflictResolverProps> = ({
             id="resultado-conflicto"
             value={resolvedText}
             onChange={(e) => setResolvedText(e.target.value)}
-            className="flex-1 w-full bg-transparent p-3 font-mono text-xs text-slate-100 resize-none focus:outline-none leading-relaxed"
+            className="flex-1 w-full bg-transparent p-3 font-mono text-xs text-on-surface resize-none focus:outline-none leading-relaxed"
             spellCheck={false}
           />
         </div>
@@ -130,17 +130,17 @@ const Columna: React.FC<{
   children?: string;
 }> = ({ titulo, tono, vacio, children }) => {
   const colores = {
-    sky: 'bg-sky-950/30 border-sky-900/30 text-sky-400 text-sky-200',
-    purple: 'bg-purple-950/30 border-purple-900/30 text-purple-400 text-purple-200',
-    slate: 'bg-slate-900/40 border-slate-800 text-slate-400 text-slate-300',
+    sky: 'bg-secondary-container/30 border-sky-900/30 text-secondary text-sky-200',
+    purple: 'bg-tertiary-container/30 border-purple-900/30 text-tertiary-fixed-dim text-tertiary',
+    slate: 'bg-surface-container-high/40 border-outline-variant text-on-surface-variant',
   }[tono].split(' ');
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-[#10131e]">
+    <div className="flex flex-col h-full overflow-hidden bg-surface-container">
       <div className={`p-2.5 ${colores[0]} border-b ${colores[1]} text-xs font-semibold ${colores[2]}`}>
         {titulo}
       </div>
       <div className={`flex-1 overflow-auto p-3 font-mono text-xs whitespace-pre leading-relaxed ${colores[3]}`}>
-        {vacio ? <span className="text-slate-600 italic">{vacio}</span> : children || <span className="text-slate-600 italic">Vacío</span>}
+        {vacio ? <span className="text-on-surface-variant/50 italic">{vacio}</span> : children || <span className="text-on-surface-variant/50 italic">Vacío</span>}
       </div>
     </div>
   );

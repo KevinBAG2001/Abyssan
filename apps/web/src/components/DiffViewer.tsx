@@ -137,27 +137,27 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ diff, filePath, isStaged
   const filasSplit = useMemo(() => armarSplit(parsedLines), [parsedLines]);
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#0d0f17] overflow-hidden">
-      <div className="h-10 bg-[#141724] border-b border-[#23283b] px-4 flex items-center justify-between select-none">
+    <div className="flex-1 flex flex-col h-full bg-void overflow-hidden">
+      <div className="h-10 bg-surface-container-low border-b border-outline-variant px-4 flex items-center justify-between select-none">
         <div className="flex items-center space-x-2 truncate">
-          <FileCode className="w-4 h-4 text-slate-400" />
-          <span className="text-xs font-mono font-medium text-slate-200 truncate">{filePath}</span>
+          <FileCode className="w-4 h-4 text-on-surface-variant" />
+          <span className="text-xs font-mono font-medium text-on-surface truncate">{filePath}</span>
           <span
             className={`text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase ${
               isStaged
-                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                ? 'bg-primary-container/20 text-primary border border-primary/30'
+                : 'bg-ember/20 text-ember border border-ember/30'
             }`}
           >
             {isStaged ? 'Staged' : 'Unstaged'}
           </span>
         </div>
         <div className="flex items-center space-x-3">
-          <div className="flex items-center bg-[#1b1f30] rounded-md border border-[#2e354e] p-0.5">
+          <div className="flex items-center bg-surface-container-high rounded-md border border-outline-variant p-0.5">
             <button
               onClick={() => setModo('unified')}
               className={`flex items-center space-x-1 px-2 py-0.5 rounded text-[10px] font-semibold ${
-                modo === 'unified' ? 'bg-emerald-500/20 text-emerald-300' : 'text-slate-400'
+                modo === 'unified' ? 'bg-primary-container/20 text-primary' : 'text-on-surface-variant'
               }`}
             >
               <AlignJustify className="w-3 h-3" />
@@ -166,7 +166,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ diff, filePath, isStaged
             <button
               onClick={() => setModo('split')}
               className={`flex items-center space-x-1 px-2 py-0.5 rounded text-[10px] font-semibold ${
-                modo === 'split' ? 'bg-emerald-500/20 text-emerald-300' : 'text-slate-400'
+                modo === 'split' ? 'bg-primary-container/20 text-primary' : 'text-on-surface-variant'
               }`}
             >
               <Columns2 className="w-3 h-3" />
@@ -174,11 +174,11 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ diff, filePath, isStaged
             </button>
           </div>
           <div className="flex items-center space-x-3 text-xs font-mono">
-            <span className="flex items-center text-emerald-400">
+            <span className="flex items-center text-primary">
               <Plus className="w-3 h-3 mr-0.5" />
               {stats.additions}
             </span>
-            <span className="flex items-center text-rose-400">
+            <span className="flex items-center text-error">
               <Minus className="w-3 h-3 mr-0.5" />
               {stats.deletions}
             </span>
@@ -186,9 +186,9 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ diff, filePath, isStaged
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto font-['JetBrains_Mono',monospace] text-xs">
+      <div className="flex-1 overflow-auto font-mono text-xs">
         {parsedLines.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-slate-500 italic">
+          <div className="flex items-center justify-center h-full text-on-surface-variant/70 italic">
             Sin diferencias para mostrar en este archivo
           </div>
         ) : modo === 'unified' ? (
@@ -198,7 +198,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ diff, filePath, isStaged
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-2 divide-x divide-[#23283b] min-w-[640px]">
+          <div className="grid grid-cols-2 divide-x divide-outline-variant min-w-[640px]">
             {filasSplit.map((fila) => (
               <React.Fragment key={`${fila.izq?.id ?? 'x'}-${fila.der?.id ?? 'y'}`}>
                 <CeldaSplit lado={fila.izq} html={fila.izq ? htmlPorLinea[fila.izq.id] : undefined} />
@@ -213,15 +213,15 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ diff, filePath, isStaged
 };
 
 function FilaUnificada({ line, html }: { line: LineaDiff; html?: string }) {
-  let bgClass = 'hover:bg-white/[0.02] text-slate-300';
-  if (line.type === 'header' || line.type === 'meta') bgClass = 'bg-sky-950/40 text-sky-300 py-1 font-bold';
-  if (line.type === 'addition') bgClass = 'bg-emerald-950/40 text-emerald-300';
-  if (line.type === 'deletion') bgClass = 'bg-rose-950/40 text-rose-300';
+  let bgClass = 'hover:bg-white/[0.02] text-on-surface-variant';
+  if (line.type === 'header' || line.type === 'meta') bgClass = 'bg-secondary-container/30 text-secondary py-1 font-bold';
+  if (line.type === 'addition') bgClass = 'bg-primary-container/10 text-primary';
+  if (line.type === 'deletion') bgClass = 'bg-magma/10 text-magma';
 
   return (
     <div className={`flex items-start px-2 py-0.5 ${bgClass}`}>
-      <span className="w-10 shrink-0 text-right pr-2 text-slate-600 select-none">{line.oldNo ?? ''}</span>
-      <span className="w-10 shrink-0 text-right pr-2 text-slate-600 select-none">{line.newNo ?? ''}</span>
+      <span className="w-10 shrink-0 text-right pr-2 text-on-surface-variant/50 select-none">{line.oldNo ?? ''}</span>
+      <span className="w-10 shrink-0 text-right pr-2 text-on-surface-variant/50 select-none">{line.newNo ?? ''}</span>
       <span className="w-4 shrink-0 font-bold select-none">
         {line.type === 'addition' ? '+' : line.type === 'deletion' ? '-' : ' '}
       </span>
@@ -239,20 +239,20 @@ function FilaUnificada({ line, html }: { line: LineaDiff; html?: string }) {
 
 function CeldaSplit({ lado, html }: { lado?: LineaDiff; html?: string }) {
   if (!lado) {
-    return <div className="min-h-[1.4rem] bg-[#0d0f17]" />;
+    return <div className="min-h-[1.4rem] bg-void" />;
   }
   const bg =
     lado.type === 'addition'
-      ? 'bg-emerald-950/40 text-emerald-300'
+      ? 'bg-primary-container/10 text-primary'
       : lado.type === 'deletion'
-        ? 'bg-rose-950/40 text-rose-300'
+        ? 'bg-magma/10 text-magma'
         : lado.type === 'header' || lado.type === 'meta'
-          ? 'bg-sky-950/30 text-sky-300'
-          : 'text-slate-300';
+          ? 'bg-secondary-container/30 text-secondary'
+          : 'text-on-surface-variant';
   const num = lado.type === 'addition' ? lado.newNo : lado.oldNo ?? lado.newNo;
   return (
     <div className={`flex items-start px-2 py-0.5 ${bg}`}>
-      <span className="w-10 shrink-0 text-right pr-2 text-slate-600 select-none">{num ?? ''}</span>
+      <span className="w-10 shrink-0 text-right pr-2 text-on-surface-variant/50 select-none">{num ?? ''}</span>
       {html && lado.type !== 'header' && lado.type !== 'meta' ? (
         <code
           className="flex-1 overflow-x-auto whitespace-pre leading-relaxed [&_span]:bg-transparent"

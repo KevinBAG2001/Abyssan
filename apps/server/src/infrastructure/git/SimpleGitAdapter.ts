@@ -79,6 +79,14 @@ export class SimpleGitAdapter implements IGitRepository {
       return [];
     }
     const repos: RepositorySummaryEntity[] = [];
+    if (tieneMetadatosGit(rootPath)) {
+      repos.push({
+        name: path.basename(rootPath) || rootPath,
+        path: rootPath,
+        isGitRepo: true,
+      });
+      return repos;
+    }
     await this.escanearRepositorios(rootPath, 0, 2, repos);
     return repos;
   }
