@@ -10,6 +10,7 @@ import { GitBranch } from '../types/git';
 
 import { PanelListaForjas } from './PanelListaForjas';
 import { FormularioCrearForja } from './FormularioCrearForja';
+import { ModalCapa } from './ui/modal-capa';
 
 interface ModalForjasProps {
   repoPath: string;
@@ -216,26 +217,25 @@ export const ModalForjas: React.FC<ModalForjasProps> = ({
   const etiqueta = proveedor === 'gitlab' ? 'MRs' : 'PRs';
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 select-none">
-      <div className="bg-[#181c2d] border border-[#2e354e] rounded-xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
-        <div className="p-4 border-b border-[#23283b] flex items-center justify-between bg-[#141724]">
+    <ModalCapa ancho="wide" onCerrar={onClose} labelledBy="titulo-forjas" className="bg-surface-container select-none max-h-[85vh] flex flex-col">
+        <div className="p-4 border-b border-outline-variant flex items-center justify-between bg-surface-container-low">
           <div className="flex items-center space-x-2">
-            <GitPullRequest className="w-5 h-5 text-sky-400" />
-            <h3 className="font-bold text-sm text-white">Forjas — {etiqueta} del origin</h3>
+            <GitPullRequest className="w-5 h-5 text-secondary" />
+            <h3 id="titulo-forjas" className="text-headline-sm text-on-surface">Forjas — {etiqueta} del origin</h3>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1 hover:bg-[#23283b] text-slate-400 hover:text-white rounded"
+            className="p-1 hover:bg-surface-container-highest text-on-surface-variant hover:text-on-surface rounded"
             aria-label="Cerrar"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="px-4 py-3 border-b border-[#23283b] bg-[#141724]/60 space-y-2">
-          <div className="flex items-center space-x-1.5 text-[11px] font-semibold text-slate-400 uppercase">
-            <KeyRound className="w-3.5 h-3.5 text-amber-400" />
+        <div className="px-4 py-3 border-b border-outline-variant bg-surface-container-low/60 space-y-2">
+          <div className="flex items-center space-x-1.5 text-[11px] font-semibold text-on-surface-variant uppercase">
+            <KeyRound className="w-3.5 h-3.5 text-ember" />
             <span>OAuth (tokens cifrados en disco, nunca en el repo)</span>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -244,12 +244,12 @@ export const ModalForjas: React.FC<ModalForjasProps> = ({
               const configurado = p === 'github' ? githubOk : gitlabOk;
               return (
                 <div key={p} className="flex items-center space-x-2 text-xs">
-                  <span className="text-slate-300">
+                  <span className="text-on-surface-variant">
                     {p === 'github' ? 'GitHub' : 'GitLab'}
                     {cuenta?.usuario ? ` · ${cuenta.usuario}` : ''}
                   </span>
                   {cuenta ? (
-                    <button type="button" onClick={() => desconectar(p)} className="text-rose-400 hover:underline">
+                    <button type="button" onClick={() => desconectar(p)} className="text-error hover:underline">
                       Desconectar
                     </button>
                   ) : (
@@ -257,7 +257,7 @@ export const ModalForjas: React.FC<ModalForjasProps> = ({
                       type="button"
                       disabled={!configurado}
                       onClick={() => conectar(p)}
-                      className="text-emerald-400 hover:underline disabled:text-slate-600 disabled:no-underline"
+                      className="text-primary hover:underline disabled:text-on-surface-variant/50 disabled:no-underline"
                     >
                       {configurado ? 'Conectar' : 'Sin client OAuth'}
                     </button>
@@ -268,10 +268,10 @@ export const ModalForjas: React.FC<ModalForjasProps> = ({
           </div>
         </div>
 
-        <div className="flex border-b border-[#23283b]">
+        <div className="flex border-b border-outline-variant">
           <button
             className={`flex-1 py-2 text-xs font-semibold ${
-              tab === 'lista' ? 'text-sky-300 border-b-2 border-sky-400' : 'text-slate-400'
+              tab === 'lista' ? 'text-secondary border-b-2 border-secondary' : 'text-on-surface-variant'
             }`}
             onClick={() => setTab('lista')}
           >
@@ -279,7 +279,7 @@ export const ModalForjas: React.FC<ModalForjasProps> = ({
           </button>
           <button
             className={`flex-1 py-2 text-xs font-semibold ${
-              tab === 'crear' ? 'text-sky-300 border-b-2 border-sky-400' : 'text-slate-400'
+              tab === 'crear' ? 'text-secondary border-b-2 border-secondary' : 'text-on-surface-variant'
             }`}
             onClick={() => setTab('crear')}
           >
@@ -316,7 +316,6 @@ export const ModalForjas: React.FC<ModalForjasProps> = ({
             onClose={onClose}
           />
         )}
-      </div>
-    </div>
+    </ModalCapa>
   );
 };

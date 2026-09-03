@@ -47,7 +47,7 @@ export function LoaderCliSpinner({
       aria-label={ariaLabel}
       aria-live="polite"
       className={cn(
-        'inline-flex items-center justify-center font-mono leading-none tabular-nums text-emerald-400',
+        'inline-flex items-center justify-center font-mono leading-none tabular-nums text-primary',
         className,
       )}
       style={{ fontSize, minWidth: '1ch' }}

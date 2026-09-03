@@ -293,6 +293,38 @@ Deshacer está en el header (hoy: última operación). El horizonte Identidad es
 
 ### Docker Compose
 
+#### Token de instancia (`ABYSSAN_API_TOKEN`)
+
+No se obtiene de un servicio externo: **lo inventas tú** (una contraseña larga y aleatoria). El servidor la exige cuando no escucha solo en localhost; **Docker siempre la exige** porque dentro del contenedor `BIND_HOST=0.0.0.0`.
+
+Define **el mismo valor** en tu `.env` de la raíz del monorepo:
+
+| Variable | Quién la usa |
+|----------|----------------|
+| `ABYSSAN_API_TOKEN` | Servidor (valida `Authorization: Bearer …` en `/api/*`) |
+| `VITE_ABYSSAN_API_TOKEN` | Frontend (lo envía en cada petición; Vite lo embebe en el build) |
+
+Generar un secreto (ejemplo):
+
+```powershell
+# Windows (PowerShell)
+[Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 }))
+```
+
+```bash
+# Linux / macOS / Git Bash
+openssl rand -base64 32
+```
+
+Pégalo en `.env` (mismo texto en las dos líneas):
+
+```env
+ABYSSAN_API_TOKEN=pega-aqui-el-secreto-generado
+VITE_ABYSSAN_API_TOKEN=pega-aqui-el-secreto-generado
+```
+
+Con `pnpm dev:server` + `pnpm dev:web` en tu máquina (`BIND_HOST=127.0.0.1`) **no suele hacer falta** el token. Con `docker compose up` **sí**.
+
 Desde la raíz del repositorio:
 
 ```bash

@@ -39,7 +39,7 @@ Las fases 0–3 del plan (higiene, Daily Driver, power, forjas) están marcadas 
 
 | Capa | Tecnología | Versión declarada |
 |------|------------|-------------------|
-| Monorepo | pnpm workspaces | CI: pnpm 9; Docker: `pnpm@9.15.9` |
+| Monorepo | pnpm workspaces | CI y Docker: `pnpm@11.25.0` |
 | Frontend | React, TypeScript, Vite, Tailwind CSS, Lucide, Shiki | React `^19.0.0`, Vite `^6.2.0`, Tailwind `^4.0.9` |
 | Backend | Node.js, Express, TypeScript, simple-git, ws, chokidar | Express `^4.21.2`, simple-git `^3.27.0` |
 | Calidad | Vitest, oxlint | Vitest `^3.2.7` |

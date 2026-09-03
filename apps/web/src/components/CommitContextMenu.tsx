@@ -31,12 +31,12 @@ export const CommitContextMenu: React.FC<CommitContextMenuProps> = ({
 
   return (
     <div
-      className="fixed z-50 bg-[#181c2d] border border-[#2e354e] rounded-xl shadow-2xl p-1.5 w-56 text-xs select-none"
+      className="fixed z-50 bg-surface-container border border-outline-variant rounded-xl shadow-2xl p-1.5 w-56 text-xs select-none"
       style={menuStyle}
       onClick={(e) => e.stopPropagation()}
     >
-      <div className="px-2.5 py-1.5 border-b border-[#23283b] text-[11px] font-mono text-slate-400 truncate">
-        Commit: <span className="text-emerald-400 font-bold">{commit.shortHash}</span>
+      <div className="px-2.5 py-1.5 border-b border-outline-variant text-[11px] font-mono text-on-surface-variant truncate">
+        Commit: <span className="text-primary font-bold">{commit.shortHash}</span>
       </div>
 
       <div className="py-1 space-y-0.5">
@@ -45,9 +45,9 @@ export const CommitContextMenu: React.FC<CommitContextMenuProps> = ({
             onCreateBranch(commit.hash);
             onClose();
           }}
-          className="w-full flex items-center space-x-2 px-2.5 py-1.5 hover:bg-[#23283b] text-slate-200 hover:text-white rounded-md transition-colors text-left"
+          className="w-full flex items-center space-x-2 px-2.5 py-1.5 hover:bg-surface-container-highest text-on-surface hover:text-on-surface rounded-md transition-colors text-left"
         >
-          <GitBranch className="w-3.5 h-3.5 text-emerald-400" />
+          <GitBranch className="w-3.5 h-3.5 text-primary" />
           <span>Crear Rama aquí...</span>
         </button>
 
@@ -56,22 +56,22 @@ export const CommitContextMenu: React.FC<CommitContextMenuProps> = ({
             onCreateTag(commit.hash);
             onClose();
           }}
-          className="w-full flex items-center space-x-2 px-2.5 py-1.5 hover:bg-[#23283b] text-slate-200 hover:text-white rounded-md transition-colors text-left"
+          className="w-full flex items-center space-x-2 px-2.5 py-1.5 hover:bg-surface-container-highest text-on-surface hover:text-on-surface rounded-md transition-colors text-left"
         >
-          <Tag className="w-3.5 h-3.5 text-amber-400" />
+          <Tag className="w-3.5 h-3.5 text-ember" />
           <span>Crear Tag aquí...</span>
         </button>
 
-        <div className="h-[1px] bg-[#23283b] my-1" />
+        <div className="h-[1px] bg-surface-container-highest my-1" />
 
         <button
           onClick={() => {
             onCherryPick(commit.hash);
             onClose();
           }}
-          className="w-full flex items-center space-x-2 px-2.5 py-1.5 hover:bg-[#23283b] text-slate-200 hover:text-white rounded-md transition-colors text-left"
+          className="w-full flex items-center space-x-2 px-2.5 py-1.5 hover:bg-surface-container-highest text-on-surface hover:text-on-surface rounded-md transition-colors text-left"
         >
-          <GitPullRequest className="w-3.5 h-3.5 text-sky-400" />
+          <GitPullRequest className="w-3.5 h-3.5 text-secondary" />
           <span>Cherry-Pick a HEAD</span>
         </button>
 
@@ -80,22 +80,22 @@ export const CommitContextMenu: React.FC<CommitContextMenuProps> = ({
             onRevert(commit.hash);
             onClose();
           }}
-          className="w-full flex items-center space-x-2 px-2.5 py-1.5 hover:bg-[#23283b] text-slate-200 hover:text-white rounded-md transition-colors text-left"
+          className="w-full flex items-center space-x-2 px-2.5 py-1.5 hover:bg-surface-container-highest text-on-surface hover:text-on-surface rounded-md transition-colors text-left"
         >
-          <Undo2 className="w-3.5 h-3.5 text-purple-400" />
+          <Undo2 className="w-3.5 h-3.5 text-tertiary-fixed-dim" />
           <span>Revertir Commit</span>
         </button>
 
-        <div className="h-[1px] bg-[#23283b] my-1" />
+        <div className="h-[1px] bg-surface-container-highest my-1" />
 
         <button
           onClick={() => {
             onReset('soft', commit.hash);
             onClose();
           }}
-          className="w-full flex items-center space-x-2 px-2.5 py-1.5 hover:bg-[#23283b] text-amber-300 hover:text-amber-200 rounded-md transition-colors text-left"
+          className="w-full flex items-center space-x-2 px-2.5 py-1.5 hover:bg-surface-container-highest text-ember hover:text-ember rounded-md transition-colors text-left"
         >
-          <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
+          <RotateCcw className="w-3.5 h-3.5 text-ember" />
           <span>Reset Soft (mantener staging)</span>
         </button>
 
@@ -104,9 +104,9 @@ export const CommitContextMenu: React.FC<CommitContextMenuProps> = ({
             onReset('mixed', commit.hash);
             onClose();
           }}
-          className="w-full flex items-center space-x-2 px-2.5 py-1.5 hover:bg-[#23283b] text-amber-300 hover:text-amber-200 rounded-md transition-colors text-left"
+          className="w-full flex items-center space-x-2 px-2.5 py-1.5 hover:bg-surface-container-highest text-ember hover:text-ember rounded-md transition-colors text-left"
         >
-          <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
+          <RotateCcw className="w-3.5 h-3.5 text-ember" />
           <span>Reset Mixed (conservar working tree)</span>
         </button>
 
@@ -115,9 +115,9 @@ export const CommitContextMenu: React.FC<CommitContextMenuProps> = ({
             onReset('hard', commit.hash);
             onClose();
           }}
-          className="w-full flex items-center space-x-2 px-2.5 py-1.5 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 rounded-md transition-colors text-left"
+          className="w-full flex items-center space-x-2 px-2.5 py-1.5 hover:bg-magma/20 text-error hover:text-error rounded-md transition-colors text-left"
         >
-          <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
+          <ShieldAlert className="w-3.5 h-3.5 text-error" />
           <span>Reset Hard (descartar todo)</span>
         </button>
       </div>

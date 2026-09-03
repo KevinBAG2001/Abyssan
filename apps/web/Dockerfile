@@ -2,10 +2,19 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-COPY .npmrc package.json pnpm-workspace.yaml ./
+# Evita que Corepack baje pnpm latest en runtime y que pnpm pida TTY.
+ENV CI=true
+ENV COREPACK_DEFAULT_TO_LATEST=0
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+ENV COREPACK_HOME=/usr/local/share/corepack
+
+COPY .npmrc package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/web/package.json ./apps/web/
 
-RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
+RUN mkdir -p "$COREPACK_HOME" \
+  && corepack enable \
+  && corepack prepare pnpm@11.25.0 --activate \
+  && chmod -R a+rX "$COREPACK_HOME"
 
 RUN pnpm install --filter @abyssan/web...
 

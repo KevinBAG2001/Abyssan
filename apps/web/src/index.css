@@ -1,36 +1,228 @@
 @import "tailwindcss";
 
+@theme {
+  /* Stitch / Abyssan Instrument — superficies */
+  --color-background: #121318;
+  --color-surface: #121318;
+  --color-surface-dim: #121318;
+  --color-surface-bright: #38393f;
+  --color-surface-container-lowest: #0d0e13;
+  --color-surface-container-low: #1a1b21;
+  --color-surface-container: #1e1f25;
+  --color-surface-container-high: #292a2f;
+  --color-surface-container-highest: #34343a;
+  --color-surface-variant: #34343a;
+  --color-surface-tint: #1fe0b1;
+
+  /* Texto */
+  --color-on-background: #e3e1e9;
+  --color-on-surface: #e3e1e9;
+  --color-on-surface-variant: #bacac2;
+  --color-inverse-surface: #e3e1e9;
+  --color-inverse-on-surface: #2f3036;
+
+  /* Primario — Biolume */
+  --color-primary: #c4ffe7;
+  --color-on-primary: #00382a;
+  --color-primary-container: #3ef0c0;
+  --color-on-primary-container: #006951;
+  --color-primary-fixed: #51fdcc;
+  --color-primary-fixed-dim: #1fe0b1;
+  --color-inverse-primary: #006c53;
+
+  /* Secundario — Pulse Cyan */
+  --color-secondary: #7dd0ff;
+  --color-on-secondary: #00344a;
+  --color-secondary-container: #1c9bcf;
+  --color-on-secondary-container: #002d41;
+  --color-secondary-fixed: #c4e7ff;
+  --color-secondary-fixed-dim: #7dd0ff;
+
+  /* Terciario — Ion Violet */
+  --color-tertiary: #f8efff;
+  --color-on-tertiary: #3c0e86;
+  --color-tertiary-container: #dfceff;
+  --color-on-tertiary-container: #6a46b4;
+  --color-tertiary-fixed: #eaddff;
+  --color-tertiary-fixed-dim: #d2bcff;
+
+  /* Error — Magma */
+  --color-error: #ffb4ab;
+  --color-on-error: #690005;
+  --color-error-container: #93000a;
+  --color-on-error-container: #ffdad6;
+
+  /* Acentos funcionales del UI Kit */
+  --color-void: #07080d;
+  --color-biolume: #3ef0c0;
+  --color-pulse: #5ec8ff;
+  --color-magma: #ff5a7a;
+  --color-ember: #ffb020;
+  --color-ion: #b08cff;
+  --color-gold: #f0c85a;
+
+  /* Bordes */
+  --color-outline: #84948d;
+  --color-outline-variant: #3b4a44;
+
+  /* Tipografía */
+  --font-sans: "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --text-headline-sm: 18px;
+  --text-headline-sm--line-height: 24px;
+  --text-headline-sm--letter-spacing: -0.01em;
+  --text-headline-sm--font-weight: 600;
+
+  --text-body-md: 13px;
+  --text-body-md--line-height: 18px;
+  --text-body-md--letter-spacing: -0.01em;
+  --text-body-md--font-weight: 400;
+
+  --text-label-md: 12px;
+  --text-label-md--line-height: 16px;
+  --text-label-md--letter-spacing: -0.01em;
+  --text-label-md--font-weight: 500;
+
+  --text-label-caps: 11px;
+  --text-label-caps--line-height: 16px;
+  --text-label-caps--letter-spacing: 0.06em;
+  --text-label-caps--font-weight: 700;
+
+  --text-code-sm: 12px;
+  --text-code-sm--line-height: 16px;
+  --text-code-sm--font-weight: 400;
+
+  --text-code-md: 13px;
+  --text-code-md--line-height: 20px;
+  --text-code-md--font-weight: 400;
+
+  /* Espaciado */
+  --spacing-sidebar: 260px;
+  --spacing-staging: 320px;
+  --spacing-gutter: 1px;
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 24px;
+
+  /* Radios — soft-technical */
+  --radius-sm: 0.125rem;
+  --radius: 0.25rem;
+  --radius-lg: 0.375rem;
+  --radius-xl: 0.5rem;
+}
+
 @layer base {
   * {
-    border-color: rgba(255, 255, 255, 0.08);
+    border-color: var(--color-outline-variant);
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    font-size: var(--text-body-md);
+    line-height: var(--text-body-md--line-height);
+    letter-spacing: var(--text-body-md--letter-spacing);
+    background-color: var(--color-surface-container-lowest);
+    color: var(--color-on-surface);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   dialog {
     margin: auto;
+    border: none;
+    padding: 0;
+    color: inherit;
+    background: transparent;
+  }
+
+  dialog::backdrop {
+    background: color-mix(in srgb, var(--color-void) 60%, transparent);
+    backdrop-filter: blur(8px);
   }
 }
 
-@layer base {
-  * {
-    border-color: rgba(255, 255, 255, 0.08);
+@layer utilities {
+  .text-headline-sm {
+    font-size: var(--text-headline-sm);
+    line-height: var(--text-headline-sm--line-height);
+    letter-spacing: var(--text-headline-sm--letter-spacing);
+    font-weight: var(--text-headline-sm--font-weight);
+  }
+
+  .text-body-md {
+    font-size: var(--text-body-md);
+    line-height: var(--text-body-md--line-height);
+    letter-spacing: var(--text-body-md--letter-spacing);
+    font-weight: var(--text-body-md--font-weight);
+  }
+
+  .text-label-md {
+    font-size: var(--text-label-md);
+    line-height: var(--text-label-md--line-height);
+    letter-spacing: var(--text-label-md--letter-spacing);
+    font-weight: var(--text-label-md--font-weight);
+  }
+
+  .text-label-caps {
+    font-size: var(--text-label-caps);
+    line-height: var(--text-label-caps--line-height);
+    letter-spacing: var(--text-label-caps--letter-spacing);
+    font-weight: var(--text-label-caps--font-weight);
+    text-transform: uppercase;
+  }
+
+  .text-code-sm {
+    font-family: var(--font-mono);
+    font-size: var(--text-code-sm);
+    line-height: var(--text-code-sm--line-height);
+    font-weight: var(--text-code-sm--font-weight);
+  }
+
+  .text-code-md {
+    font-family: var(--font-mono);
+    font-size: var(--text-code-md);
+    line-height: var(--text-code-md--line-height);
+    font-weight: var(--text-code-md--font-weight);
+  }
+
+  .font-mono {
+    font-family: var(--font-mono);
+  }
+
+  .glow-biolume {
+    box-shadow: 0 0 12px color-mix(in srgb, var(--color-primary-container) 30%, transparent);
+  }
+
+  .glow-biolume-sm {
+    box-shadow: 0 0 8px color-mix(in srgb, var(--color-primary-container) 20%, transparent);
   }
 }
 
-/* Custom Scrollbar estilo GitKraken */
+/* Scrollbar estilo instrumento */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0f111a;
+  background: var(--color-surface-container-lowest);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #23283b;
+  background: var(--color-outline-variant);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #38425d;
+  background: var(--color-outline);
 }

@@ -86,7 +86,7 @@ export const App: React.FC = () => {
   const ramaActual = git.status?.currentBranch || 'HEAD';
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-[#0f111a] text-slate-200 overflow-hidden font-sans">
+    <div className="flex flex-col h-screen w-screen bg-surface-container-lowest text-on-surface overflow-hidden font-sans">
       {contextMenu && (
         <button
           type="button"
@@ -97,16 +97,16 @@ export const App: React.FC = () => {
       )}
       {git.toast && (
         <div
-          className={`fixed bottom-12 right-6 z-50 flex items-center space-x-2 px-4 py-2.5 rounded-lg shadow-2xl text-xs font-semibold border ${
+          className={`fixed bottom-12 right-6 z-50 flex items-center gap-2 px-4 py-2.5 rounded-lg shadow-2xl text-label-md font-medium border backdrop-blur-sm ${
             git.toast.type === 'success'
-              ? 'bg-emerald-950/95 text-emerald-300 border-emerald-500/40'
-              : 'bg-rose-950/95 text-rose-300 border-rose-500/40'
+              ? 'bg-surface-container-high/95 text-primary border-primary/50 glow-biolume-sm'
+              : 'bg-error-container/90 text-error border-error/50'
           }`}
         >
           {git.toast.type === 'success' ? (
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
           ) : (
-            <AlertCircle className="w-4 h-4 text-rose-400" />
+            <AlertCircle className="w-4 h-4 text-error shrink-0" />
           )}
           <span>{git.toast.message}</span>
         </div>
@@ -141,7 +141,7 @@ export const App: React.FC = () => {
         motivoDeshacer={mut.ultimaOp.motivoBloqueo}
       />
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden min-h-0 min-w-0">
         <Sidebar
           branches={git.branches}
           tags={git.tags}
@@ -154,7 +154,7 @@ export const App: React.FC = () => {
           onRenameBranch={mut.handleRenameBranch}
         />
 
-        <main className="flex-1 flex flex-col min-w-0 bg-[#0f111a] relative">
+        <main className="flex-1 flex flex-col min-w-0 bg-surface-container-lowest relative overflow-hidden">
           {git.conflictData ? (
             <ConflictResolver
               key={git.conflictData.filePath}
@@ -167,15 +167,15 @@ export const App: React.FC = () => {
             />
           ) : git.selectedFile ? (
             <div className="flex-1 flex flex-col h-full">
-              <div className="h-8 bg-[#181c2d] border-b border-[#23283b] px-4 flex items-center justify-between text-xs">
-                <span className="text-slate-400">Inspeccionando archivo modificado</span>
+              <div className="h-8 bg-surface-container border-b border-outline-variant px-4 flex items-center justify-between text-label-md shrink-0">
+                <span className="text-on-surface-variant">Inspeccionando archivo modificado</span>
                 <button
                   type="button"
                   onClick={() => {
                     git.setSelectedFile(null);
                     git.setCurrentDiff('');
                   }}
-                  className="text-xs text-emerald-400 hover:underline"
+                  className="text-label-md text-primary hover:underline"
                 >
                   Volver al Grafo de Commits
                 </button>

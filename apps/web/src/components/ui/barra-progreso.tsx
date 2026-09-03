@@ -16,10 +16,10 @@ export function BarraProgreso({ valor, className, etiqueta }: BarraProgresoProps
       aria-valuemin={0}
       aria-valuemax={100}
       aria-label={etiqueta ?? 'Progreso'}
-      className={cn('h-1.5 w-full overflow-hidden rounded-sm bg-[#23283b]', className)}
+      className={cn('h-1.5 w-full overflow-hidden rounded-sm bg-surface-container-highest', className)}
     >
       <div
-        className="h-full bg-emerald-500 transition-[width] duration-200"
+        className="h-full bg-primary-container transition-[width] duration-200"
         style={{ width: `${ancho}%` }}
       />
     </div>
