@@ -4,12 +4,16 @@ import { GitBranch as IGitBranch, GitTag } from '../types/git';
 import { ui } from '../lib/diseno';
 import { cn } from '../lib/utils';
 import { ModalCapa } from './ui/modal-capa';
+import { ModalEncabezado } from './ui/modal-encabezado';
+import { ModalPie } from './ui/modal-pie';
+import { CampoEntrada } from './ui/campo-entrada';
 
 interface SidebarProps {
   branches: IGitBranch[];
   tags: GitTag[];
   currentBranch: string;
   loading: boolean;
+  headDesvinculado?: boolean;
   onCheckout: (branchName: string) => void;
   onCreateBranch: (branchName: string) => void;
   onCreateTag: (tagName: string) => void;
@@ -22,6 +26,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   tags,
   currentBranch,
   loading,
+  headDesvinculado = false,
   onCheckout,
   onCreateBranch,
   onCreateTag,
@@ -84,6 +89,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
+      {headDesvinculado && (
+        <div className="mx-3 mt-2 px-2.5 py-2 rounded border border-ember/40 bg-ember/10 text-code-sm text-ember leading-snug">
+          HEAD desvinculado en <span className="font-mono">{currentBranch}</span>. Haz checkout a una rama (p. ej.{' '}
+          <span className="font-mono">main</span>) para volver a una rama nombrada.
+        </div>
+      )}
+
       <div className="flex-1 overflow-y-auto py-2 space-y-3 min-h-0">
         <div>
           <button
@@ -94,7 +106,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           >
             {localExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
             <GitBranch className="w-3.5 h-3.5 text-primary" />
-            <span>Locales ({localBranches.length})</span>
+            <span className={ui.labelCaps}>Locales ({localBranches.length})</span>
           </button>
 
           {localExpanded && (
@@ -113,8 +125,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   >
                     <button
                       type="button"
-                      disabled={isCurrent}
-                      onClick={() => !isCurrent && onCheckout(branch.name)}
+                      disabled={isCurrent || loading}
+                      onClick={() => !isCurrent && !loading && onCheckout(branch.name)}
                       className="truncate text-left flex-1 min-w-0 font-mono text-code-sm disabled:cursor-default"
                     >
                       {branch.name}
@@ -164,7 +176,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           >
             {remoteExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
             <GitFork className="w-3.5 h-3.5 text-secondary" />
-            <span>Remotas ({remoteBranches.length})</span>
+            <span className={ui.labelCaps}>Remotas ({remoteBranches.length})</span>
           </button>
 
           {remoteExpanded && (
@@ -190,7 +202,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           >
             {tagsExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
             <Tag className="w-3.5 h-3.5 text-gold" />
-            <span>Tags ({tags.length})</span>
+            <span className={ui.labelCaps}>Tags ({tags.length})</span>
           </button>
 
           {tagsExpanded && (
@@ -214,69 +226,56 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {showNewBranchModal && (
         <ModalCapa ancho="sm" onCerrar={() => setShowNewBranchModal(false)} labelledBy="titulo-nueva-rama">
-          <div className="p-5">
-            <h3 id="titulo-nueva-rama" className="text-headline-sm text-on-surface mb-1">Crear nueva rama</h3>
-            <p className="text-body-md text-on-surface-variant mb-4">
-              La rama se creará a partir de la posición actual ({currentBranch}).
-            </p>
-            <form onSubmit={handleCreateBranch} className="space-y-4">
-              <label htmlFor="nueva-rama" className="block text-label-caps text-on-surface-variant">
-                Nombre de la rama
-              </label>
-              <input
-                id="nueva-rama"
-                type="text"
-                value={newBranchName}
-                onChange={(e) => setNewBranchName(e.target.value)}
-                placeholder="ej. feature/nueva-vista"
-                className={ui.input}
-                autoFocus
-              />
-              <div className="flex justify-end gap-2">
-                <button type="button" onClick={() => setShowNewBranchModal(false)} className="px-3 py-1.5 text-label-md text-on-surface-variant hover:text-on-surface rounded transition-colors">
-                  Cancelar
-                </button>
-                <button type="submit" disabled={!newBranchName.trim() || loading} className={ui.btnPrimario}>
-                  Crear rama
-                </button>
-              </div>
-            </form>
-          </div>
+          <ModalEncabezado
+            id="titulo-nueva-rama"
+            titulo="Crear nueva rama"
+            subtitulo={`Se creará a partir de la posición actual (${currentBranch}).`}
+            onCerrar={() => setShowNewBranchModal(false)}
+          />
+          <form onSubmit={handleCreateBranch} className="p-5 space-y-4">
+            <CampoEntrada
+              id="nueva-rama"
+              etiqueta="Nombre de la rama"
+              value={newBranchName}
+              onChange={(e) => setNewBranchName(e.target.value)}
+              placeholder="ej. feature/nueva-vista"
+              autoFocus
+            />
+            <ModalPie
+              onCancelar={() => setShowNewBranchModal(false)}
+              tipoConfirmar="submit"
+              etiquetaConfirmar="Crear rama"
+              deshabilitado={!newBranchName.trim() || loading}
+            />
+          </form>
         </ModalCapa>
       )}
 
       {showNewTagModal && (
         <ModalCapa ancho="sm" onCerrar={() => setShowNewTagModal(false)} labelledBy="titulo-nuevo-tag">
-          <div className="p-5">
-            <h3 id="titulo-nuevo-tag" className="text-headline-sm text-on-surface mb-1">Crear nuevo tag</h3>
-            <p className="text-body-md text-on-surface-variant mb-4">Etiqueta la versión en la posición actual de Git.</p>
-            <form onSubmit={handleCreateTag} className="space-y-4">
-              <label htmlFor="nuevo-tag" className="block text-label-caps text-on-surface-variant">
-                Nombre del tag
-              </label>
-              <input
-                id="nuevo-tag"
-                type="text"
-                value={newTagName}
-                onChange={(e) => setNewTagName(e.target.value)}
-                placeholder="ej. v1.0.0"
-                className={ui.input}
-                autoFocus
-              />
-              <div className="flex justify-end gap-2">
-                <button type="button" onClick={() => setShowNewTagModal(false)} className="px-3 py-1.5 text-label-md text-on-surface-variant hover:text-on-surface rounded transition-colors">
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={!newTagName.trim() || loading}
-                  className="px-4 py-1.5 text-label-md font-medium bg-gold text-void rounded hover:brightness-110 transition-all disabled:opacity-40"
-                >
-                  Crear tag
-                </button>
-              </div>
-            </form>
-          </div>
+          <ModalEncabezado
+            id="titulo-nuevo-tag"
+            titulo="Crear nuevo tag"
+            subtitulo="Etiqueta la versión en la posición actual de Git."
+            onCerrar={() => setShowNewTagModal(false)}
+          />
+          <form onSubmit={handleCreateTag} className="p-5 space-y-4">
+            <CampoEntrada
+              id="nuevo-tag"
+              etiqueta="Nombre del tag"
+              value={newTagName}
+              onChange={(e) => setNewTagName(e.target.value)}
+              placeholder="ej. v1.0.0"
+              autoFocus
+            />
+            <ModalPie
+              onCancelar={() => setShowNewTagModal(false)}
+              tipoConfirmar="submit"
+              etiquetaConfirmar="Crear tag"
+              deshabilitado={!newTagName.trim() || loading}
+              varianteConfirmar="secundario"
+            />
+          </form>
         </ModalCapa>
       )}
     </aside>

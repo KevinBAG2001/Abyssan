@@ -82,7 +82,7 @@ export const StagingPanel: React.FC<StagingPanelProps> = ({
   };
 
   return (
-    <div className="w-staging min-w-[220px] max-w-[420px] shrink-0 bg-surface-container-low border-l border-outline-variant flex flex-col h-full select-none overflow-hidden max-xl:min-w-[200px]">
+    <div className="w-staging min-w-[220px] max-w-[min(420px,38vw)] shrink-0 bg-surface-container-low border-l border-outline-variant flex flex-col h-full select-none overflow-hidden max-xl:min-w-[200px]">
       {status?.isMerging && (
         <div className="px-3 py-2.5 bg-error-container/20 border-b border-error/30 flex flex-col gap-2 shrink-0">
           <div className="flex items-center gap-2 text-error">
@@ -91,6 +91,7 @@ export const StagingPanel: React.FC<StagingPanelProps> = ({
           </div>
           <div className="flex gap-2">
             <button
+              type="button"
               onClick={onContinuarMerge}
               disabled={loading}
               className={cn(ui.btnPrimario, 'flex-1 py-1 text-label-md')}
@@ -99,6 +100,7 @@ export const StagingPanel: React.FC<StagingPanelProps> = ({
               Continuar
             </button>
             <button
+              type="button"
               onClick={onAbortMerge}
               disabled={loading}
               className={cn(ui.btnDestructivo, 'flex-1 py-1 text-label-md')}
@@ -119,6 +121,7 @@ export const StagingPanel: React.FC<StagingPanelProps> = ({
         </div>
         {unstagedFiles.length > 0 && (
           <button
+            type="button"
             onClick={onStageAll}
             disabled={loading}
             className="text-label-md font-medium text-primary hover:text-primary-fixed shrink-0 transition-colors"

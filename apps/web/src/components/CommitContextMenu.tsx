@@ -1,6 +1,9 @@
 import React from 'react';
 import { GitCommit } from '../types/git';
 import { GitBranch, Tag, GitPullRequest, Undo2, RotateCcw, ShieldAlert } from 'lucide-react';
+import { Portal } from './ui/portal';
+import { ui } from '../lib/diseno';
+import { cn } from '../lib/utils';
 
 interface CommitContextMenuProps {
   commit: GitCommit;
@@ -13,6 +16,9 @@ interface CommitContextMenuProps {
   onReset: (type: 'soft' | 'mixed' | 'hard', hash: string) => void;
 }
 
+const itemClase =
+  'w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-code-sm text-left transition-colors';
+
 export const CommitContextMenu: React.FC<CommitContextMenuProps> = ({
   commit,
   position,
@@ -23,104 +29,122 @@ export const CommitContextMenu: React.FC<CommitContextMenuProps> = ({
   onRevert,
   onReset,
 }) => {
-  // Asegurar que el menú no salga de la pantalla
   const menuStyle: React.CSSProperties = {
-    top: `${Math.min(position.y, window.innerHeight - 280)}px`,
-    left: `${Math.min(position.x, window.innerWidth - 220)}px`,
+    top: `${Math.min(position.y, window.innerHeight - 320)}px`,
+    left: `${Math.min(position.x, window.innerWidth - 240)}px`,
   };
 
   return (
+    <Portal>
     <div
-      className="fixed z-50 bg-surface-container border border-outline-variant rounded-xl shadow-2xl p-1.5 w-56 text-xs select-none"
+      role="menu"
+      className="fixed z-[150] bg-surface-container border border-outline-variant rounded-lg shadow-2xl p-1.5 w-56 max-w-[calc(100vw-1rem)] text-code-sm select-none font-mono"
       style={menuStyle}
       onClick={(e) => e.stopPropagation()}
     >
-      <div className="px-2.5 py-1.5 border-b border-outline-variant text-[11px] font-mono text-on-surface-variant truncate">
-        Commit: <span className="text-primary font-bold">{commit.shortHash}</span>
+      <div className="px-2.5 py-1.5 border-b border-outline-variant mb-1">
+        <span className={cn(ui.labelCaps, 'block opacity-70')}>Commit</span>
+        <span className="font-mono text-primary font-bold">{commit.shortHash}</span>
+        <p className="text-on-surface-variant truncate mt-0.5 normal-case">{commit.message}</p>
       </div>
 
-      <div className="py-1 space-y-0.5">
+      <div className="py-0.5 space-y-0.5">
         <button
+          type="button"
+          role="menuitem"
           onClick={() => {
             onCreateBranch(commit.hash);
             onClose();
           }}
-          className="w-full flex items-center space-x-2 px-2.5 py-1.5 hover:bg-surface-container-highest text-on-surface hover:text-on-surface rounded-md transition-colors text-left"
+          className={cn(itemClase, 'hover:bg-surface-container-highest text-on-surface')}
         >
-          <GitBranch className="w-3.5 h-3.5 text-primary" />
-          <span>Crear Rama aquí...</span>
+          <GitBranch className="w-3.5 h-3.5 text-primary shrink-0" />
+          <span>Crear rama aquí…</span>
         </button>
 
         <button
+          type="button"
+          role="menuitem"
           onClick={() => {
             onCreateTag(commit.hash);
             onClose();
           }}
-          className="w-full flex items-center space-x-2 px-2.5 py-1.5 hover:bg-surface-container-highest text-on-surface hover:text-on-surface rounded-md transition-colors text-left"
+          className={cn(itemClase, 'hover:bg-surface-container-highest text-on-surface')}
         >
-          <Tag className="w-3.5 h-3.5 text-ember" />
-          <span>Crear Tag aquí...</span>
+          <Tag className="w-3.5 h-3.5 text-gold shrink-0" />
+          <span>Crear tag aquí…</span>
         </button>
 
-        <div className="h-[1px] bg-surface-container-highest my-1" />
+        <div className="h-px bg-outline-variant my-1" />
 
         <button
+          type="button"
+          role="menuitem"
           onClick={() => {
             onCherryPick(commit.hash);
             onClose();
           }}
-          className="w-full flex items-center space-x-2 px-2.5 py-1.5 hover:bg-surface-container-highest text-on-surface hover:text-on-surface rounded-md transition-colors text-left"
+          className={cn(itemClase, 'hover:bg-surface-container-highest text-on-surface')}
         >
-          <GitPullRequest className="w-3.5 h-3.5 text-secondary" />
-          <span>Cherry-Pick a HEAD</span>
+          <GitPullRequest className="w-3.5 h-3.5 text-secondary shrink-0" />
+          <span>Cherry-pick a HEAD</span>
         </button>
 
         <button
+          type="button"
+          role="menuitem"
           onClick={() => {
             onRevert(commit.hash);
             onClose();
           }}
-          className="w-full flex items-center space-x-2 px-2.5 py-1.5 hover:bg-surface-container-highest text-on-surface hover:text-on-surface rounded-md transition-colors text-left"
+          className={cn(itemClase, 'hover:bg-surface-container-highest text-on-surface')}
         >
-          <Undo2 className="w-3.5 h-3.5 text-tertiary-fixed-dim" />
-          <span>Revertir Commit</span>
+          <Undo2 className="w-3.5 h-3.5 text-tertiary-fixed-dim shrink-0" />
+          <span>Revertir commit</span>
         </button>
 
-        <div className="h-[1px] bg-surface-container-highest my-1" />
+        <div className="h-px bg-outline-variant my-1" />
 
         <button
+          type="button"
+          role="menuitem"
           onClick={() => {
             onReset('soft', commit.hash);
             onClose();
           }}
-          className="w-full flex items-center space-x-2 px-2.5 py-1.5 hover:bg-surface-container-highest text-ember hover:text-ember rounded-md transition-colors text-left"
+          className={cn(itemClase, 'hover:bg-surface-container-highest text-ember')}
         >
-          <RotateCcw className="w-3.5 h-3.5 text-ember" />
-          <span>Reset Soft (mantener staging)</span>
+          <RotateCcw className="w-3.5 h-3.5 shrink-0" />
+          <span>Reset soft</span>
         </button>
 
         <button
+          type="button"
+          role="menuitem"
           onClick={() => {
             onReset('mixed', commit.hash);
             onClose();
           }}
-          className="w-full flex items-center space-x-2 px-2.5 py-1.5 hover:bg-surface-container-highest text-ember hover:text-ember rounded-md transition-colors text-left"
+          className={cn(itemClase, 'hover:bg-surface-container-highest text-ember')}
         >
-          <RotateCcw className="w-3.5 h-3.5 text-ember" />
-          <span>Reset Mixed (conservar working tree)</span>
+          <RotateCcw className="w-3.5 h-3.5 shrink-0" />
+          <span>Reset mixed</span>
         </button>
 
         <button
+          type="button"
+          role="menuitem"
           onClick={() => {
             onReset('hard', commit.hash);
             onClose();
           }}
-          className="w-full flex items-center space-x-2 px-2.5 py-1.5 hover:bg-magma/20 text-error hover:text-error rounded-md transition-colors text-left"
+          className={cn(itemClase, 'hover:bg-magma/15 text-magma border border-transparent hover:border-magma/30')}
         >
-          <ShieldAlert className="w-3.5 h-3.5 text-error" />
-          <span>Reset Hard (descartar todo)</span>
+          <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
+          <span>Reset hard</span>
         </button>
       </div>
     </div>
+    </Portal>
   );
 };
