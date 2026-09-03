@@ -14,6 +14,7 @@ services:
       - PORT=3001
       - BIND_HOST=0.0.0.0
       - NODE_ENV=development
+      - CI=true
       - PROJECTS_ROOT=/workspace/proyectos
       - CORS_ORIGINS=http://localhost:5174,http://127.0.0.1:5174
       - ABYSSAN_API_TOKEN=${ABYSSAN_API_TOKEN:?Defina ABYSSAN_API_TOKEN en el archivo .env}
@@ -50,9 +51,11 @@ services:
     environment:
       - VITE_API_URL=http://localhost:3001
       - VITE_WS_URL=ws://localhost:3001
+      - CI=true
       - VITE_ABYSSAN_API_TOKEN=${ABYSSAN_API_TOKEN:?Defina ABYSSAN_API_TOKEN en el archivo .env}
     volumes:
       - ./apps/web/src:/app/apps/web/src
+      - ./apps/web/public:/app/apps/web/public
       - ./apps/web/index.html:/app/apps/web/index.html
       - ./apps/web/vite.config.ts:/app/apps/web/vite.config.ts
     depends_on:

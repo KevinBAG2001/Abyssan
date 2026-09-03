@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Search, ArrowDown, ArrowUp, Download, Send, GitPullRequest } from 'lucide-react';
-import { Dialogo } from './ui/dialogo';
+import { ModalCapa } from './ui/modal-capa';
+import { cn } from '../lib/utils';
 
 export type AccionPaleta = 'fetch' | 'pull' | 'push' | 'commit' | 'forjas';
 
@@ -10,35 +11,60 @@ interface PaletaComandosProps {
   onAccion: (accion: AccionPaleta) => void;
 }
 
-const ACCIONES: { id: AccionPaleta; label: string; hint: string; icon: React.ReactNode }[] = [
-  { id: 'fetch', label: 'Fetch', hint: 'Traer refs del remoto', icon: <Download className="w-3.5 h-3.5 text-sky-400" /> },
-  { id: 'pull', label: 'Pull', hint: 'Integrar cambios del remoto', icon: <ArrowDown className="w-3.5 h-3.5 text-sky-400" /> },
-  { id: 'push', label: 'Push', hint: 'Enviar commits', icon: <ArrowUp className="w-3.5 h-3.5 text-emerald-400" /> },
-  { id: 'commit', label: 'Enfocar commit', hint: 'Ir al formulario de commit', icon: <Send className="w-3.5 h-3.5 text-emerald-400" /> },
-  { id: 'forjas', label: 'PRs / MRs', hint: 'Solicitudes del origin', icon: <GitPullRequest className="w-3.5 h-3.5 text-sky-400" /> },
+const ACCIONES: {
+  id: AccionPaleta;
+  label: string;
+  hint: string;
+  categoria: string;
+  atajo: string;
+  icon: React.ReactNode;
+}[] = [
+  { id: 'fetch', label: 'Fetch', hint: 'Traer refs del remoto', categoria: 'Acciones de remoto', atajo: 'F', icon: <Download className="w-4 h-4" /> },
+  { id: 'pull', label: 'Pull', hint: 'Integrar cambios del remoto', categoria: 'Acciones de remoto', atajo: 'L', icon: <ArrowDown className="w-4 h-4" /> },
+  { id: 'push', label: 'Push', hint: 'Enviar commits', categoria: 'Acciones de remoto', atajo: 'P', icon: <ArrowUp className="w-4 h-4" /> },
+  { id: 'commit', label: 'Enfocar commit', hint: 'Ir al formulario de commit', categoria: 'Navegación', atajo: 'C', icon: <Send className="w-4 h-4" /> },
+  { id: 'forjas', label: 'PRs / MRs', hint: 'Solicitudes del origin', categoria: 'Navegación', atajo: 'M', icon: <GitPullRequest className="w-4 h-4" /> },
 ];
 
 export const PaletaComandos: React.FC<PaletaComandosProps> = ({ abierta, onCerrar, onAccion }) => {
   const [filtro, setFiltro] = useState('');
+  const [activo, setActivo] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const visibles = ACCIONES.filter((a) =>
+    `${a.label} ${a.hint}`.toLowerCase().includes(filtro.toLowerCase())
+  );
+
+  useEffect(() => {
+    if (abierta) {
+      setFiltro('');
+      setActivo(0);
+      window.setTimeout(() => inputRef.current?.focus(), 0);
+    }
+  }, [abierta]);
+
+  useEffect(() => {
+    setActivo(0);
+  }, [filtro]);
 
   if (!abierta) return null;
 
-  const visibles = ACCIONES.filter((a) => a.label.toLowerCase().includes(filtro.toLowerCase()));
   const cerrar = () => {
     setFiltro('');
     onCerrar();
   };
 
+  const ejecutar = (id: AccionPaleta) => {
+    onAccion(id);
+    cerrar();
+  };
+
+  const categorias = [...new Set(visibles.map((a) => a.categoria))];
+
   return (
-    <Dialogo
-      onCerrar={cerrar}
-      labelledBy="titulo-paleta"
-      className="w-full max-w-md rounded-xl border border-[#2e354e] bg-[#181c2d] p-0 shadow-2xl backdrop:bg-black/50"
-    >
-      <PaletaFoco inputRef={inputRef} />
-      <div className="flex items-center px-3 border-b border-[#23283b]">
-        <Search className="w-4 h-4 text-slate-500" aria-hidden="true" />
+    <ModalCapa ancho="paleta" onCerrar={cerrar} labelledBy="titulo-paleta" className="bg-surface-container p-0 overflow-hidden">
+      <div className="flex items-center px-4 py-3 border-b border-outline-variant bg-surface-container-high">
+        <Search className="w-4 h-4 text-on-surface-variant mr-2 shrink-0" aria-hidden="true" />
         <label htmlFor="paleta-filtro" id="titulo-paleta" className="sr-only">
           Buscar comando
         </label>
@@ -47,41 +73,84 @@ export const PaletaComandos: React.FC<PaletaComandosProps> = ({ abierta, onCerra
           ref={inputRef}
           value={filtro}
           onChange={(e) => setFiltro(e.target.value)}
-          placeholder="Fetch, pull, push, commit, PRs…"
-          className="w-full bg-transparent px-2 py-3 text-sm text-white focus:outline-none"
+          placeholder="Buscar comando…"
+          className="flex-1 bg-transparent font-mono text-code-md text-primary focus:outline-none placeholder:text-on-surface-variant/50"
           onKeyDown={(e) => {
             if (e.key === 'Escape') cerrar();
-            if (e.key === 'Enter' && visibles[0]) {
-              onAccion(visibles[0].id);
-              cerrar();
+            if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              setActivo((i) => Math.min(i + 1, visibles.length - 1));
             }
+            if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              setActivo((i) => Math.max(i - 1, 0));
+            }
+            if (e.key === 'Enter' && visibles[activo]) ejecutar(visibles[activo].id);
           }}
         />
+        <kbd className="font-mono text-code-sm text-on-surface-variant bg-surface px-1.5 py-0.5 rounded border border-outline-variant ml-2">
+          esc
+        </kbd>
       </div>
-      <div className="p-1.5">
-        {visibles.map((a) => (
-          <button
-            key={a.id}
-            type="button"
-            onClick={() => {
-              onAccion(a.id);
-              cerrar();
-            }}
-            className="w-full flex items-center space-x-2 px-3 py-2 rounded-md text-left text-xs text-slate-200 hover:bg-[#23283b]"
-          >
-            {a.icon}
-            <span className="font-semibold">{a.label}</span>
-            <span className="text-slate-500">{a.hint}</span>
-          </button>
-        ))}
+
+      <div className="py-2 max-h-80 overflow-y-auto">
+        {visibles.length === 0 ? (
+          <p className="px-4 py-6 text-label-md text-on-surface-variant/70 text-center">Sin coincidencias</p>
+        ) : (
+          categorias.map((cat) => (
+            <div key={cat}>
+              <div className="px-4 py-1">
+                <span className="text-label-caps text-on-surface-variant uppercase opacity-70">{cat}</span>
+              </div>
+              {visibles
+                .filter((a) => a.categoria === cat)
+                .map((a) => {
+                  const idx = visibles.indexOf(a);
+                  const seleccionado = idx === activo;
+                  return (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onClick={() => ejecutar(a.id)}
+                      onMouseEnter={() => setActivo(idx)}
+                      className={cn(
+                        'w-full flex items-center justify-between px-4 py-2 transition-colors group',
+                        seleccionado
+                          ? 'bg-surface-container-highest border-l-2 border-primary'
+                          : 'hover:bg-surface-container-highest border-l-2 border-transparent'
+                      )}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className={cn(seleccionado ? 'text-primary' : 'text-on-surface-variant group-hover:text-primary')}>
+                          {a.icon}
+                        </span>
+                        <span className={cn('text-label-md', seleccionado ? 'text-primary' : 'text-on-surface group-hover:text-primary')}>
+                          {a.label}
+                        </span>
+                        <span className="text-label-md text-on-surface-variant/70 truncate hidden sm:inline">{a.hint}</span>
+                      </div>
+                      <kbd
+                        className={cn(
+                          'font-mono text-code-sm px-1.5 py-0.5 rounded border shrink-0',
+                          seleccionado
+                            ? 'bg-surface-dim text-primary border-primary'
+                            : 'bg-surface-dim text-on-surface border-outline-variant group-hover:border-primary group-hover:text-primary'
+                        )}
+                      >
+                        {a.atajo}
+                      </kbd>
+                    </button>
+                  );
+                })}
+            </div>
+          ))
+        )}
       </div>
-    </Dialogo>
+
+      <div className="flex items-center justify-between px-4 py-2 border-t border-outline-variant bg-surface-container-low text-code-sm text-on-surface-variant">
+        <span>↑↓ navegar</span>
+        <span>↵ ejecutar</span>
+      </div>
+    </ModalCapa>
   );
 };
-
-function PaletaFoco({ inputRef }: { inputRef: React.RefObject<HTMLInputElement | null> }) {
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, [inputRef]);
-  return null;
-}

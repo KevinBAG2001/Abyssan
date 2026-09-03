@@ -7,7 +7,7 @@ Cómo levantar Abyssan en una máquina de desarrollo. Solo se documentan requisi
 | Herramienta | Evidencia en el repo | Nota |
 |-------------|----------------------|------|
 | Node.js | CI (`.github/workflows/ci.yml`) usa **20**. Dockerfiles usan **`node:22-alpine`**. El README pide 20 LTS o superior. | No hay campo `engines` en `package.json`. |
-| pnpm | CI: `pnpm/action-setup` versión **9**. Docker: `corepack prepare pnpm@9.15.9`. | Gestor exclusivo. No uses `npm` ni `yarn` en este monorepo. |
+| pnpm | CI: `pnpm/action-setup` versión **11.25.0**. Docker: `corepack prepare pnpm@11.25.0`. Campo `packageManager` en la raíz. | Gestor exclusivo. No uses `npm` ni `yarn` en este monorepo. |
 | Git | El servidor Alpine instala `git` (`apk add git`). simple-git invoca Git del `PATH`. | Obligatorio en el host o en el contenedor del API. |
 | Docker | `docker-compose.yml` y Dockerfiles | Opcional. |
 
@@ -40,6 +40,9 @@ El lockfile es `pnpm-lock.yaml`. CI usa `pnpm install --frozen-lockfile`.
 | `VITE_API_URL` | Origen REST de la SPA | `http://localhost:3001` |
 | `VITE_WS_URL` | Origen WebSocket de la SPA | `ws://localhost:3001` |
 | `VITE_ABYSSAN_API_TOKEN` | Mismo token, embebido por Vite para la SPA | Comentado en el ejemplo |
+
+**Token de instancia:** no se descarga de ningún sitio. Genera una cadena aleatoria (p. ej. `openssl rand -base64 32` o el comando PowerShell del `.env.example`) y asígnala **igual** a `ABYSSAN_API_TOKEN` y `VITE_ABYSSAN_API_TOKEN`. Obligatorio con Docker; en desarrollo local con `BIND_HOST=127.0.0.1` suele omitirse.
+
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | OAuth GitHub (forjas) | Opcional |
 | `GITLAB_CLIENT_ID` / `GITLAB_CLIENT_SECRET` | OAuth GitLab (forjas) | Opcional |
 | `OAUTH_CALLBACK_URL` | Callback OAuth | `http://localhost:3001/api/auth/callback` |

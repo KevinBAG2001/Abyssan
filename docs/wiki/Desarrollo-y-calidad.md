@@ -20,7 +20,7 @@ No introduzcas `package-lock.json` ni `yarn.lock`.
 | `pnpm test` | `vitest run` |
 | `pnpm test:watch` | vitest |
 
-CI (`.github/workflows/ci.yml`): lint → test → build en Ubuntu, Node 20, pnpm 9, ramas `main`, `qa`, `dev` y pull requests.
+CI (`.github/workflows/ci.yml`): lint → test → build en Ubuntu, Node 22, pnpm 11.25.0, ramas `main`, `qa`, `dev` y pull requests.
 
 ## Arquitectura
 
