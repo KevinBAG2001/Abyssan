@@ -1,19 +1,18 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Header } from './components/Header';
-import { Sidebar } from './components/Sidebar';
-import { CommitGraph } from './components/CommitGraph';
-import { StagingPanel } from './components/StagingPanel';
-import { DiffViewer } from './components/DiffViewer';
-import { ConflictResolver } from './components/ConflictResolver';
 import { GitConsoleDrawer } from './components/GitConsoleDrawer';
 import { CapaModalesApp } from './components/CapaModalesApp';
 import { ModalIdentidadGit } from './components/ModalIdentidadGit';
 import { PanelTimeline } from './components/PanelTimeline';
+import { ToastNotificacion } from './components/app/ToastNotificacion';
+import { AreaTrabajoGit } from './components/app/AreaTrabajoGit';
 import { useGitRepository } from './application/hooks/useGitRepository';
 import { useMutacionesGit } from './application/hooks/useMutacionesGit';
+import { useEfectosAppShell } from './application/hooks/useEfectosAppShell';
 import { GitCommit } from './types/git';
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import type { AccionPaleta } from './components/PaletaComandos';
+import { ui } from './lib/diseno';
+import { cn } from './lib/utils';
 
 const CLAVE_PULL = 'abyssan.modoPull';
 
@@ -34,6 +33,7 @@ export const App: React.FC = () => {
   const [isRemoteModalOpen, setIsRemoteModalOpen] = useState(false);
   const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
   const [isConsoleOpen, setIsConsoleOpen] = useState(false);
+  const [consolaExpandida, setConsolaExpandida] = useState(false);
   const [nacimientoAbierto, setNacimientoAbierto] = useState(false);
   const [forjasAbiertas, setForjasAbiertas] = useState(false);
   const [paletaAbierta, setPaletaAbierta] = useState(false);
@@ -47,33 +47,16 @@ export const App: React.FC = () => {
     position: { x: number; y: number };
   } | null>(null);
 
-  useEffect(() => {
-    if (git.operaciones.some((o) => o.estado === 'en_cola' || o.estado === 'corriendo')) {
-      setIsConsoleOpen(true);
-    }
-  }, [git.operaciones]);
+  const abrirConsola = useCallback(() => setIsConsoleOpen(true), []);
+  const abrirPaleta = useCallback(() => setPaletaAbierta(true), []);
 
-  useEffect(() => {
-    const q = new URLSearchParams(window.location.search);
-    if (q.get('oauth') === 'ok') git.showToast('Cuenta de forja conectada', 'success');
-    if (q.get('oauth') === 'error') git.showToast('OAuth falló. Revisa las credenciales de la forja.', 'error');
-    if (q.has('oauth')) window.history.replaceState({}, '', window.location.pathname);
-  }, [git.showToast]);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
-        e.preventDefault();
-        void mut.handleStageAll();
-      }
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'P' || e.key === 'p')) {
-        e.preventDefault();
-        setPaletaAbierta(true);
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [mut.handleStageAll]);
+  useEfectosAppShell({
+    operaciones: git.operaciones,
+    onAbrirConsola: abrirConsola,
+    showToast: git.showToast,
+    onStageAll: mut.handleStageAll,
+    onAbrirPaleta: abrirPaleta,
+  });
 
   const onPaleta = (accion: AccionPaleta) => {
     if (accion === 'fetch') void mut.handleFetch();
@@ -83,10 +66,25 @@ export const App: React.FC = () => {
     if (accion === 'forjas') setForjasAbiertas(true);
   };
 
+  const alternarConsola = () => {
+    if (isConsoleOpen) setConsolaExpandida(false);
+    setIsConsoleOpen((abierta) => !abierta);
+  };
+
   const ramaActual = git.status?.currentBranch || 'HEAD';
+  const headDesvinculado =
+    ramaActual === 'HEAD desvinculado' || /^[0-9a-f]{7,40}$/i.test(ramaActual);
+  const ocupado =
+    git.loading ||
+    mut.mutando ||
+    git.operaciones.some((o) => o.estado === 'en_cola' || o.estado === 'corriendo');
+  const headShort =
+    git.commits[0]?.shortHash ||
+    git.branches.find((b) => b.current)?.commit?.slice(0, 7) ||
+    undefined;
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-surface-container-lowest text-on-surface overflow-hidden font-sans">
+    <div className={cn(ui.app, 'h-screen w-screen')}>
       {contextMenu && (
         <button
           type="button"
@@ -96,20 +94,7 @@ export const App: React.FC = () => {
         />
       )}
       {git.toast && (
-        <div
-          className={`fixed bottom-12 right-6 z-50 flex items-center gap-2 px-4 py-2.5 rounded-lg shadow-2xl text-label-md font-medium border backdrop-blur-sm ${
-            git.toast.type === 'success'
-              ? 'bg-surface-container-high/95 text-primary border-primary/50 glow-biolume-sm'
-              : 'bg-error-container/90 text-error border-error/50'
-          }`}
-        >
-          {git.toast.type === 'success' ? (
-            <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
-          ) : (
-            <AlertCircle className="w-4 h-4 text-error shrink-0" />
-          )}
-          <span>{git.toast.message}</span>
-        </div>
+        <ToastNotificacion mensaje={git.toast.message} tipo={git.toast.type} />
       )}
 
       <Header
@@ -125,7 +110,7 @@ export const App: React.FC = () => {
         onOpenStashModal={() => setIsStashModalOpen(true)}
         onOpenRemoteModal={() => setIsRemoteModalOpen(true)}
         onOpenCompareModal={() => setIsCompareModalOpen(true)}
-        onToggleConsole={() => setIsConsoleOpen(!isConsoleOpen)}
+        onToggleConsole={alternarConsola}
         onFetch={() => void mut.handleFetch()}
         onOpenNacimiento={() => setNacimientoAbierto(true)}
         onOpenForjas={() => setForjasAbiertas(true)}
@@ -141,81 +126,55 @@ export const App: React.FC = () => {
         motivoDeshacer={mut.ultimaOp.motivoBloqueo}
       />
 
-      <div className="flex flex-1 overflow-hidden min-h-0 min-w-0">
-        <Sidebar
-          branches={git.branches}
-          tags={git.tags}
-          currentBranch={ramaActual}
-          loading={git.loading}
-          onCheckout={mut.handleCheckout}
-          onCreateBranch={(name) => mut.handleCreateBranch(name)}
-          onCreateTag={(name) => mut.handleCreateTag(name)}
-          onDeleteBranch={mut.handleDeleteBranch}
-          onRenameBranch={mut.handleRenameBranch}
-        />
-
-        <main className="flex-1 flex flex-col min-w-0 bg-surface-container-lowest relative overflow-hidden">
-          {git.conflictData ? (
-            <ConflictResolver
-              key={git.conflictData.filePath}
-              conflictData={git.conflictData}
-              loading={git.loading}
-              isMerging={git.status?.isMerging}
-              onResolve={mut.handleResolveConflict}
-              onCancel={() => git.setConflictData(null)}
-              onAbortMerge={mut.handleAbortMerge}
-            />
-          ) : git.selectedFile ? (
-            <div className="flex-1 flex flex-col h-full">
-              <div className="h-8 bg-surface-container border-b border-outline-variant px-4 flex items-center justify-between text-label-md shrink-0">
-                <span className="text-on-surface-variant">Inspeccionando archivo modificado</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    git.setSelectedFile(null);
-                    git.setCurrentDiff('');
-                  }}
-                  className="text-label-md text-primary hover:underline"
-                >
-                  Volver al Grafo de Commits
-                </button>
-              </div>
-              <DiffViewer diff={git.currentDiff} filePath={git.selectedFile.path} isStaged={git.selectedFile.staged} />
-            </div>
-          ) : (
-            <CommitGraph
-              commits={git.commits}
-              selectedCommit={git.selectedCommit}
-              onSelectCommit={git.setSelectedCommit}
-              onContextMenu={(commit, position) => setContextMenu({ commit, position })}
-            />
-          )}
-        </main>
-
-        <StagingPanel
-          status={git.status}
-          selectedFile={git.selectedFile}
-          loading={git.loading}
-          onSelectFile={mut.handleSelectFile}
-          onStageFile={mut.handleStageFile}
-          onStageAll={mut.handleStageAll}
-          onUnstageFile={mut.handleUnstageFile}
-          onCommit={mut.handleCommit}
-          onOpenConflictResolver={mut.handleOpenConflictResolver}
-          onDiscardFile={mut.handleDiscard}
-          onAbortMerge={mut.handleAbortMerge}
-          onContinuarMerge={mut.handleContinuarMerge}
-          onAmend={mut.handleAmend}
-        />
-      </div>
+      <AreaTrabajoGit
+        branches={git.branches}
+        tags={git.tags}
+        commits={git.commits}
+        status={git.status}
+        selectedFile={git.selectedFile}
+        selectedCommit={git.selectedCommit}
+        currentDiff={git.currentDiff}
+        conflictData={git.conflictData}
+        loading={ocupado}
+        headDesvinculado={headDesvinculado}
+        ramaActual={ramaActual}
+        onCheckout={mut.handleCheckout}
+        onCreateBranch={(name) => mut.handleCreateBranch(name)}
+        onCreateTag={(name) => mut.handleCreateTag(name)}
+        onDeleteBranch={mut.handleDeleteBranch}
+        onRenameBranch={mut.handleRenameBranch}
+        onSelectCommit={git.setSelectedCommit}
+        onContextMenu={(commit, position) => setContextMenu({ commit, position })}
+        onSelectFile={mut.handleSelectFile}
+        onStageFile={mut.handleStageFile}
+        onStageAll={mut.handleStageAll}
+        onUnstageFile={mut.handleUnstageFile}
+        onCommit={mut.handleCommit}
+        onOpenConflictResolver={mut.handleOpenConflictResolver}
+        onDiscardFile={mut.handleDiscard}
+        onAbortMerge={mut.handleAbortMerge}
+        onContinuarMerge={mut.handleContinuarMerge}
+        onAmend={mut.handleAmend}
+        onCerrarDiff={() => {
+          git.setSelectedFile(null);
+          git.setCurrentDiff('');
+        }}
+        onCancelarConflicto={() => git.setConflictData(null)}
+        onResolveConflict={mut.handleResolveConflict}
+      />
 
       <GitConsoleDrawer
         logs={git.logs}
         operaciones={git.operaciones}
         isOpen={isConsoleOpen}
-        onToggle={() => setIsConsoleOpen(!isConsoleOpen)}
+        expandida={consolaExpandida}
+        onToggle={alternarConsola}
+        onExpandidaChange={setConsolaExpandida}
         onClear={() => git.setLogs([])}
         reflog={mut.reflog}
+        currentBranch={git.selectedRepo ? ramaActual : undefined}
+        headShortHash={headShort}
+        loading={ocupado}
       />
 
       <CapaModalesApp
@@ -283,7 +242,6 @@ export const App: React.FC = () => {
 
       {timelineAbierta && (
         <PanelTimeline
-          abierta={timelineAbierta}
           entradas={mut.journal}
           loading={git.loading}
           onCerrar={() => setTimelineAbierta(false)}

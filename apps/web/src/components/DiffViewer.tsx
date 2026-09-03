@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { FileCode, Plus, Minus, Columns2, AlignJustify } from 'lucide-react';
 import { createHighlighter, type Highlighter } from 'shiki';
+import { cn } from '../lib/utils';
 
 interface DiffViewerProps {
   diff: string;
@@ -137,48 +138,53 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ diff, filePath, isStaged
   const filasSplit = useMemo(() => armarSplit(parsedLines), [parsedLines]);
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-void overflow-hidden">
-      <div className="h-10 bg-surface-container-low border-b border-outline-variant px-4 flex items-center justify-between select-none">
-        <div className="flex items-center space-x-2 truncate">
-          <FileCode className="w-4 h-4 text-on-surface-variant" />
-          <span className="text-xs font-mono font-medium text-on-surface truncate">{filePath}</span>
+    <div className="flex-1 flex flex-col h-full bg-void overflow-hidden font-mono min-w-0">
+      <div className="min-h-10 bg-surface-container-low border-b border-outline-variant px-3 sm:px-4 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 select-none shrink-0">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <FileCode className="w-4 h-4 text-on-surface-variant shrink-0" />
+          <span className="text-code-sm font-medium text-on-surface truncate">{filePath}</span>
           <span
-            className={`text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase ${
+            className={cn(
+              'text-code-sm px-1.5 py-0.5 rounded font-semibold uppercase shrink-0',
               isStaged
                 ? 'bg-primary-container/20 text-primary border border-primary/30'
                 : 'bg-ember/20 text-ember border border-ember/30'
-            }`}
+            )}
           >
             {isStaged ? 'Staged' : 'Unstaged'}
           </span>
         </div>
-        <div className="flex items-center space-x-3">
-          <div className="flex items-center bg-surface-container-high rounded-md border border-outline-variant p-0.5">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <div className="flex items-center bg-surface-container-high rounded border border-outline-variant p-0.5">
             <button
+              type="button"
               onClick={() => setModo('unified')}
-              className={`flex items-center space-x-1 px-2 py-0.5 rounded text-[10px] font-semibold ${
+              className={cn(
+                'flex items-center gap-1 px-2 py-0.5 rounded text-code-sm font-semibold transition-colors',
                 modo === 'unified' ? 'bg-primary-container/20 text-primary' : 'text-on-surface-variant'
-              }`}
+              )}
             >
               <AlignJustify className="w-3 h-3" />
-              <span>Unificado</span>
+              <span className="hidden sm:inline">Unificado</span>
             </button>
             <button
+              type="button"
               onClick={() => setModo('split')}
-              className={`flex items-center space-x-1 px-2 py-0.5 rounded text-[10px] font-semibold ${
+              className={cn(
+                'hidden md:flex items-center gap-1 px-2 py-0.5 rounded text-code-sm font-semibold transition-colors',
                 modo === 'split' ? 'bg-primary-container/20 text-primary' : 'text-on-surface-variant'
-              }`}
+              )}
             >
               <Columns2 className="w-3 h-3" />
-              <span>Lado a lado</span>
+              Lado a lado
             </button>
           </div>
-          <div className="flex items-center space-x-3 text-xs font-mono">
+          <div className="flex items-center gap-2 sm:gap-3 text-code-sm">
             <span className="flex items-center text-primary">
               <Plus className="w-3 h-3 mr-0.5" />
               {stats.additions}
             </span>
-            <span className="flex items-center text-error">
+            <span className="flex items-center text-magma">
               <Minus className="w-3 h-3 mr-0.5" />
               {stats.deletions}
             </span>
@@ -186,7 +192,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ diff, filePath, isStaged
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto font-mono text-xs">
+      <div className="flex-1 overflow-auto text-code-sm min-h-0">
         {parsedLines.length === 0 ? (
           <div className="flex items-center justify-center h-full text-on-surface-variant/70 italic">
             Sin diferencias para mostrar en este archivo
@@ -197,8 +203,8 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ diff, filePath, isStaged
               <FilaUnificada key={line.id} line={line} html={htmlPorLinea[line.id]} />
             ))}
           </div>
-        ) : (
-          <div className="grid grid-cols-2 divide-x divide-outline-variant min-w-[640px]">
+        ) : modo === 'split' ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-outline-variant min-w-0">
             {filasSplit.map((fila) => (
               <React.Fragment key={`${fila.izq?.id ?? 'x'}-${fila.der?.id ?? 'y'}`}>
                 <CeldaSplit lado={fila.izq} html={fila.izq ? htmlPorLinea[fila.izq.id] : undefined} />
@@ -206,7 +212,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ diff, filePath, isStaged
               </React.Fragment>
             ))}
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { FolderGit2, GitFork, X, KeyRound } from 'lucide-react';
+import { FolderGit2, GitFork, KeyRound } from 'lucide-react';
 import { httpGitApi, CuentaForja } from '../infrastructure/api/HttpGitApi';
 import { ModalCapa } from './ui/modal-capa';
-import { ui } from '../lib/diseno';
+import { ModalEncabezado } from './ui/modal-encabezado';
+import { ModalPie } from './ui/modal-pie';
+import { CampoEntrada } from './ui/campo-entrada';
+import { Pestannas } from './ui/pestannas';
 
 interface ModalNacimientoRepoProps {
   onClose: () => void;
@@ -76,66 +79,45 @@ export const ModalNacimientoRepo: React.FC<ModalNacimientoRepoProps> = ({
 
   return (
     <ModalCapa ancho="lg" onCerrar={onClose} labelledBy="titulo-nacimiento" className="bg-surface-container select-none">
-      <div className="p-4 border-b border-outline-variant flex items-center justify-between bg-surface-container-high/50">
-        <div className="flex items-center gap-2">
-          <FolderGit2 className="w-5 h-5 text-primary" />
-          <h3 id="titulo-nacimiento" className="text-headline-sm text-on-surface">Repository Target</h3>
-        </div>
-        <button type="button" onClick={onClose} className={ui.btnIcono} aria-label="Cerrar">
-          <X className="w-4 h-4" />
-        </button>
+      <ModalEncabezado
+        id="titulo-nacimiento"
+        titulo="Repositorio objetivo"
+        subtitulo="Clonar desde remoto o inicializar en PROJECTS_ROOT"
+        icono={<FolderGit2 className="w-4 h-4 text-primary" />}
+        onCerrar={onClose}
+      />
+
+      <div className="px-4 pt-4">
+        <Pestannas
+          activa={tab}
+          onCambiar={(id) => setTab(id as 'clone' | 'init')}
+          pestanas={[
+            { id: 'clone', etiqueta: 'Clonar repositorio', icono: <GitFork className="w-3.5 h-3.5" /> },
+            { id: 'init', etiqueta: 'Inicializar nuevo', icono: <FolderGit2 className="w-3.5 h-3.5" /> },
+          ]}
+        />
       </div>
 
-      <div className="flex bg-surface-container-lowest p-1 m-4 rounded border border-outline-variant relative">
-        <button
-          type="button"
-          className={`flex-1 py-2 text-label-md font-medium rounded-sm transition-colors flex items-center justify-center gap-1.5 ${
-            tab === 'clone' ? 'bg-surface-container-high text-primary' : 'text-on-surface-variant hover:text-on-surface'
-          }`}
-          onClick={() => setTab('clone')}
-        >
-          <GitFork className="w-3.5 h-3.5" />
-          Clonar repositorio
-        </button>
-        <button
-          type="button"
-          className={`flex-1 py-2 text-label-md font-medium rounded-sm transition-colors flex items-center justify-center gap-1.5 ${
-            tab === 'init' ? 'bg-surface-container-high text-primary' : 'text-on-surface-variant hover:text-on-surface'
-          }`}
-          onClick={() => setTab('init')}
-        >
-          Inicializar nuevo
-        </button>
-      </div>
-
-      <form onSubmit={enviar} className="px-4 pb-4 space-y-4">
+      <form onSubmit={enviar} className="px-4 pb-4 pt-4 space-y-4">
           {tab === 'clone' && (
-            <div>
-              <label htmlFor="clone-url" className="block text-label-caps text-on-surface-variant mb-1">
-                URL del repositorio
-              </label>
-              <input
-                id="clone-url"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://github.com/org/repo.git"
-                className={ui.inputUnderline}
-              />
-            </div>
-          )}
-          <div>
-            <label htmlFor="clone-carpeta" className="block text-label-caps text-on-surface-variant mb-1">
-              Ruta de destino (PROJECTS_ROOT)
-            </label>
-            <input
-              id="clone-carpeta"
-              value={carpeta}
-              onChange={(e) => setCarpeta(e.target.value)}
-              placeholder="org/repo_name"
-              className={ui.inputUnderline}
+            <CampoEntrada
+              id="clone-url"
+              etiqueta="URL del repositorio"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://github.com/org/repo.git"
+              variante="subrayado"
             />
-            <p className="text-label-md text-on-surface-variant/70 mt-1">Máximo dos niveles de profundidad.</p>
-          </div>
+          )}
+          <CampoEntrada
+            id="clone-carpeta"
+            etiqueta="Ruta de destino (PROJECTS_ROOT)"
+            value={carpeta}
+            onChange={(e) => setCarpeta(e.target.value)}
+            placeholder="org/repo_name"
+            variante="subrayado"
+            ayuda="Máximo dos niveles de profundidad."
+          />
 
           <div className="rounded-lg border border-outline-variant bg-surface-container-low p-3 space-y-2">
             <div className="flex items-center space-x-1.5 text-[11px] font-semibold text-on-surface-variant uppercase">
@@ -171,19 +153,15 @@ export const ModalNacimientoRepo: React.FC<ModalNacimientoRepoProps> = ({
             })}
           </div>
 
-          <div className="flex justify-end gap-2 border-t border-outline-variant pt-4">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-label-md text-on-surface-variant hover:text-on-surface">
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={cargando || !carpeta.trim() || (tab === 'clone' && !url.trim())}
-              className={ui.btnPrimario}
-            >
-              <GitFork className="w-3.5 h-3.5" />
-              {tab === 'clone' ? 'Comenzar clonación' : 'Inicializar'}
-            </button>
-          </div>
-        </form>    </ModalCapa>
+          <ModalPie
+            onCancelar={onClose}
+            tipoConfirmar="submit"
+            etiquetaConfirmar={tab === 'clone' ? 'Comenzar clonación' : 'Inicializar'}
+            deshabilitado={cargando || !carpeta.trim() || (tab === 'clone' && !url.trim())}
+            cargando={cargando}
+            iconoConfirmar={<GitFork className="w-3.5 h-3.5" />}
+          />
+        </form>
+    </ModalCapa>
   );
 };

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { GitPullRequest, KeyRound, X } from 'lucide-react';
+import { GitPullRequest, KeyRound } from 'lucide-react';
 import {
   CuentaForja,
   httpGitApi,
@@ -11,6 +11,9 @@ import { GitBranch } from '../types/git';
 import { PanelListaForjas } from './PanelListaForjas';
 import { FormularioCrearForja } from './FormularioCrearForja';
 import { ModalCapa } from './ui/modal-capa';
+import { ModalEncabezado } from './ui/modal-encabezado';
+import { Pestannas } from './ui/pestannas';
+import { ui } from '../lib/diseno';
 
 interface ModalForjasProps {
   repoPath: string;
@@ -218,25 +221,18 @@ export const ModalForjas: React.FC<ModalForjasProps> = ({
 
   return (
     <ModalCapa ancho="wide" onCerrar={onClose} labelledBy="titulo-forjas" className="bg-surface-container select-none max-h-[85vh] flex flex-col">
-        <div className="p-4 border-b border-outline-variant flex items-center justify-between bg-surface-container-low">
-          <div className="flex items-center space-x-2">
-            <GitPullRequest className="w-5 h-5 text-secondary" />
-            <h3 id="titulo-forjas" className="text-headline-sm text-on-surface">Forjas — {etiqueta} del origin</h3>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1 hover:bg-surface-container-highest text-on-surface-variant hover:text-on-surface rounded"
-            aria-label="Cerrar"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+        <ModalEncabezado
+          id="titulo-forjas"
+          titulo={`Forjas — ${etiqueta} del origin`}
+          subtitulo="OAuth, listado y creación de solicitudes"
+          icono={<GitPullRequest className="w-4 h-4 text-secondary" />}
+          onCerrar={onClose}
+        />
 
         <div className="px-4 py-3 border-b border-outline-variant bg-surface-container-low/60 space-y-2">
-          <div className="flex items-center space-x-1.5 text-[11px] font-semibold text-on-surface-variant uppercase">
-            <KeyRound className="w-3.5 h-3.5 text-ember" />
-            <span>OAuth (tokens cifrados en disco, nunca en el repo)</span>
+          <div className="flex items-center gap-1.5 text-code-sm font-semibold text-on-surface-variant">
+            <KeyRound className="w-3.5 h-3.5 text-ember shrink-0" />
+            <span className={ui.labelCaps}>OAuth (tokens cifrados en disco)</span>
           </div>
           <div className="flex flex-wrap gap-3">
             {(['github', 'gitlab'] as const).map((p) => {
@@ -268,23 +264,15 @@ export const ModalForjas: React.FC<ModalForjasProps> = ({
           </div>
         </div>
 
-        <div className="flex border-b border-outline-variant">
-          <button
-            className={`flex-1 py-2 text-xs font-semibold ${
-              tab === 'lista' ? 'text-secondary border-b-2 border-secondary' : 'text-on-surface-variant'
-            }`}
-            onClick={() => setTab('lista')}
-          >
-            Listar {etiqueta}
-          </button>
-          <button
-            className={`flex-1 py-2 text-xs font-semibold ${
-              tab === 'crear' ? 'text-secondary border-b-2 border-secondary' : 'text-on-surface-variant'
-            }`}
-            onClick={() => setTab('crear')}
-          >
-            Crear {proveedor === 'gitlab' ? 'MR' : 'PR'}
-          </button>
+        <div className="px-4 pt-3 border-b border-outline-variant">
+          <Pestannas
+            activa={tab}
+            onCambiar={(id) => setTab(id as 'lista' | 'crear')}
+            pestanas={[
+              { id: 'lista', etiqueta: `Listar ${etiqueta}` },
+              { id: 'crear', etiqueta: `Crear ${proveedor === 'gitlab' ? 'MR' : 'PR'}` },
+            ]}
+          />
         </div>
 
         {tab === 'lista' ? (

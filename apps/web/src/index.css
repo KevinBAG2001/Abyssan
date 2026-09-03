@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/*
+ * Stitch / Abyssan Instrument — design tokens (fuente única de verdad visual).
+ * Paleta funcional: Biolume (primary), Pulse (secondary), Ion (tertiary), Magma (error).
+ * En componentes React usar clases semánticas (bg-primary-container) o `ui` en lib/diseno.ts.
+ * No hardcodear hex fuera de este archivo.
+ */
 @theme {
   /* Stitch / Abyssan Instrument — superficies */
   --color-background: #121318;
@@ -127,7 +133,7 @@
   }
 
   body {
-    font-family: var(--font-sans);
+    font-family: var(--font-mono);
     font-size: var(--text-body-md);
     line-height: var(--text-body-md--line-height);
     letter-spacing: var(--text-body-md--letter-spacing);
@@ -148,6 +154,19 @@
   dialog::backdrop {
     background: color-mix(in srgb, var(--color-void) 60%, transparent);
     backdrop-filter: blur(8px);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  button:focus:not(:focus-visible),
+  a:focus:not(:focus-visible),
+  select:focus:not(:focus-visible),
+  input:focus:not(:focus-visible),
+  textarea:focus:not(:focus-visible) {
+    outline: none;
   }
 }
 
@@ -205,6 +224,15 @@
 
   .glow-biolume-sm {
     box-shadow: 0 0 8px color-mix(in srgb, var(--color-primary-container) 20%, transparent);
+  }
+
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
   }
 }
 

@@ -35,26 +35,26 @@ export function PanelListaForjas({
   onCheckout,
 }: PanelListaForjasProps) {
   return (
-    <div className="flex flex-1 min-h-0">
-      <div className="w-72 border-r border-outline-variant overflow-y-auto">
-        {cargandoLista && <p className="p-3 text-xs text-on-surface-variant/70">Consultando la forja…</p>}
-        {avisoForja && <p className="p-3 text-[11px] text-ember border-b border-outline-variant">{avisoForja}</p>}
+    <div className="flex flex-1 min-h-0 font-mono">
+      <div className="w-full sm:w-72 border-r border-outline-variant overflow-y-auto shrink-0">
+        {cargandoLista && <p className="p-3 text-code-sm text-on-surface-variant/70">Consultando la forja…</p>}
+        {avisoForja && <p className="p-3 text-code-sm text-ember border-b border-outline-variant">{avisoForja}</p>}
         {!cargandoLista && solicitudes.length === 0 && !avisoForja && (
-          <p className="p-3 text-xs text-on-surface-variant/70">No hay solicitudes abiertas.</p>
+          <p className="p-3 text-code-sm text-on-surface-variant/70">No hay solicitudes abiertas.</p>
         )}
         {solicitudes.map((s) => (
           <button
             key={`${s.proveedor}-${s.numero}`}
             type="button"
             onClick={() => onAbrir(s)}
-            className={`w-full text-left px-3 py-2.5 border-b border-outline-variant hover:bg-surface-container-highest ${
-              seleccion?.numero === s.numero ? 'bg-surface-container-highest' : ''
+            className={`w-full text-left px-3 py-2.5 border-b border-outline-variant hover:bg-surface-container-highest transition-colors ${
+              seleccion?.numero === s.numero ? 'bg-surface-container-highest border-l-2 border-l-secondary' : ''
             }`}
           >
-            <div className="text-[11px] font-semibold text-on-surface truncate">
+            <div className="text-code-sm font-semibold text-on-surface truncate">
               #{s.numero} {s.titulo}
             </div>
-            <div className="text-[10px] text-on-surface-variant/70 mt-0.5">
+            <div className="text-code-sm text-on-surface-variant/70 mt-0.5 truncate">
               {s.ramaOrigen} → {s.ramaDestino}
               {s.esFork ? ' · fork' : ''}
             </div>
