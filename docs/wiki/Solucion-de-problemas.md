@@ -27,6 +27,18 @@ Compose no tiene probe. Si `curl /health` falla: el proceso no está en `PORT`, 
 
 simple-git necesita `git` en el `PATH`. En Docker del server, el Dockerfile ya hace `apk add git`. En el host de desarrollo, instala Git y verifica `git --version`.
 
+## `dubious ownership` en Docker
+
+Mensaje típico: `fatal: detected dubious ownership in repository at '/workspace/proyectos/...'`.
+
+Ocurre cuando el volumen montado desde el host (Windows/macOS) no tiene el mismo dueño que el usuario `node` del contenedor. La imagen del server ya declara `safe.directory *` en el Dockerfile de desarrollo. Si ves el error tras un cambio manual de imagen:
+
+```bash
+docker compose up -d --build server
+```
+
+No ejecutes `git config --global` en tu máquina host para “arreglarlo”; el fix es dentro del contenedor.
+
 ## El contenedor carece de permisos
 
 El volumen RW debe ser escribible por el UID del contenedor. No pongas el volumen en `:ro`. No ejecutes el API como root en el host para saltarte ACL: corrige el montaje.
@@ -37,7 +49,23 @@ El compose oficial es RW a propósito (commit/stage). Si alguien montó `:ro`, l
 
 ## pnpm inconsistente
 
-Usa el pnpm del Corepack/CI (9.x). Borra `node_modules` y reinstala con `pnpm install`. No mezcles `npm i`. El lockfile debe quedar `pnpm-lock.yaml`.
+Usa el pnpm del Corepack/CI (`11.25.0`). Borra `node_modules` y reinstala con `pnpm install`. No mezcles `npm i`. El lockfile debe quedar `pnpm-lock.yaml`.
+
+## Cambié `ABYSSAN_PROJECTS_HOST` y no aparecen mis repos
+
+Compose **no** remonta volúmenes en caliente. Tras editar `.env`:
+
+```bash
+docker compose up -d --force-recreate server
+```
+
+Comprueba el montaje real:
+
+```bash
+docker inspect abyssan-server --format "{{range .Mounts}}{{.Source}} -> {{.Destination}}{{println}}{{end}}"
+```
+
+Debe mostrar tu carpeta de proyectos en el host, no solo el checkout de Abyssan. En Windows usa barras `/` en `.env` (`C:/Users/.../proyectos`). `PROJECTS_ROOT` (dev local) y `ABYSSAN_PROJECTS_HOST` (Docker) deben apuntar al mismo directorio.
 
 ## El push pide credenciales
 

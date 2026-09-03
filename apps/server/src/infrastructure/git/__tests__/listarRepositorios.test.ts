@@ -45,4 +45,20 @@ describe('listRepositories (escaneo ligero)', () => {
     const lista = await adapter.listRepositories(raiz);
     expect(lista).toEqual([]);
   });
+
+  it('incluye la raíz cuando ella misma es un repositorio Git', async () => {
+    const git = simpleGit(raiz);
+    await git.init();
+    await git.addConfig('user.email', 'test@abyssan.dev');
+    await git.addConfig('user.name', 'Test');
+    fs.writeFileSync(path.join(raiz, 'a.txt'), 'x\n');
+    await git.add('.');
+    await git.commit('init');
+
+    const lista = await adapter.listRepositories(raiz);
+    expect(lista).toHaveLength(1);
+    expect(lista[0].path).toBe(raiz);
+    expect(lista[0].isGitRepo).toBe(true);
+    expect(lista[0].name).toBe(path.basename(raiz));
+  });
 });

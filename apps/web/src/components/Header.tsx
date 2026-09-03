@@ -4,8 +4,6 @@ import {
   ArrowDown,
   ArrowUp,
   RefreshCw,
-  FolderGit2,
-  ShieldCheck,
   Archive,
   Terminal,
   Globe,
@@ -16,8 +14,12 @@ import {
   GitPullRequest,
   User,
   History,
+  ChevronDown,
 } from 'lucide-react';
 import { GitRepoSummary, GitRepoStatus } from '../types/git';
+import { ui } from '../lib/diseno';
+import { cn } from '../lib/utils';
+import { AbyssanLogo } from './AbyssanLogo';
 
 interface HeaderProps {
   repos: GitRepoSummary[];
@@ -70,220 +72,179 @@ export const Header: React.FC<HeaderProps> = ({
   puedeDeshacer,
   motivoDeshacer,
 }) => {
+  const nombreRepo = selectedRepo
+    ? repos.find((r) => r.path === selectedRepo)?.name || selectedRepo.split(/[/\\]/).pop()
+    : null;
+
   return (
-    <header className="h-14 bg-[#141724] border-b border-[#23283b] px-4 flex items-center justify-between select-none">
-      {/* Logo y Selector de Repositorio */}
-      <div className="flex items-center space-x-3">
-        <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-            <FolderGit2 className="w-5 h-5 text-slate-950 font-bold" />
-          </div>
-          <span className="font-bold text-lg tracking-tight bg-gradient-to-r from-emerald-400 to-teal-200 bg-clip-text text-transparent">
-            Abyssan
-          </span>
+    <header className={cn(ui.chrome, 'h-14 shrink-0 px-4 flex items-center justify-between gap-3 select-none min-w-0')}>
+      <div className="flex items-center gap-3 min-w-0 shrink">
+        <div className="flex items-center gap-2 shrink-0">
+          <AbyssanLogo />
+          <span className="text-headline-sm text-on-surface hidden sm:inline tracking-tight">ABYSSAN</span>
         </div>
 
-        <div className="h-5 w-[1px] bg-[#23283b] mx-2" />
+        <div className="h-5 w-px bg-outline-variant shrink-0 hidden sm:block" />
 
-        {/* Selector de Repositorios */}
-        <div className="relative">
+        <div className="flex items-center gap-2 min-w-0">
           <label htmlFor="selector-repo" className="sr-only">
             Repositorio
           </label>
-          <select
-            id="selector-repo"
-            value={selectedRepo || ''}
-            onChange={(e) => onSelectRepo(e.target.value)}
-            className="bg-[#1b1f30] hover:bg-[#23283b] text-slate-200 text-sm font-medium rounded-md px-3 py-1.5 border border-[#2e354e] focus:outline-none focus:border-emerald-500 cursor-pointer transition-colors"
-          >
-            <option value="" disabled>
-              {cargandoRepos
-                ? 'Cargando repositorios…'
-                : repos.length === 0
-                  ? 'Sin repos en PROJECTS_ROOT'
-                  : '-- Seleccionar Repositorio --'}
-            </option>
-            {repos.map((repo) => (
-              <option key={repo.path} value={repo.path}>
-                {repo.name} (
-                {selectedRepo === repo.path
-                  ? status?.currentBranch || repo.currentBranch || 'git'
-                  : repo.currentBranch || 'git'}
-                )
+          <div className="flex items-center gap-1 min-w-0">
+            <GitBranch className="w-4 h-4 text-secondary shrink-0 hidden sm:block" />
+            <select
+              id="selector-repo"
+              value={selectedRepo || ''}
+              onChange={(e) => onSelectRepo(e.target.value)}
+              className="max-w-[10rem] sm:max-w-[14rem] truncate bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-label-md font-mono rounded border border-outline-variant px-2 py-1.5 focus:outline-none focus:border-primary cursor-pointer transition-colors"
+            >
+              <option value="" disabled>
+                {cargandoRepos
+                  ? 'Cargando repositorios…'
+                  : repos.length === 0
+                    ? 'Sin repos en PROJECTS_ROOT'
+                    : 'Seleccionar repositorio'}
               </option>
-            ))}
-          </select>
+              {repos.map((repo) => (
+                <option key={repo.path} value={repo.path}>
+                  {repo.name} (
+                  {selectedRepo === repo.path
+                    ? status?.currentBranch || repo.currentBranch || 'git'
+                    : repo.currentBranch || 'git'}
+                  )
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="w-3.5 h-3.5 text-on-surface-variant -ml-6 pointer-events-none hidden sm:block" />
+          </div>
+          <button
+            type="button"
+            onClick={onOpenNacimiento}
+            className={ui.btnIcono}
+            title="Clonar o inicializar repositorio"
+            aria-label="Clonar o inicializar repositorio"
+          >
+            <FolderPlus className="w-3.5 h-3.5 text-primary" />
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={onOpenNacimiento}
-          className="p-1.5 bg-[#1b1f30] hover:bg-[#23283b] text-slate-300 rounded-md border border-[#2e354e]"
-          title="Clonar o inicializar repositorio"
-          aria-label="Clonar o inicializar repositorio"
-        >
-          <FolderPlus className="w-3.5 h-3.5 text-emerald-400" />
-        </button>
+
+        {nombreRepo && status?.currentBranch && (
+          <span className="text-on-surface-variant text-label-md hidden lg:inline truncate">
+            / <span className="font-mono text-primary">{status.currentBranch}</span>
+          </span>
+        )}
       </div>
 
-      {/* Acciones de Git */}
       {selectedRepo && (
-        <div className="flex items-center space-x-2">
-          {/* Rama Actual */}
-          <div className="flex items-center space-x-1.5 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-md text-emerald-400 text-xs font-semibold">
-            <GitBranch className="w-3.5 h-3.5" />
-            <span>{status?.currentBranch || 'HEAD'}</span>
-          </div>
-
-          {/* Ahead / Behind */}
+        <div className="flex items-center gap-1.5 overflow-x-auto max-w-full shrink-0 scrollbar-none">
           {status && (
-            <div className="flex items-center space-x-2 text-xs text-slate-400 px-2 py-1 bg-[#1b1f30] rounded-md border border-[#23283b]">
-              <span className="flex items-center text-sky-400" title="Commits por detras del remoto (Pull)">
+            <div className="flex items-center gap-2 text-label-md text-on-surface-variant px-2 py-1 bg-surface-container rounded border border-outline-variant shrink-0">
+              <span className="flex items-center text-secondary" title="Commits por detrás del remoto">
                 <ArrowDown className="w-3.5 h-3.5 mr-0.5" />
                 {status.behind}
               </span>
-              <span className="flex items-center text-emerald-400" title="Commits por delante del remoto (Push)">
+              <span className="text-outline-variant">|</span>
+              <span className="flex items-center text-primary" title="Commits por delante del remoto">
                 <ArrowUp className="w-3.5 h-3.5 mr-0.5" />
                 {status.ahead}
               </span>
             </div>
           )}
 
-          <div className="h-5 w-[1px] bg-[#23283b] mx-1" />
-
           <button
             onClick={onFetch}
             disabled={loading}
-            className="flex items-center space-x-1 px-3 py-1.5 bg-[#1b1f30] hover:bg-[#23283b] text-slate-200 text-xs font-medium rounded-md border border-[#2e354e] disabled:opacity-50"
+            className={cn(ui.btnSecundario, 'shrink-0')}
             title="Fetch --all --prune"
           >
-            <Download className="w-3.5 h-3.5 text-sky-400" />
-            <span>Fetch</span>
+            <Download className="w-3.5 h-3.5 text-secondary" />
+            <span className="hidden xl:inline">Fetch</span>
           </button>
 
-          <div className="flex items-center">
+          <div className="flex items-center shrink-0">
             <button
               onClick={onPull}
               disabled={loading}
-              className="flex items-center space-x-1 px-3 py-1.5 bg-[#1b1f30] hover:bg-[#23283b] text-slate-200 text-xs font-medium rounded-l-md border border-[#2e354e] disabled:opacity-50"
+              className={cn(ui.btnSecundario, 'rounded-r-none border-r-0')}
               title={`Pull (${modoPull})`}
             >
-              <ArrowDown className="w-3.5 h-3.5 text-sky-400" />
-              <span>Pull</span>
+              <ArrowDown className="w-3.5 h-3.5 text-secondary" />
+              <span className="hidden xl:inline">Pull</span>
             </button>
             <select
               value={modoPull}
               onChange={(e) => onCambiarModoPull(e.target.value as 'merge' | 'rebase')}
-              className="h-[30px] bg-[#1b1f30] border border-l-0 border-[#2e354e] rounded-r-md text-[10px] text-slate-400 px-1 focus:outline-none"
-              title="Modo de pull (D10)"
+              className="h-[30px] bg-surface-container-high border border-outline-variant rounded-r text-[10px] text-on-surface-variant px-1 focus:outline-none focus:border-primary"
+              title="Modo de pull"
             >
               <option value="merge">merge</option>
               <option value="rebase">rebase</option>
             </select>
           </div>
 
-          {/* Push */}
           <button
             onClick={onPush}
             disabled={loading}
-            className="flex items-center space-x-1 px-3 py-1.5 bg-[#1b1f30] hover:bg-[#23283b] active:bg-[#2e354e] text-slate-200 text-xs font-medium rounded-md border border-[#2e354e] transition-colors disabled:opacity-50"
+            className={cn(ui.btnPrimario, 'shrink-0')}
             title="Enviar cambios al remoto"
           >
-            <ArrowUp className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Push</span>
+            <ArrowUp className="w-3.5 h-3.5" />
+            <span className="hidden xl:inline">Push</span>
           </button>
 
-          {/* Comparar Ramas */}
-          <button
-            onClick={onOpenCompareModal}
-            className="flex items-center space-x-1 px-2.5 py-1.5 bg-[#1b1f30] hover:bg-[#23283b] text-purple-300 hover:text-purple-200 rounded-md border border-[#2e354e] text-xs transition-colors"
-            title="Comparar Ramas & Merge"
-          >
-            <GitCompare className="w-3.5 h-3.5 text-purple-400" />
-            <span>Comparar</span>
+          <div className="h-5 w-px bg-outline-variant shrink-0 hidden md:block" />
+
+          <button onClick={onOpenCompareModal} className={cn(ui.btnSecundario, 'shrink-0 hidden md:inline-flex')} title="Comparar ramas y merge">
+            <GitCompare className="w-3.5 h-3.5 text-tertiary-fixed-dim" />
+            <span className="hidden 2xl:inline">Comparar</span>
           </button>
 
-          {/* Forjas */}
-          <button
-            onClick={onOpenForjas}
-            className="flex items-center space-x-1 px-2.5 py-1.5 bg-[#1b1f30] hover:bg-[#23283b] text-sky-300 hover:text-sky-200 rounded-md border border-[#2e354e] text-xs transition-colors"
-            title="PRs y MRs del origin"
-          >
-            <GitPullRequest className="w-3.5 h-3.5 text-sky-400" />
-            <span>PRs</span>
+          <button onClick={onOpenForjas} className={cn(ui.btnSecundario, 'shrink-0 hidden md:inline-flex')} title="PRs y MRs">
+            <GitPullRequest className="w-3.5 h-3.5 text-secondary" />
+            <span className="hidden 2xl:inline">PRs</span>
           </button>
 
-          {/* Remotos */}
-          <button
-            onClick={onOpenRemoteModal}
-            className="flex items-center space-x-1 px-2.5 py-1.5 bg-[#1b1f30] hover:bg-[#23283b] text-sky-300 hover:text-sky-200 rounded-md border border-[#2e354e] text-xs transition-colors"
-            title="Gestor de Remotos"
-          >
-            <Globe className="w-3.5 h-3.5 text-sky-400" />
-            <span>Remotos</span>
+          <button onClick={onOpenRemoteModal} className={cn(ui.btnSecundario, 'shrink-0 hidden lg:inline-flex')} title="Gestor de remotos">
+            <Globe className="w-3.5 h-3.5 text-secondary" />
+            <span className="hidden 2xl:inline">Remotos</span>
           </button>
 
-          {/* Stash */}
-          <button
-            onClick={onOpenStashModal}
-            className="flex items-center space-x-1 px-2.5 py-1.5 bg-[#1b1f30] hover:bg-[#23283b] text-slate-300 hover:text-white rounded-md border border-[#2e354e] text-xs transition-colors"
-            title="Gestor de Stash"
-          >
-            <Archive className="w-3.5 h-3.5 text-amber-400" />
-            <span>Stash</span>
+          <button onClick={onOpenStashModal} className={cn(ui.btnSecundario, 'shrink-0 hidden lg:inline-flex')} title="Gestor de stash">
+            <Archive className="w-3.5 h-3.5 text-ember" />
+            <span className="hidden 2xl:inline">Stash</span>
           </button>
 
-          {/* Identidad Git */}
-          <button
-            onClick={onOpenIdentidad}
-            className="p-1.5 bg-[#1b1f30] hover:bg-[#23283b] text-slate-300 rounded-md border border-[#2e354e] transition-colors"
-            title="Configurar identidad git (user.name / user.email)"
-          >
-            <User className="w-3.5 h-3.5 text-teal-400" />
+          <button onClick={onOpenIdentidad} className={ui.btnIcono} title="Identidad git">
+            <User className="w-3.5 h-3.5 text-primary" />
           </button>
 
-          <button
-            onClick={onOpenTimeline}
-            className="p-1.5 bg-[#1b1f30] hover:bg-[#23283b] text-slate-300 rounded-md border border-[#2e354e] transition-colors"
-            title="Timeline de operaciones (Time Machine)"
-          >
-            <History className="w-3.5 h-3.5 text-purple-400" />
+          <button onClick={onOpenTimeline} className={ui.btnIcono} title="Timeline de operaciones">
+            <History className="w-3.5 h-3.5 text-tertiary-fixed-dim" />
           </button>
 
           <button
             onClick={onDeshacer}
             disabled={loading || !puedeDeshacer}
-            className="p-1.5 bg-[#1b1f30] hover:bg-[#23283b] text-slate-300 rounded-md border border-[#2e354e] disabled:opacity-40"
+            className={ui.btnIcono}
             title={puedeDeshacer ? 'Deshacer última operación' : motivoDeshacer || 'Nada que deshacer'}
           >
-            <Undo2 className="w-3.5 h-3.5 text-purple-400" />
+            <Undo2 className="w-3.5 h-3.5 text-tertiary-fixed-dim" />
           </button>
 
-          {/* Consola */}
-          <button
-            onClick={onToggleConsole}
-            className="p-1.5 bg-[#1b1f30] hover:bg-[#23283b] text-slate-300 hover:text-white rounded-md border border-[#2e354e] transition-colors"
-            title="Consola de Comandos Git"
-          >
-            <Terminal className="w-3.5 h-3.5 text-emerald-400" />
+          <button onClick={onToggleConsole} className={ui.btnIcono} title="Consola de comandos git">
+            <Terminal className="w-3.5 h-3.5 text-primary" />
           </button>
 
-          {/* Refrescar */}
           <button
             onClick={onRefresh}
             disabled={loading}
-            className="p-1.5 bg-[#1b1f30] hover:bg-[#23283b] text-slate-300 hover:text-white rounded-md border border-[#2e354e] transition-colors disabled:opacity-50"
+            className={ui.btnIcono}
             title="Recargar repositorio"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-emerald-400' : ''}`} />
+            <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin text-primary')} />
           </button>
         </div>
       )}
-
-      {/* Indicador de Modo Seguro */}
-      <div className="flex items-center space-x-2 text-xs text-slate-400">
-        <ShieldCheck className="w-4 h-4 text-emerald-400" />
-        <span className="hidden sm:inline font-medium">Modo Seguro</span>
-      </div>
     </header>
   );
 };
