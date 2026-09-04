@@ -20,6 +20,10 @@ const ANCHOS = {
   paleta: 'max-w-[420px]',
 } as const;
 
+/**
+ * Modal con `<dialog open>` no modal (sin showModal) para evitar capas fantasma
+ * que bloqueen clics en toda la app. El backdrop es un botón explícito.
+ */
 export function ModalCapa({
   children,
   className,
@@ -37,25 +41,28 @@ export function ModalCapa({
 
   return (
     <Portal>
-      <div
-        className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-void/70 backdrop-blur-sm"
-        onClick={onCerrar}
-        role="presentation"
+      <dialog
+        open
+        aria-modal="true"
+        aria-labelledby={labelledBy}
+        className="fixed inset-0 z-[200] m-0 flex h-full max-h-none w-full max-w-none items-center justify-center border-0 bg-transparent p-4"
       >
+        <button
+          type="button"
+          className="absolute inset-0 bg-void/70 backdrop-blur-sm"
+          aria-label="Cerrar modal"
+          onClick={onCerrar}
+        />
         <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby={labelledBy}
           className={cn(
             'relative w-full min-w-[min(100%,18rem)] shrink-0 rounded-lg border border-outline-variant bg-surface-container-low shadow-2xl overflow-hidden',
             ANCHOS[ancho],
             className
           )}
-          onClick={(e) => e.stopPropagation()}
         >
           {children}
         </div>
-      </div>
+      </dialog>
     </Portal>
   );
 }

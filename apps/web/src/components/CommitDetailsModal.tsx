@@ -1,6 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { GitCommit } from '../types/git';
-import { X, GitCommit as GitCommitIcon, User, Calendar, GitBranch, Tag, Hash } from 'lucide-react';
+import { GitCommit as GitCommitIcon, User, Calendar, Hash, Copy, Check, GitBranch, X } from 'lucide-react';
+import { ChipRama } from './ui/chip-rama';
+import { Portal } from './ui/portal';
+import { ui } from '../lib/diseno';
+import { cn } from '../lib/utils';
 
 interface CommitDetailsModalProps {
   commit: GitCommit | null;
@@ -13,61 +17,102 @@ export const CommitDetailsModal: React.FC<CommitDetailsModalProps> = ({
   onClose,
   onCheckout,
 }) => {
+  const [copiado, setCopiado] = useState(false);
+
   if (!commit) return null;
 
+  const copiarHash = async () => {
+    try {
+      await navigator.clipboard.writeText(commit.hash);
+      setCopiado(true);
+      window.setTimeout(() => setCopiado(false), 1500);
+    } catch {
+      setCopiado(false);
+    }
+  };
+
   return (
-    <div className="fixed inset-y-0 right-0 w-96 bg-surface-container-low border-l border-outline-variant shadow-2xl z-40 flex flex-col">
-      {/* Encabezado del Modal */}
-      <div className="p-4 border-b border-outline-variant flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <GitCommitIcon className="w-5 h-5 text-primary" />
-          <span className="font-bold text-sm text-on-surface">Detalles del Commit</span>
+    <Portal>
+      <button
+        type="button"
+        className="fixed inset-0 z-[35] bg-void/60 backdrop-blur-[2px] max-lg:top-14 lg:hidden"
+        aria-label="Cerrar inspector"
+        onClick={onClose}
+      />
+      <aside
+        className="fixed inset-y-0 max-lg:top-14 right-0 w-full max-w-sm sm:max-w-md bg-surface-container-low border-l border-outline-variant shadow-2xl z-40 flex flex-col font-mono"
+        aria-labelledby="titulo-inspector-commit"
+      >
+      <div className="px-4 py-3 border-b border-outline-variant bg-surface-container-high/50 flex items-start justify-between gap-2 shrink-0">
+        <div className="flex items-start gap-2.5 min-w-0">
+          <div className="w-8 h-8 rounded-lg bg-primary-container/15 flex items-center justify-center shrink-0">
+            <GitCommitIcon className="w-4 h-4 text-primary" />
+          </div>
+          <div className="min-w-0">
+            <h2 id="titulo-inspector-commit" className="text-headline-sm text-on-surface">
+              Inspector de commit
+            </h2>
+            <p className="text-code-sm text-primary font-mono mt-0.5">{commit.shortHash}</p>
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="p-1 hover:bg-surface-container-highest text-on-surface-variant hover:text-on-surface rounded transition-colors"
-          aria-label="Cerrar"
-        >
+        <button type="button" onClick={onClose} className={ui.btnIcono} aria-label="Cerrar inspector">
           <X className="w-4 h-4" />
         </button>
       </div>
 
-      {/* Contenido */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
-        {/* Mensaje */}
-        <div className="bg-surface-container-high p-3 rounded-lg border border-outline-variant">
-          <span className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1">Mensaje</span>
-          <p className="text-on-surface font-medium whitespace-pre-wrap">{commit.message}</p>
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
+        <div className={cn(ui.panelInset, 'p-3')}>
+          <span className={cn(ui.labelCaps, 'block mb-1.5')}>Mensaje</span>
+          <p className="text-code-sm text-on-surface font-medium whitespace-pre-wrap leading-relaxed">
+            {commit.message}
+          </p>
         </div>
 
-        {/* Metadatos */}
-        <div className="space-y-2.5 bg-surface-container-high p-3 rounded-lg border border-outline-variant">
-          <div className="flex items-center space-x-2 text-on-surface-variant">
-            <Hash className="w-4 h-4 text-on-surface-variant/70 shrink-0" />
-            <span className="font-mono text-primary select-all">{commit.hash}</span>
+        <div className={cn(ui.panelInset, 'p-3 space-y-3')}>
+          <div className="flex items-start gap-2">
+            <Hash className="w-4 h-4 text-on-surface-variant/70 shrink-0 mt-0.5" />
+            <div className="min-w-0 flex-1">
+              <span className={cn(ui.labelCaps, 'block mb-1')}>Hash completo</span>
+              <div className="flex items-center gap-1.5">
+                <span className="font-mono text-code-sm text-primary select-all break-all">{commit.hash}</span>
+                <button
+                  type="button"
+                  onClick={() => void copiarHash()}
+                  className={ui.btnIcono}
+                  title="Copiar hash"
+                  aria-label="Copiar hash"
+                >
+                  {copiado ? <Check className="w-3.5 h-3.5 text-primary" /> : <Copy className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-center space-x-2 text-on-surface-variant">
-            <User className="w-4 h-4 text-on-surface-variant/70 shrink-0" />
-            <span>
-              {commit.authorName} <span className="text-on-surface-variant/70">({commit.authorEmail})</span>
-            </span>
+          <div className="flex items-start gap-2 text-code-sm text-on-surface-variant">
+            <User className="w-4 h-4 shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <span className={cn(ui.labelCaps, 'block mb-0.5')}>Autor</span>
+              <span className="text-on-surface">{commit.authorName}</span>
+              <span className="block text-on-surface-variant/70 truncate">{commit.authorEmail}</span>
+            </div>
           </div>
 
-          <div className="flex items-center space-x-2 text-on-surface-variant">
-            <Calendar className="w-4 h-4 text-on-surface-variant/70 shrink-0" />
-            <span>{new Date(commit.date).toLocaleString()}</span>
+          <div className="flex items-center gap-2 text-code-sm text-on-surface-variant">
+            <Calendar className="w-4 h-4 shrink-0" />
+            <div>
+              <span className={cn(ui.labelCaps, 'block mb-0.5')}>Fecha</span>
+              <span>{new Date(commit.date).toLocaleString()}</span>
+            </div>
           </div>
 
           {commit.parents.length > 0 && (
             <div className="pt-2 border-t border-outline-variant">
-              <span className="text-[10px] uppercase font-bold text-on-surface-variant/70 block mb-1">
+              <span className={cn(ui.labelCaps, 'block mb-1 opacity-80')}>
                 Padres ({commit.parents.length})
               </span>
               <div className="space-y-1">
                 {commit.parents.map((p) => (
-                  <span key={p} className="font-mono text-[11px] text-secondary block truncate select-all">
+                  <span key={p} className="font-mono text-code-sm text-secondary block truncate select-all">
                     {p}
                   </span>
                 ))}
@@ -76,21 +121,17 @@ export const CommitDetailsModal: React.FC<CommitDetailsModalProps> = ({
           )}
         </div>
 
-        {/* Badges de Ramas y Tags */}
         {(commit.branches?.length || commit.tags?.length) ? (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {commit.branches && commit.branches.length > 0 && (
               <div>
-                <span className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1">Ramas</span>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <GitBranch className="w-3.5 h-3.5 text-primary" />
+                  <span className={ui.labelCaps}>Ramas</span>
+                </div>
                 <div className="flex flex-wrap gap-1">
                   {commit.branches.map((b) => (
-                    <span
-                      key={b}
-                      className="inline-flex items-center space-x-1 px-2 py-0.5 rounded bg-primary-container/20 text-primary border border-primary/30 font-medium"
-                    >
-                      <GitBranch className="w-3 h-3" />
-                      <span>{b}</span>
-                    </span>
+                    <ChipRama key={b} nombre={b} tipo="rama" />
                   ))}
                 </div>
               </div>
@@ -98,16 +139,10 @@ export const CommitDetailsModal: React.FC<CommitDetailsModalProps> = ({
 
             {commit.tags && commit.tags.length > 0 && (
               <div>
-                <span className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1">Tags</span>
+                <span className={cn(ui.labelCaps, 'block mb-1.5')}>Tags</span>
                 <div className="flex flex-wrap gap-1">
                   {commit.tags.map((t) => (
-                    <span
-                      key={t}
-                      className="inline-flex items-center space-x-1 px-2 py-0.5 rounded bg-ember/20 text-ember border border-ember/30 font-medium"
-                    >
-                      <Tag className="w-3 h-3" />
-                      <span>{t}</span>
-                    </span>
+                    <ChipRama key={t} nombre={t} tipo="tag" />
                   ))}
                 </div>
               </div>
@@ -116,15 +151,16 @@ export const CommitDetailsModal: React.FC<CommitDetailsModalProps> = ({
         ) : null}
       </div>
 
-      {/* Acciones del Commit */}
-      <div className="p-4 border-t border-outline-variant bg-surface-container">
+      <div className="p-4 border-t border-outline-variant bg-surface-container shrink-0">
         <button
+          type="button"
           onClick={() => onCheckout(commit.hash)}
-          className="w-full py-2 bg-surface-container-highest hover:bg-[#2e354e] text-on-surface font-semibold text-xs rounded-md transition-colors"
+          className={cn(ui.btnPrimario, 'w-full py-2 font-semibold')}
         >
-          Checkout a este Commit
+          Checkout a este commit
         </button>
       </div>
-    </div>
+    </aside>
+    </Portal>
   );
 };

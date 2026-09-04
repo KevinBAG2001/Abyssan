@@ -1,6 +1,9 @@
 import type { FormEvent } from 'react';
 import { ExternalLink } from 'lucide-react';
 import type { SolicitudForjaCreada } from '../infrastructure/api/HttpGitApi';
+import { CampoEntrada } from './ui/campo-entrada';
+import { ui } from '../lib/diseno';
+import { cn } from '../lib/utils';
 
 type FormularioCrearForjaProps = {
   ramaActual: string;
@@ -34,39 +37,39 @@ export function FormularioCrearForja({
   onClose,
 }: FormularioCrearForjaProps) {
   return (
-    <form onSubmit={onSubmit} className="p-4 space-y-3 overflow-y-auto">
-      <p className="text-[11px] text-on-surface-variant">
-        La rama <span className="text-primary font-semibold">{ramaActual}</span> debe existir en el remoto
-        (push previo). Si la forja no responde, commit y push locales siguen disponibles.
+    <form onSubmit={onSubmit} className="p-4 space-y-3 overflow-y-auto flex-1 min-h-0">
+      <p className="text-code-sm text-on-surface-variant">
+        Rama cabeza: <span className="text-primary font-mono font-semibold">{ramaActual}</span> (debe existir en remoto)
       </p>
-      <label htmlFor="forja-titulo" className="block text-[11px] text-on-surface-variant">
-        Título
-      </label>
-      <input
+      <CampoEntrada
         id="forja-titulo"
+        etiqueta="Título"
         value={titulo}
         onChange={(e) => onTitulo(e.target.value)}
         placeholder="Resumen de la solicitud"
-        className="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-xs text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-secondary"
       />
-      <label htmlFor="forja-cuerpo" className="block text-[11px] text-on-surface-variant">
-        Descripción (opcional)
-      </label>
-      <textarea
-        id="forja-cuerpo"
-        value={cuerpo}
-        onChange={(e) => onCuerpo(e.target.value)}
-        placeholder="Contexto adicional"
-        rows={4}
-        className="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-xs text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-secondary resize-none"
-      />
-      <label htmlFor="forja-base" className="block text-[11px] text-on-surface-variant">
-        Rama destino (base)
+      <div className="space-y-1">
+        <label htmlFor="forja-cuerpo" className={ui.labelCaps}>
+          Descripción (opcional)
+        </label>
+        <textarea
+          id="forja-cuerpo"
+          value={cuerpo}
+          onChange={(e) => onCuerpo(e.target.value)}
+          placeholder="Contexto adicional"
+          rows={4}
+          className={cn(ui.input, 'resize-none font-mono')}
+        />
+      </div>
+      <div className="space-y-1">
+        <label htmlFor="forja-base" className={ui.labelCaps}>
+          Rama destino (base)
+        </label>
         <select
           id="forja-base"
           value={base}
           onChange={(e) => onBase(e.target.value)}
-          className="mt-1 w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none"
+          className={cn(ui.input, 'font-mono')}
         >
           {basesSugeridas.map((n) => (
             <option key={n} value={n}>
@@ -74,7 +77,7 @@ export function FormularioCrearForja({
             </option>
           ))}
         </select>
-      </label>
+      </div>
       {creada && (
         <a
           href={creada.url}

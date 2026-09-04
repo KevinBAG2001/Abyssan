@@ -80,8 +80,8 @@ export const Header: React.FC<HeaderProps> = ({
     <header className={cn(ui.chrome, 'h-14 shrink-0 px-4 flex items-center justify-between gap-3 select-none min-w-0')}>
       <div className="flex items-center gap-3 min-w-0 shrink">
         <div className="flex items-center gap-2 shrink-0">
-          <AbyssanLogo />
-          <span className="text-headline-sm text-on-surface hidden sm:inline tracking-tight">ABYSSAN</span>
+          <AbyssanLogo tamano="md" className="sm:h-8" />
+          <span className="text-headline-sm text-on-surface hidden sm:inline tracking-tight font-sans">ABYSSAN</span>
         </div>
 
         <div className="h-5 w-px bg-outline-variant shrink-0 hidden sm:block" />
@@ -128,10 +128,16 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         </div>
 
-        {nombreRepo && status?.currentBranch && (
-          <span className="text-on-surface-variant text-label-md hidden lg:inline truncate">
-            / <span className="font-mono text-primary">{status.currentBranch}</span>
-          </span>
+        {nombreRepo && (
+          <nav aria-label="Ubicación en el repositorio" className="hidden lg:flex items-center gap-1 min-w-0 text-code-sm text-on-surface-variant truncate">
+            <span className="truncate max-w-[6rem]">{nombreRepo}</span>
+            {status?.currentBranch && (
+              <>
+                <span className="text-on-surface-variant/50">/</span>
+                <span className="text-primary font-mono truncate max-w-[10rem]">{status.currentBranch}</span>
+              </>
+            )}
+          </nav>
         )}
       </div>
 
