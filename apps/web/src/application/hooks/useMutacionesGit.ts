@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { httpGitApi, type EntradaReflog, type UltimaOperacion } from '../../infrastructure/api/HttpGitApi';
 import type { ConflictModel, EntradaJournal, FileStatusModel, RepositoryStatusModel } from '../../domain/models/GitModels';
 
@@ -36,6 +36,8 @@ export function useMutacionesGit({
   const [journal, setJournal] = useState<EntradaJournal[]>([]);
   const [reflog, setReflog] = useState<EntradaReflog[]>([]);
   const [confirmacion, setConfirmacion] = useState<ConfirmacionPendiente | null>(null);
+  const [mutando, setMutando] = useState(false);
+  const checkoutEnCurso = useRef(false);
 
   const refrescarMeta = useCallback(async (repoPath: string) => {
     try {
@@ -165,13 +167,18 @@ export function useMutacionesGit({
   };
 
   const handleCheckout = async (target: string) => {
-    if (!selectedRepo) return;
+    if (!selectedRepo || checkoutEnCurso.current) return;
+    checkoutEnCurso.current = true;
+    setMutando(true);
     try {
       await httpGitApi.checkout(selectedRepo, target);
       showToast(`Cambiado a ${target}`, 'success');
       await afterMutacion();
     } catch (err: unknown) {
       showToast(err instanceof Error ? err.message : 'Error', 'error');
+    } finally {
+      checkoutEnCurso.current = false;
+      setMutando(false);
     }
   };
 
@@ -461,6 +468,7 @@ export function useMutacionesGit({
     journal,
     reflog,
     confirmacion,
+    mutando,
     setConfirmacion,
     handleSelectFile,
     handleOpenConflictResolver,

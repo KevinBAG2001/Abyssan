@@ -147,11 +147,8 @@ export const CapaModalesApp: React.FC<CapaModalesAppProps> = (p) => (
       />
     )}
 
-    <PaletaComandos
-      key={p.paletaAbierta ? 'abierta' : 'cerrada'}
-      abierta={p.paletaAbierta}
-      onCerrar={p.onCerrarPaleta}
-      onAccion={p.onPaleta}
-    />
+    {p.paletaAbierta && (
+      <PaletaComandos onCerrar={p.onCerrarPaleta} onAccion={p.onPaleta} />
+    )}
   </>
 );
