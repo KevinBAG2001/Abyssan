@@ -65,6 +65,7 @@ Nuevo commit. Journal no deshacible. Preview API disponible. UI: menú contextua
 - Fetch: refs remotas; `prune` default true.
 - Pull: `modo` `merge` o `rebase`. No es rebase interactivo. Journal no deshacible.
 - Push: sin `--force-with-lease` en el adapter. Marca undo bloqueado.
+- En Docker, HTTPS a GitHub no usa las credenciales de Windows. Paso a paso del PAT: [El push pide credenciales](./Solucion-de-problemas.md#el-push-pide-credenciales).
 
 ## Remotos
 

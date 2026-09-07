@@ -105,15 +105,35 @@ Debe mostrar tu carpeta de proyectos en el host, no solo el checkout de Abyssan.
 
 ## El push pide credenciales
 
-El origin de este repo es HTTPS. En Docker, Git **no** ve el Administrador de credenciales de Windows ni `gh auth`. Sin token, Push falla (antes: «Autenticación Git fallida»).
+El origin es HTTPS. Docker **no** ve el Administrador de credenciales de Windows. `ABYSSAN_API_TOKEN` es el token de la **app Abyssan**; **no** autentica contra GitHub.
 
-Opciones:
+### Cómo crear el PAT (paso a paso)
 
-1. **OAuth:** `GITHUB_CLIENT_ID` y `GITHUB_CLIENT_SECRET` en el `.env`, `docker compose up -d --force-recreate server`, luego **PRs → Conectar GitHub**.
-2. **PAT:** `ABYSSAN_GITHUB_TOKEN` (alcance `repo`) en el `.env` y recrear el server. No lo subas al git.
-3. Push en el host (mismas credenciales que GitKraken/CLI): `git push -u origin <rama>`.
+1. Inicia sesión en GitHub.
+2. Abre el formulario ya marcado con alcance `repo`: [github.com/settings/tokens/new?scopes=repo&description=Abyssan](https://github.com/settings/tokens/new?scopes=repo&description=Abyssan).  
+   Si el enlace no abre: foto de perfil → **Settings** → **Developer settings** → **Personal access tokens** → **Tokens (classic)** → **Generate new token (classic)**.
+3. **Note:** `Abyssan`. **Expiration:** 90 días (o la que prefieras).
+4. En scopes, deja marcado **repo** (push/pull al repositorio). No hace falta marcar el resto.
+5. **Generate token**. Copia el valor de una vez (`ghp_…`). GitHub **no lo vuelve a mostrar**.
+6. En el `.env` de la **raíz** del monorepo (archivo gitignorado; no lo subas):
 
-Abyssan **no** guarda passwords de Git en el repositorio. Los tokens OAuth van cifrados en `ABYSSAN_HOME` (`/abyssan-home` en Compose).
+```env
+ABYSSAN_GITHUB_TOKEN=ghp_pegaAquiLoQueCopiaste
+```
+
+Sin comillas ni espacios alrededor del valor.
+
+7. Recrea el contenedor para que Compose inyecte la variable:
+
+```bash
+docker compose up -d --force-recreate server
+```
+
+8. En Abyssan, pulsa **Push**.
+
+No pegues el PAT en Issues, PRs, commits ni el chat. Si se filtró: GitHub → Settings → Developer settings → tokens → revoke.
+
+Otras opciones: OAuth (`GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` + **PRs → Conectar GitHub**), o push en el host con las credenciales de Windows: `git push -u origin <rama>`.
 
 ## Los cambios del disco no llegan a la UI
 

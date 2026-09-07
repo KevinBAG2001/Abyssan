@@ -49,7 +49,7 @@ El lockfile es `pnpm-lock.yaml`. CI usa `pnpm install --frozen-lockfile`.
 | `GITLAB_CLIENT_ID` / `GITLAB_CLIENT_SECRET` | OAuth GitLab (forjas) | Opcional |
 | `OAUTH_CALLBACK_URL` | Callback OAuth | `http://localhost:3001/api/auth/callback` |
 | `ABYSSAN_SECRETO_CIFRADO` | Semilla para cifrar tokens OAuth en disco | Si falta, se genera una clave local en `~/.abyssan/clave` |
-| `ABYSSAN_GITHUB_TOKEN` / `ABYSSAN_GITLAB_TOKEN` | PAT para push/fetch HTTPS (Docker no ve GCM de Windows) | Opcional |
+| `ABYSSAN_GITHUB_TOKEN` / `ABYSSAN_GITLAB_TOKEN` | PAT para push/fetch HTTPS (Docker no ve GCM de Windows) | Opcional; [paso a paso](./Solucion-de-problemas.md#el-push-pide-credenciales) |
 
 Ejemplo **genérico** (no copies rutas de un usuario concreto):
 

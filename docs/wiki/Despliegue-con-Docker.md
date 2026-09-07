@@ -89,6 +89,8 @@ Compose **no** publica `0.0.0.0:3001` en el host: usa `127.0.0.1`. El proceso in
 
 OAuth y PAT se pasan desde el `.env` del host (`GITHUB_CLIENT_*`, `ABYSSAN_GITHUB_TOKEN`, …). El volumen `abyssan-home` (o `ABYSSAN_HOME_HOST`) guarda tokens cifrados. El contenedor **no** usa el Administrador de credenciales de Windows.
 
+Cómo crear el PAT y pegarlo: [El push pide credenciales](./Solucion-de-problemas.md#el-push-pide-credenciales). `ABYSSAN_API_TOKEN` es el token de la instancia Abyssan, **no** el de GitHub.
+
 ## Permisos
 
 La imagen del web usa `USER node` tras `chown`. El server arranca como root y el **entrypoint** (`apps/server/docker/entrypoint.sh`) comprueba si `node` puede escribir en `.git/objects` del volumen:

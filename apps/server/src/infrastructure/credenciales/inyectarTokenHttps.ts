@@ -87,9 +87,14 @@ export function mensajePushSinCredencial(forja: ProveedorForja): string {
       `Abre PRs → Conectar ${nombre} y vuelve a pulsar Push.`
     );
   }
+  if (forja === 'github') {
+    return (
+      'Falta un token de GitHub para Push (no es ABYSSAN_API_TOKEN). ' +
+      'Crea un PAT en https://github.com/settings/tokens/new?scopes=repo&description=Abyssan ' +
+      'con alcance "repo", pégalo en ABYSSAN_GITHUB_TOKEN del .env y recrea el server.'
+    );
+  }
   return (
-    `Docker no usa las credenciales de Git de Windows. ` +
-    `Para publicar: conecta ${nombre} en PRs (añade CLIENT_ID/SECRET al .env y recrea el server) ` +
-    `o define ${varPat} (PAT con permiso de repo) y recrea el server.`
+    `Falta un token de GitLab para Push. Define ${varPat} (PAT con write_repository) en el .env y recrea el server.`
   );
 }
