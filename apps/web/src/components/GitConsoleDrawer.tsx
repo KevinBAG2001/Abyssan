@@ -52,7 +52,7 @@ function ConsolaListaOperaciones({ operaciones }: { operaciones: GitOperacion[] 
   if (operaciones.length === 0) return null;
 
   return (
-    <div className="px-3 py-2 border-b border-outline-variant space-y-1.5 min-w-0 overflow-x-auto">
+    <div className="px-3 py-2 border-b border-outline-variant space-y-1.5 min-w-0 overflow-x-hidden">
       <div className={cn(ui.labelCaps, 'opacity-70')}>Operaciones</div>
       {operaciones.slice(0, 8).map((op) => {
         const activa = op.estado === 'corriendo' || op.estado === 'en_cola';
@@ -79,7 +79,11 @@ function ConsolaListaOperaciones({ operaciones }: { operaciones: GitOperacion[] 
               <span className="shrink-0 text-code-sm text-on-surface-variant/70 tabular-nums">{op.estado}</span>
             </div>
             {activa && <BarraProgreso valor={op.progreso} etiqueta={`Progreso de ${op.tipo}`} />}
-            {op.error && <p className="text-error pl-5">{op.error}</p>}
+            {op.error && (
+              <p className="text-error pl-5 min-w-0 max-w-full whitespace-pre-wrap break-all">
+                {op.error}
+              </p>
+            )}
           </div>
         );
       })}
@@ -97,14 +101,14 @@ function ConsolaListaLogs({
   hayOperaciones: boolean;
 }) {
   return (
-    <div className="p-3 space-y-1">
+    <div className="p-3 space-y-1 min-w-0 overflow-x-hidden">
       {reflog.length > 0 && (
         <div className="mb-2 pb-2 border-b border-outline-variant">
           <div className={cn(ui.labelCaps, 'opacity-70 mb-1')}>Reflog (red de emergencia)</div>
           {reflog.slice(0, 12).map((r) => (
-            <div key={`${r.hash}-${r.selector}-${r.fecha}`} className="flex gap-2 text-on-surface-variant py-0.5">
+            <div key={`${r.hash}-${r.selector}-${r.fecha}`} className="flex gap-2 text-on-surface-variant py-0.5 min-w-0">
               <span className="text-primary font-mono w-14 shrink-0">{r.hash}</span>
-              <span className="truncate">{r.mensaje}</span>
+              <span className="truncate min-w-0">{r.mensaje}</span>
             </div>
           ))}
         </div>
@@ -113,7 +117,7 @@ function ConsolaListaLogs({
         <div className="text-on-surface-variant/50 italic py-2">No se han ejecutado comandos aún en esta sesión.</div>
       ) : (
         logs.map((log) => (
-          <div key={log.id} className="flex items-start gap-2 py-0.5 hover:bg-white/[0.02] rounded px-1">
+          <div key={log.id} className="flex items-start gap-2 py-0.5 hover:bg-white/[0.02] rounded px-1 min-w-0">
             <span className="text-on-surface-variant/70 shrink-0">{new Date(log.timestamp).toLocaleTimeString()}</span>
             {log.success ? (
               <CheckCircle className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
@@ -121,9 +125,11 @@ function ConsolaListaLogs({
               <XCircle className="w-3.5 h-3.5 text-error shrink-0 mt-0.5" />
             )}
             <span className="text-primary font-bold shrink-0">&gt;</span>
-            <span className={cn('font-mono flex-1', log.success ? 'text-on-surface' : 'text-error')}>
-              {log.command}
-              {log.error && <span className="text-error block mt-0.5">{log.error}</span>}
+            <span className={cn('font-mono flex-1 min-w-0 overflow-hidden', log.success ? 'text-on-surface' : 'text-error')}>
+              <span className="break-all">{log.command}</span>
+              {log.error && (
+                <span className="text-error block mt-0.5 whitespace-pre-wrap break-all">{log.error}</span>
+              )}
             </span>
             <span className="text-on-surface-variant/70 text-code-sm shrink-0">{log.durationMs}ms</span>
           </div>
@@ -280,7 +286,7 @@ export const GitConsoleDrawer: React.FC<GitConsoleDrawerProps> = ({
   const estadoListo = !ocupado;
 
   return (
-    <div className="border-t border-outline-variant bg-void flex flex-col transition-[height] duration-200 select-none shrink-0">
+    <div className="border-t border-outline-variant bg-void flex flex-col transition-[height] duration-200 select-none shrink-0 min-w-0 overflow-hidden">
       <ConsolaBarraTitulo
         estadoListo={estadoListo}
         headShortHash={headShortHash}
@@ -297,7 +303,7 @@ export const GitConsoleDrawer: React.FC<GitConsoleDrawerProps> = ({
       {isOpen && (
         <div
           className={cn(
-            'overflow-y-auto text-code-sm bg-void font-mono transition-[height] duration-200',
+            'overflow-y-auto overflow-x-hidden text-code-sm bg-void font-mono transition-[height] duration-200 min-w-0',
             expandida ? 'h-[min(28rem,45vh)]' : 'h-52'
           )}
         >

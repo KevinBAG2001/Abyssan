@@ -37,6 +37,7 @@ El lockfile es `pnpm-lock.yaml`. CI usa `pnpm install --frozen-lockfile`.
 | `NODE_ENV` | Entorno Node | `development` en el ejemplo |
 | `ABYSSAN_API_TOKEN` | Token de instancia si el bind no es loopback | Vacío en localhost |
 | `ABYSSAN_HOME` | Directorio de journal, auditoría y snapshots | `~/.abyssan` si no se define |
+| `ABYSSAN_GITCONFIG_HOST` | Compose: ruta del `~/.gitconfig` del host montada en `/host-gitconfig` (ro) | Placeholder sin identidad |
 | `VITE_API_URL` | Origen REST de la SPA | `http://localhost:3001` |
 | `VITE_WS_URL` | Origen WebSocket de la SPA | `ws://localhost:3001` |
 | `VITE_ABYSSAN_API_TOKEN` | Mismo token, embebido por Vite para la SPA | Comentado en el ejemplo |

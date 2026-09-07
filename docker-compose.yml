@@ -19,9 +19,14 @@ services:
       - CORS_ORIGINS=http://localhost:5174,http://127.0.0.1:5174
       - ABYSSAN_API_TOKEN=${ABYSSAN_API_TOKEN:?Defina ABYSSAN_API_TOKEN en el archivo .env}
     volumes:
+      # RW a propósito: stage/commit/push escriben en .git. Si el UID del host
+      # no coincide con node, el entrypoint corre Git como root en el contenedor.
       # Por defecto solo este checkout. Para varios repos: ABYSSAN_PROJECTS_HOST en .env
       - ${ABYSSAN_PROJECTS_HOST:-.}:/workspace/proyectos
       - ./apps/server/src:/app/apps/server/src
+      # Identidad git del host (user.name / user.email). El archivo debe existir;
+      # si Docker crea una carpeta aquí, borra esa carpeta y corrige la ruta.
+      - ${ABYSSAN_GITCONFIG_HOST:-./apps/server/docker/gitconfig.host.placeholder}:/host-gitconfig:ro
     healthcheck:
       test:
         [

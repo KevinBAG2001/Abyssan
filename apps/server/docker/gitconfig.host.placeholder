@@ -1,0 +1,3 @@
+# Abyssan monta este archivo en /host-gitconfig cuando ABYSSAN_GITCONFIG_HOST
+# no está definido. No contiene user.name ni user.email.
+# En .env apunta ABYSSAN_GITCONFIG_HOST a tu ~/.gitconfig del host (archivo, no carpeta).

@@ -112,7 +112,7 @@ export const StagingPanel: React.FC<StagingPanelProps> = ({
         </div>
       )}
 
-      <div className="px-3 py-2.5 border-b border-outline-variant flex items-center justify-between shrink-0">
+      <div className="px-3 py-2.5 border-b border-outline-variant flex flex-wrap items-center justify-between gap-2 shrink-0">
         <div className="flex items-center gap-1.5 min-w-0">
           <Layers className="w-4 h-4 text-primary shrink-0" />
           <span className={cn(ui.labelCaps, 'truncate')}>
@@ -124,8 +124,9 @@ export const StagingPanel: React.FC<StagingPanelProps> = ({
             type="button"
             onClick={onStageAll}
             disabled={loading}
-            className="text-label-md font-medium text-primary hover:text-primary-fixed shrink-0 transition-colors"
+            className={cn(ui.btnPrimario, 'py-1 px-2.5 shrink-0')}
           >
+            <Plus className="w-3.5 h-3.5" />
             Preparar todo
           </button>
         )}
@@ -149,7 +150,7 @@ export const StagingPanel: React.FC<StagingPanelProps> = ({
                   <div
                     key={`unstaged-${file.path}`}
                     className={cn(
-                      'group flex items-center justify-between px-2 py-1.5 text-label-md transition-colors',
+                      'group flex items-center justify-between px-2 py-1.5 text-label-md transition-colors gap-1',
                       isConflicted
                         ? 'bg-error/10 text-error border-l-2 border-error'
                         : isSelected
@@ -163,7 +164,7 @@ export const StagingPanel: React.FC<StagingPanelProps> = ({
                         if (isConflicted) onOpenConflictResolver(file.path);
                         else onSelectFile(file);
                       }}
-                      className="flex items-center gap-2 truncate pr-2 text-left min-w-0 flex-1"
+                      className="flex items-center gap-2 truncate pr-1 text-left min-w-0 flex-1"
                     >
                       {iconoEstadoArchivo(file.status)}
                       <span className="truncate font-mono text-code-sm">{file.path}</span>
@@ -172,6 +173,7 @@ export const StagingPanel: React.FC<StagingPanelProps> = ({
                     <div className="flex items-center gap-0.5 shrink-0">
                       {isConflicted ? (
                         <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             onOpenConflictResolver(file.path);
@@ -183,28 +185,33 @@ export const StagingPanel: React.FC<StagingPanelProps> = ({
                           Resolver
                         </button>
                       ) : (
-                        <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <>
                           <button
+                            type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               onDiscardFile(file.path);
                             }}
                             className="p-1 hover:bg-error/20 text-error rounded"
                             title="Descartar cambios"
+                            aria-label={`Descartar ${file.path}`}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                           <button
+                            type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               onStageFile(file.path);
                             }}
-                            className="p-1 hover:bg-primary/20 text-primary rounded"
+                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-primary hover:bg-primary/20 font-medium text-[11px]"
                             title="Mover a staging"
+                            aria-label={`Preparar ${file.path}`}
                           >
                             <Plus className="w-3.5 h-3.5" />
+                            Preparar
                           </button>
-                        </div>
+                        </>
                       )}
                     </div>
                   </div>
@@ -248,8 +255,9 @@ export const StagingPanel: React.FC<StagingPanelProps> = ({
                         e.stopPropagation();
                         onUnstageFile(file.path);
                       }}
-                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-error/20 text-error rounded transition-opacity shrink-0"
+                      className="inline-flex items-center gap-0.5 p-1 hover:bg-error/20 text-error rounded shrink-0"
                       title="Quitar de staging"
+                      aria-label={`Quitar ${file.path} de staging`}
                     >
                       <Minus className="w-3.5 h-3.5" />
                     </button>
@@ -311,6 +319,18 @@ export const StagingPanel: React.FC<StagingPanelProps> = ({
               <Pencil className="w-3.5 h-3.5 text-ember" />
             </button>
           </div>
+          {unstagedFiles.length > 0 && stagedFiles.length === 0 && (
+            <p className="text-[11px] text-on-surface-variant/80 leading-relaxed pt-1">
+              Primero pulsa <span className="text-primary">Preparar</span> o{' '}
+              <span className="text-primary">Preparar todo</span>. Luego Confirmar. Después, Push
+              en la barra superior para subir la rama.
+            </p>
+          )}
+          {stagedFiles.length > 0 && (
+            <p className="text-[11px] text-on-surface-variant/80 leading-relaxed pt-1">
+              Confirmar crea el commit. Push (arriba) envía la rama al remoto.
+            </p>
+          )}
         </form>
       </div>
     </div>

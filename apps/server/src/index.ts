@@ -23,6 +23,7 @@ import {
   listarOrigenesPermitidos,
   origenDePeticionPermitido,
 } from './infrastructure/seguridad/origenesPermitidos.js';
+import { aplicarIdentidadGitHost } from './infrastructure/git/aplicarIdentidadGitHost.js';
 
 cargarEntorno();
 
@@ -120,8 +121,22 @@ wss.on('connection', (ws: WebSocket, req) => {
   });
 });
 
-server.listen(PORT, BIND_HOST, () => {
-  console.log(`[Abyssan] API en http://${BIND_HOST}:${PORT}`);
-  console.log(`[Abyssan] WebSocket en ws://${BIND_HOST}:${PORT}`);
-  console.log(`[Abyssan] CORS: ${listarOrigenesPermitidos().join(', ')}`);
-});
+async function arrancar(): Promise<void> {
+  try {
+    const aplicada = await aplicarIdentidadGitHost();
+    if (aplicada) {
+      console.log('[Abyssan] Identidad git del host aplicada (solo user.name / user.email).');
+    }
+  } catch (err: unknown) {
+    const detalle = err instanceof Error ? err.message : String(err);
+    console.error('[Abyssan] No se pudo aplicar la identidad git del host:', detalle);
+  }
+
+  server.listen(PORT, BIND_HOST, () => {
+    console.log(`[Abyssan] API en http://${BIND_HOST}:${PORT}`);
+    console.log(`[Abyssan] WebSocket en ws://${BIND_HOST}:${PORT}`);
+    console.log(`[Abyssan] CORS: ${listarOrigenesPermitidos().join(', ')}`);
+  });
+}
+
+void arrancar();

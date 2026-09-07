@@ -37,6 +37,8 @@ export function ModalPie({
         ? ui.btnSecundario
         : ui.btnPrimario;
 
+  const mostrarConfirmar = onConfirmar !== undefined || tipoConfirmar === 'submit';
+
   return (
     <div
       className={cn(
@@ -52,7 +54,7 @@ export function ModalPie({
       >
         {etiquetaCancelar}
       </button>
-      {onConfirmar !== undefined && (
+      {mostrarConfirmar && (
         <button
           type={tipoConfirmar === 'submit' ? 'submit' : 'button'}
           onClick={tipoConfirmar === 'button' ? onConfirmar : undefined}

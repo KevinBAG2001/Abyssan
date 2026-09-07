@@ -26,6 +26,7 @@ import type { EntradaJournalPublica, UltimaOperacion } from '../deshacer/tiposJo
 import { colaOperaciones } from '../operaciones/ColaOperaciones.js';
 import { registroOperaciones } from '../operaciones/RegistroOperaciones.js';
 import { sanitizarTextoAuditoria } from '../../infrastructure/auditoria/AuditoriaJsonlAdapter.js';
+import { mensajeErrorGit } from '../git/mensajeErrorGit.js';
 import {
   borrarSnapshot,
   crearSnapshotArchivos,
@@ -57,9 +58,7 @@ export class GitUseCases {
         registroOperaciones.completar(op.id, 'exito');
         return resultado;
       } catch (error) {
-        const mensaje = sanitizarTextoAuditoria(
-          error instanceof Error ? error.message : String(error)
-        );
+        const mensaje = sanitizarTextoAuditoria(mensajeErrorGit(error));
         registroOperaciones.completar(op.id, 'fallo', mensaje);
         throw error;
       }

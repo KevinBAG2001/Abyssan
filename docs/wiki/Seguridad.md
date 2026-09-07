@@ -73,7 +73,7 @@ No hay usuarios ni RBAC (Fase 6).
 
 ## Docker y privilegio mínimo
 
-El contenedor del API monta un volumen RW. El origen por defecto es el checkout (`.`), configurable con `ABYSSAN_PROJECTS_HOST`. El proceso corre como `USER node`. Git está instalado en la imagen del server.
+El contenedor del API monta un volumen RW. El origen por defecto es el checkout (`.`), configurable con `ABYSSAN_PROJECTS_HOST`. El entrypoint baja a `node` cuando el volumen es escribible; si el bind mount (p. ej. Windows) no deja escribir `.git/objects`, Git corre como root **solo dentro del contenedor**. Git está instalado en la imagen del server.
 
 ## Limitaciones
 

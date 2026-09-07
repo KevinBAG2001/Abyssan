@@ -14,7 +14,6 @@ import {
   RepositorySummaryEntity,
   ConflictEntity,
   BranchComparisonEntity,
-  FileChangeEntity,
   InfoAmendEntity,
   EntradaReflogEntity,
   PreviewOperacionEntity,
@@ -24,6 +23,7 @@ import type { EscuchaProgresoGit } from '../../domain/entities/GitOperacion.js';
 import { parsearHunksConflicto } from '../../application/conflictos/parsearConflictos.js';
 import { almacenCredencialesForja } from '../credenciales/AlmacenCredencialesForja.js';
 import { detectarForja, inyectarTokenHttps } from '../credenciales/inyectarTokenHttps.js';
+import { mapearEstadoPorcelain } from './mapearEstadoPorcelain.js';
 
 const DIRECTORIOS_IGNORADOS = new Set([
   'node_modules',
@@ -238,16 +238,7 @@ export class SimpleGitAdapter implements IGitRepository {
         // Sin untracked no impide mostrar rama y cambios tracked
       }
 
-      const files: FileChangeEntity[] = [];
-      status.modified.forEach((file) => files.push({ path: file, status: 'modified', staged: false }));
-      status.deleted.forEach((file) => files.push({ path: file, status: 'deleted', staged: false }));
-      status.conflicted.forEach((file) => files.push({ path: file, status: 'conflicted', staged: false }));
-      status.staged.forEach((file) => files.push({ path: file, status: 'modified', staged: true }));
-      status.created.forEach((file) => files.push({ path: file, status: 'added', staged: true }));
-      const ya = new Set(files.map((f) => f.path));
-      noTracked.forEach((file) => {
-        if (!ya.has(file)) files.push({ path: file, status: 'untracked', staged: false });
-      });
+      const files = mapearEstadoPorcelain(status.files, noTracked);
 
       const gitDir = path.join(repoPath, '.git');
       const isMerging = fs.existsSync(path.join(gitDir, 'MERGE_HEAD'));
@@ -929,14 +920,19 @@ export class SimpleGitAdapter implements IGitRepository {
     let correo = '';
     let alcance: 'local' | 'global' = 'global';
 
-    try { nombre = (await git.raw(['config', '--local', 'user.name'])).trim(); } catch { /* sin config local */ }
-    try { correo = (await git.raw(['config', '--local', 'user.email'])).trim(); } catch { /* sin config local */ }
+    try { nombre = (await git.raw(['config', '--local', '--includes', '--get', 'user.name'])).trim(); } catch { /* sin config local */ }
+    try { correo = (await git.raw(['config', '--local', '--includes', '--get', 'user.email'])).trim(); } catch { /* sin config local */ }
 
     if (nombre || correo) {
       alcance = 'local';
     } else {
-      try { nombre = (await git.raw(['config', '--global', 'user.name'])).trim(); } catch { /* sin config global */ }
-      try { correo = (await git.raw(['config', '--global', 'user.email'])).trim(); } catch { /* sin config global */ }
+      try { nombre = (await git.raw(['config', '--global', '--includes', '--get', 'user.name'])).trim(); } catch { /* sin config global */ }
+      try { correo = (await git.raw(['config', '--global', '--includes', '--get', 'user.email'])).trim(); } catch { /* sin config global */ }
+    }
+
+    if (!nombre && !correo) {
+      nombre = (process.env.GIT_AUTHOR_NAME ?? process.env.GIT_COMMITTER_NAME ?? '').trim();
+      correo = (process.env.GIT_AUTHOR_EMAIL ?? process.env.GIT_COMMITTER_EMAIL ?? '').trim();
     }
 
     return { nombre, correo, alcance };

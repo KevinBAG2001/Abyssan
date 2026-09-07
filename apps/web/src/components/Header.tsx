@@ -12,7 +12,6 @@ import {
   Undo2,
   FolderPlus,
   GitPullRequest,
-  User,
   History,
   ChevronDown,
 } from 'lucide-react';
@@ -20,6 +19,7 @@ import { GitRepoSummary, GitRepoStatus } from '../types/git';
 import { ui } from '../lib/diseno';
 import { cn } from '../lib/utils';
 import { AbyssanLogo } from './AbyssanLogo';
+import { GlifoAvatar, useAvatarIdentidad } from './ui/avatares-identidad';
 
 interface HeaderProps {
   repos: GitRepoSummary[];
@@ -72,6 +72,7 @@ export const Header: React.FC<HeaderProps> = ({
   puedeDeshacer,
   motivoDeshacer,
 }) => {
+  const { avatarId } = useAvatarIdentidad();
   const nombreRepo = selectedRepo
     ? repos.find((r) => r.path === selectedRepo)?.name || selectedRepo.split(/[/\\]/).pop()
     : null;
@@ -221,7 +222,9 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           <button onClick={onOpenIdentidad} className={ui.btnIcono} title="Identidad git">
-            <User className="w-3.5 h-3.5 text-primary" />
+            <span className="size-5 overflow-hidden rounded-full ring-1 ring-primary/40">
+              <GlifoAvatar id={avatarId} className="block size-5 [&_svg]:size-full" />
+            </span>
           </button>
 
           <button onClick={onOpenTimeline} className={ui.btnIcono} title="Timeline de operaciones">

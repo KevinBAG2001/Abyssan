@@ -62,9 +62,12 @@ Tras cambiar `VITE_ABYSSAN_API_TOKEN`, reconstruye o reinicia el contenedor `web
 # server
 - ${ABYSSAN_PROJECTS_HOST:-.}:/workspace/proyectos
 - ./apps/server/src:/app/apps/server/src
+- ${ABYSSAN_GITCONFIG_HOST:-./apps/server/docker/gitconfig.host.placeholder}:/host-gitconfig:ro
 ```
 
 `PROJECTS_ROOT` **dentro** del contenedor es `/workspace/proyectos`. En el host, el default es el checkout de Abyssan. Amplía con `ABYSSAN_PROJECTS_HOST` si necesitas varios repos.
+
+`ABYSSAN_GITCONFIG_HOST` monta tu `~/.gitconfig` en `/host-gitconfig` (solo lectura). Al arrancar, el server copia **solo** `user.name` y `user.email` al gitconfig del contenedor. No incluye `safe.directory` ni helpers del host (en Windows esas rutas no son absolutas para Git de Linux y ensucian la consola).
 
 Sin el montaje RW, commit/stage fallarían (comentario en el propio compose).
 
@@ -78,7 +81,14 @@ No copies `.env` al contexto de build (los Dockerfiles copian package manifests 
 
 ## Permisos
 
-Ambas imágenes usan `USER node` tras `chown`. Compose declara `healthcheck` sobre `GET /health`. Git está instalado en la imagen del server.
+La imagen del web usa `USER node` tras `chown`. El server arranca como root y el **entrypoint** (`apps/server/docker/entrypoint.sh`) comprueba si `node` puede escribir en `.git/objects` del volumen:
+
+- Si puede, el API **baja a** `node`.
+- Si no (típico en bind mounts Windows → Docker Desktop), Git corre **como root en el contenedor** para que stage / commit / push funcionen. No se hace `chown` del repo del host.
+
+Compose declara `healthcheck` sobre `GET /health`. Git está instalado en la imagen del server. Tras cambiar el Dockerfile: `docker compose up -d --build --force-recreate server`.
+
+El probe no se limita a `.git/objects` (a menudo 777): también intenta escribir en las subcarpetas `XX/` (fan-out). En Docker Desktop para Windows esas suelen ser `755` y `git add` falla ahí aunque el padre sea escribible.
 
 ## Comandos
 
@@ -112,7 +122,7 @@ URLs en el host: [http://127.0.0.1:5174](http://127.0.0.1:5174) y [http://127.0.
 
 ## Healthcheck
 
-**No** hay clave `healthcheck:` en `docker-compose.yml`. La comprobación es manual:
+Compose declara `healthcheck` con `GET /health` en el proceso del server. Comprobación manual:
 
 ```bash
 curl http://127.0.0.1:3001/health
