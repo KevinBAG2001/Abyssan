@@ -112,7 +112,7 @@ No hay hall of fame formal.
 
 ## Docker
 
-Ver [documents/wiki/Despliegue-con-Docker.md](documents/wiki/Despliegue-con-Docker.md). Compose de desarrollo: `pnpm dev` en el contenedor, `USER node`, `healthcheck` HTTP, token obligatorio sin default, volumen por defecto el checkout (no el padre). El proceso interno escucha `0.0.0.0`; el host mapea `127.0.0.1`.
+Ver [docs/wiki/Despliegue-con-Docker.md](docs/wiki/Despliegue-con-Docker.md). Compose de desarrollo: `pnpm dev` en el contenedor, entrypoint que usa `node` o root según el volumen, `healthcheck` HTTP, token obligatorio sin default, volumen por defecto el checkout (no el padre). El proceso interno escucha `0.0.0.0`; el host mapea `127.0.0.1`.
 
 ## Limitaciones del modelo actual
 

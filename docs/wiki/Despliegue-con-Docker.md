@@ -25,6 +25,13 @@ Ambas: `FROM node:22-alpine`. pnpm vía Corepack **11.25.0**. El server instala 
 - `PROJECTS_ROOT=/workspace/proyectos`
 - `CORS_ORIGINS=http://localhost:5174,http://127.0.0.1:5174`
 - `ABYSSAN_API_TOKEN=${ABYSSAN_API_TOKEN:?…}` — **obligatorio**, sin default
+- `ABYSSAN_HOME=/abyssan-home`
+- `GIT_TERMINAL_PROMPT=0`
+- `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` / `GITLAB_CLIENT_*` — desde el `.env` del host (vacío si no están)
+- `OAUTH_CALLBACK_URL` — default `http://localhost:3001/api/auth/callback`
+- `ABYSSAN_SECRETO_CIFRADO` — opcional
+- `ABYSSAN_GITHUB_TOKEN` / `ABYSSAN_GITLAB_TOKEN` — PAT opcional para push HTTPS
+- `VITE_API_URL=http://localhost:3001` — callback OAuth hacia la SPA
 
 **web**
 
@@ -62,11 +69,17 @@ Tras cambiar `VITE_ABYSSAN_API_TOKEN`, reconstruye o reinicia el contenedor `web
 # server
 - ${ABYSSAN_PROJECTS_HOST:-.}:/workspace/proyectos
 - ./apps/server/src:/app/apps/server/src
+- ${ABYSSAN_GITCONFIG_HOST:-./apps/server/docker/gitconfig.host.placeholder}:/host-gitconfig:ro
+- ${ABYSSAN_HOME_HOST:-abyssan-home}:/abyssan-home
 ```
 
 `PROJECTS_ROOT` **dentro** del contenedor es `/workspace/proyectos`. En el host, el default es el checkout de Abyssan. Amplía con `ABYSSAN_PROJECTS_HOST` si necesitas varios repos.
 
-Sin el montaje RW, commit/stage fallarían (comentario en el propio compose).
+`ABYSSAN_GITCONFIG_HOST` monta tu `~/.gitconfig` en `/host-gitconfig` (solo lectura). Al arrancar, el server copia **solo** `user.name` y `user.email` al gitconfig del contenedor. No incluye `safe.directory` ni helpers del host (en Windows esas rutas no son absolutas para Git de Linux y ensucian la consola).
+
+El volumen `abyssan-home` (o bind `ABYSSAN_HOME_HOST`) es `ABYSSAN_HOME` dentro del contenedor: journal, snapshots y tokens OAuth cifrados.
+
+Sin el montaje RW de proyectos, commit/stage fallarían (comentario en el propio compose).
 
 ## Puertos
 
@@ -74,11 +87,20 @@ Compose **no** publica `0.0.0.0:3001` en el host: usa `127.0.0.1`. El proceso in
 
 ## Credenciales
 
-No copies `.env` al contexto de build (los Dockerfiles copian package manifests y código, no `.env`). Pasa el token por el entorno del host. OAuth sigue necesitando variables en el proceso del server si usas forjas.
+OAuth y PAT se pasan desde el `.env` del host (`GITHUB_CLIENT_*`, `ABYSSAN_GITHUB_TOKEN`, …). El volumen `abyssan-home` (o `ABYSSAN_HOME_HOST`) guarda tokens cifrados. El contenedor **no** usa el Administrador de credenciales de Windows.
+
+Cómo crear el PAT y pegarlo: [El push pide credenciales](./Solucion-de-problemas.md#el-push-pide-credenciales). `ABYSSAN_API_TOKEN` es el token de la instancia Abyssan, **no** el de GitHub.
 
 ## Permisos
 
-Ambas imágenes usan `USER node` tras `chown`. Compose declara `healthcheck` sobre `GET /health`. Git está instalado en la imagen del server.
+La imagen del web usa `USER node` tras `chown`. El server arranca como root y el **entrypoint** (`apps/server/docker/entrypoint.sh`) comprueba si `node` puede escribir en `.git/objects` del volumen:
+
+- Si puede, el API **baja a** `node`.
+- Si no (típico en bind mounts Windows → Docker Desktop), Git corre **como root en el contenedor** para que stage / commit / push funcionen. No se hace `chown` del repo del host.
+
+Compose declara `healthcheck` sobre `GET /health`. Git está instalado en la imagen del server. Tras cambiar el Dockerfile: `docker compose up -d --build --force-recreate server`.
+
+El probe no se limita a `.git/objects` (a menudo 777): también intenta escribir en las subcarpetas `XX/` (fan-out). En Docker Desktop para Windows esas suelen ser `755` y `git add` falla ahí aunque el padre sea escribible.
 
 ## Comandos
 
@@ -112,7 +134,7 @@ URLs en el host: [http://127.0.0.1:5174](http://127.0.0.1:5174) y [http://127.0.
 
 ## Healthcheck
 
-**No** hay clave `healthcheck:` en `docker-compose.yml`. La comprobación es manual:
+Compose declara `healthcheck` con `GET /health` en el proceso del server. Comprobación manual:
 
 ```bash
 curl http://127.0.0.1:3001/health

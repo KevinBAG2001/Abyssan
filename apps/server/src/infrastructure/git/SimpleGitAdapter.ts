@@ -14,7 +14,6 @@ import {
   RepositorySummaryEntity,
   ConflictEntity,
   BranchComparisonEntity,
-  FileChangeEntity,
   InfoAmendEntity,
   EntradaReflogEntity,
   PreviewOperacionEntity,
@@ -23,7 +22,13 @@ import {
 import type { EscuchaProgresoGit } from '../../domain/entities/GitOperacion.js';
 import { parsearHunksConflicto } from '../../application/conflictos/parsearConflictos.js';
 import { almacenCredencialesForja } from '../credenciales/AlmacenCredencialesForja.js';
-import { detectarForja, inyectarTokenHttps } from '../credenciales/inyectarTokenHttps.js';
+import {
+  detectarForja,
+  inyectarTokenHttps,
+  mensajePushSinCredencial,
+  tokenForjaDesdeEntorno,
+} from '../credenciales/inyectarTokenHttps.js';
+import { mapearEstadoPorcelain } from './mapearEstadoPorcelain.js';
 
 const DIRECTORIOS_IGNORADOS = new Set([
   'node_modules',
@@ -120,12 +125,18 @@ export class SimpleGitAdapter implements IGitRepository {
     }
   }
 
+  private tokenForja(forja: ReturnType<typeof detectarForja>): string | undefined {
+    if (!forja) return undefined;
+    const deAlmacen = almacenCredencialesForja.obtener(forja)?.token?.trim();
+    return deAlmacen || tokenForjaDesdeEntorno(forja);
+  }
+
   private async urlConTokenSiAplica(url: string): Promise<string> {
     const forja = detectarForja(url);
     if (!forja) return url;
-    const cred = almacenCredencialesForja.obtener(forja);
-    if (!cred?.token) return url;
-    return inyectarTokenHttps(url, cred.token, forja);
+    const token = this.tokenForja(forja);
+    if (!token) return url;
+    return inyectarTokenHttps(url, token, forja);
   }
 
   private async urlRemotoConToken(repoPath: string): Promise<string | undefined> {
@@ -238,16 +249,7 @@ export class SimpleGitAdapter implements IGitRepository {
         // Sin untracked no impide mostrar rama y cambios tracked
       }
 
-      const files: FileChangeEntity[] = [];
-      status.modified.forEach((file) => files.push({ path: file, status: 'modified', staged: false }));
-      status.deleted.forEach((file) => files.push({ path: file, status: 'deleted', staged: false }));
-      status.conflicted.forEach((file) => files.push({ path: file, status: 'conflicted', staged: false }));
-      status.staged.forEach((file) => files.push({ path: file, status: 'modified', staged: true }));
-      status.created.forEach((file) => files.push({ path: file, status: 'added', staged: true }));
-      const ya = new Set(files.map((f) => f.path));
-      noTracked.forEach((file) => {
-        if (!ya.has(file)) files.push({ path: file, status: 'untracked', staged: false });
-      });
+      const files = mapearEstadoPorcelain(status.files, noTracked);
 
       const gitDir = path.join(repoPath, '.git');
       const isMerging = fs.existsSync(path.join(gitDir, 'MERGE_HEAD'));
@@ -411,6 +413,15 @@ export class SimpleGitAdapter implements IGitRepository {
     const status = await git.status();
     const rama = status.current || 'HEAD';
     const sinUpstream = !status.tracking;
+    if (!remotoToken) {
+      const remotes = await git.getRemotes(true);
+      const elegido = remotes.find((r) => r.name === 'origin') || remotes[0];
+      const urlOrigin = elegido?.refs?.push || elegido?.refs?.fetch || '';
+      const forja = detectarForja(urlOrigin);
+      if (forja) {
+        throw new Error(mensajePushSinCredencial(forja));
+      }
+    }
     try {
       if (remotoToken) {
         const args = sinUpstream
@@ -929,14 +940,19 @@ export class SimpleGitAdapter implements IGitRepository {
     let correo = '';
     let alcance: 'local' | 'global' = 'global';
 
-    try { nombre = (await git.raw(['config', '--local', 'user.name'])).trim(); } catch { /* sin config local */ }
-    try { correo = (await git.raw(['config', '--local', 'user.email'])).trim(); } catch { /* sin config local */ }
+    try { nombre = (await git.raw(['config', '--local', '--includes', '--get', 'user.name'])).trim(); } catch { /* sin config local */ }
+    try { correo = (await git.raw(['config', '--local', '--includes', '--get', 'user.email'])).trim(); } catch { /* sin config local */ }
 
     if (nombre || correo) {
       alcance = 'local';
     } else {
-      try { nombre = (await git.raw(['config', '--global', 'user.name'])).trim(); } catch { /* sin config global */ }
-      try { correo = (await git.raw(['config', '--global', 'user.email'])).trim(); } catch { /* sin config global */ }
+      try { nombre = (await git.raw(['config', '--global', '--includes', '--get', 'user.name'])).trim(); } catch { /* sin config global */ }
+      try { correo = (await git.raw(['config', '--global', '--includes', '--get', 'user.email'])).trim(); } catch { /* sin config global */ }
+    }
+
+    if (!nombre && !correo) {
+      nombre = (process.env.GIT_AUTHOR_NAME ?? process.env.GIT_COMMITTER_NAME ?? '').trim();
+      correo = (process.env.GIT_AUTHOR_EMAIL ?? process.env.GIT_COMMITTER_EMAIL ?? '').trim();
     }
 
     return { nombre, correo, alcance };
