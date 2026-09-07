@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { FileCode, Plus, Minus, Columns2, AlignJustify } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { FileCode, Plus, Minus, Columns2, AlignJustify, Copy, CheckCheck } from 'lucide-react';
 import { createHighlighter, type Highlighter } from 'shiki';
+import { DivisorComparacion } from './ui/divisor-comparacion';
 import { cn } from '../lib/utils';
 
 interface DiffViewerProps {
@@ -54,6 +55,19 @@ function langDe(filePath: string): string | undefined {
   return LANG_POR_EXT[ext];
 }
 
+function useEscritorioMd(): boolean {
+  const [ok, setOk] = useState(() =>
+    typeof window === 'undefined' ? true : window.matchMedia('(min-width: 768px)').matches
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 768px)');
+    const alCambiar = () => setOk(mq.matches);
+    mq.addEventListener('change', alCambiar);
+    return () => mq.removeEventListener('change', alCambiar);
+  }, []);
+  return ok;
+}
+
 function parsearDiff(diff: string): LineaDiff[] {
   if (!diff) return [];
   const lines = diff.split('\n');
@@ -91,7 +105,12 @@ function parsearDiff(diff: string): LineaDiff[] {
 export const DiffViewer: React.FC<DiffViewerProps> = ({ diff, filePath, isStaged }) => {
   const [modo, setModo] = useState<'unified' | 'split'>('unified');
   const [htmlPorLinea, setHtmlPorLinea] = useState<Record<number, string>>({});
+  const [anchoIzq, setAnchoIzq] = useState(50);
+  const [copiado, setCopiado] = useState(false);
+  const escritorio = useEscritorioMd();
+  const marcoSplit = useRef<HTMLDivElement>(null);
   const parsedLines = useMemo(() => parsearDiff(diff), [diff]);
+  const ladoALado = modo === 'split' && escritorio;
 
   const stats = useMemo(() => {
     let additions = 0;
@@ -137,22 +156,46 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ diff, filePath, isStaged
 
   const filasSplit = useMemo(() => armarSplit(parsedLines), [parsedLines]);
 
+  const copiarDiff = useCallback(async () => {
+    if (!diff) return;
+    try {
+      await navigator.clipboard.writeText(diff);
+      setCopiado(true);
+      window.setTimeout(() => setCopiado(false), 2000);
+    } catch {
+      setCopiado(false);
+    }
+  }, [diff]);
+
   return (
     <div className="flex-1 flex flex-col h-full bg-void overflow-hidden font-mono min-w-0">
       <div className="min-h-10 bg-surface-container-low border-b border-outline-variant px-3 sm:px-4 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 select-none shrink-0">
         <div className="flex items-center gap-2 min-w-0 flex-1">
-          <FileCode className="w-4 h-4 text-on-surface-variant shrink-0" />
-          <span className="text-code-sm font-medium text-on-surface truncate">{filePath}</span>
-          <span
-            className={cn(
-              'text-code-sm px-1.5 py-0.5 rounded font-semibold uppercase shrink-0',
-              isStaged
-                ? 'bg-primary-container/20 text-primary border border-primary/30'
-                : 'bg-ember/20 text-ember border border-ember/30'
-            )}
-          >
-            {isStaged ? 'Staged' : 'Unstaged'}
-          </span>
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-secondary-container/20">
+            <FileCode className="w-4 h-4 text-secondary" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-code-sm font-medium text-on-surface truncate">{filePath}</span>
+              <span
+                className={cn(
+                  'text-code-sm px-1.5 py-0.5 rounded font-semibold uppercase shrink-0',
+                  isStaged
+                    ? 'bg-primary-container/20 text-primary border border-primary/30'
+                    : 'bg-ember/20 text-ember border border-ember/30'
+                )}
+              >
+                {isStaged ? 'Staged' : 'Unstaged'}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 text-code-sm mt-0.5">
+              {stats.additions > 0 && <span className="text-primary">+{stats.additions}</span>}
+              {stats.deletions > 0 && <span className="text-magma">−{stats.deletions}</span>}
+              {stats.additions === 0 && stats.deletions === 0 && (
+                <span className="text-on-surface-variant/70">sin cambios de línea</span>
+              )}
+            </div>
+          </div>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <div className="flex items-center bg-surface-container-high rounded border border-outline-variant p-0.5">
@@ -161,7 +204,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ diff, filePath, isStaged
               onClick={() => setModo('unified')}
               className={cn(
                 'flex items-center gap-1 px-2 py-0.5 rounded text-code-sm font-semibold transition-colors',
-                modo === 'unified' ? 'bg-primary-container/20 text-primary' : 'text-on-surface-variant'
+                !ladoALado ? 'bg-primary-container/20 text-primary' : 'text-on-surface-variant'
               )}
             >
               <AlignJustify className="w-3 h-3" />
@@ -172,14 +215,32 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ diff, filePath, isStaged
               onClick={() => setModo('split')}
               className={cn(
                 'hidden md:flex items-center gap-1 px-2 py-0.5 rounded text-code-sm font-semibold transition-colors',
-                modo === 'split' ? 'bg-primary-container/20 text-primary' : 'text-on-surface-variant'
+                ladoALado ? 'bg-primary-container/20 text-primary' : 'text-on-surface-variant'
               )}
             >
               <Columns2 className="w-3 h-3" />
               Lado a lado
             </button>
           </div>
-          <div className="flex items-center gap-2 sm:gap-3 text-code-sm">
+          <button
+            type="button"
+            onClick={() => void copiarDiff()}
+            disabled={!diff}
+            className="inline-flex items-center gap-1 text-code-sm text-on-surface-variant hover:text-on-surface transition-colors disabled:opacity-40"
+          >
+            {copiado ? (
+              <>
+                <CheckCheck className="w-3 h-3 text-primary" />
+                Copiado
+              </>
+            ) : (
+              <>
+                <Copy className="w-3 h-3" />
+                Copiar diff
+              </>
+            )}
+          </button>
+          <div className="hidden lg:flex items-center gap-2 text-code-sm">
             <span className="flex items-center text-primary">
               <Plus className="w-3 h-3 mr-0.5" />
               {stats.additions}
@@ -192,27 +253,54 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ diff, filePath, isStaged
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto text-code-sm min-h-0">
+      <div className="flex-1 overflow-hidden text-code-sm min-h-0 min-w-0">
         {parsedLines.length === 0 ? (
           <div className="flex items-center justify-center h-full text-on-surface-variant/70 italic">
             Sin diferencias para mostrar en este archivo
           </div>
-        ) : modo === 'unified' ? (
-          <div className="p-2 space-y-[1px]">
+        ) : ladoALado ? (
+          <div ref={marcoSplit} className="relative h-full min-w-0 overflow-hidden">
+            <div className="h-full overflow-auto min-w-0">
+              <div
+                className="sticky top-0 z-10 grid border-b border-outline-variant bg-surface-container-low"
+                style={{ gridTemplateColumns: `${anchoIzq}% minmax(0, 1fr)` }}
+              >
+                <div className="px-3 py-1.5 text-code-sm font-semibold text-on-surface-variant truncate border-r border-outline-variant">
+                  Anterior
+                </div>
+                <div className="px-3 py-1.5 text-code-sm font-semibold text-on-surface-variant truncate">
+                  Actual
+                </div>
+              </div>
+              <div
+                className="grid min-w-0"
+                style={{ gridTemplateColumns: `${anchoIzq}% minmax(0, 1fr)` }}
+              >
+                {filasSplit.map((fila) => (
+                  <React.Fragment key={`${fila.izq?.id ?? 'x'}-${fila.der?.id ?? 'y'}`}>
+                    <CeldaSplit
+                      lado={fila.izq}
+                      html={fila.izq ? htmlPorLinea[fila.izq.id] : undefined}
+                      className="border-r border-outline-variant"
+                    />
+                    <CeldaSplit lado={fila.der} html={fila.der ? htmlPorLinea[fila.der.id] : undefined} />
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
+            <DivisorComparacion
+              porcentaje={anchoIzq}
+              onPorcentaje={setAnchoIzq}
+              contenedorRef={marcoSplit}
+            />
+          </div>
+        ) : (
+          <div className="h-full overflow-auto p-2 space-y-[1px] min-w-0">
             {parsedLines.map((line) => (
               <FilaUnificada key={line.id} line={line} html={htmlPorLinea[line.id]} />
             ))}
           </div>
-        ) : modo === 'split' ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-outline-variant min-w-0">
-            {filasSplit.map((fila) => (
-              <React.Fragment key={`${fila.izq?.id ?? 'x'}-${fila.der?.id ?? 'y'}`}>
-                <CeldaSplit lado={fila.izq} html={fila.izq ? htmlPorLinea[fila.izq.id] : undefined} />
-                <CeldaSplit lado={fila.der} html={fila.der ? htmlPorLinea[fila.der.id] : undefined} />
-              </React.Fragment>
-            ))}
-          </div>
-        ) : null}
+        )}
       </div>
     </div>
   );
@@ -225,7 +313,7 @@ function FilaUnificada({ line, html }: { line: LineaDiff; html?: string }) {
   if (line.type === 'deletion') bgClass = 'bg-magma/10 text-magma';
 
   return (
-    <div className={`flex items-start px-2 py-0.5 ${bgClass}`}>
+    <div className={`flex items-start px-2 py-0.5 min-w-0 overflow-hidden ${bgClass}`}>
       <span className="w-10 shrink-0 text-right pr-2 text-on-surface-variant/50 select-none">{line.oldNo ?? ''}</span>
       <span className="w-10 shrink-0 text-right pr-2 text-on-surface-variant/50 select-none">{line.newNo ?? ''}</span>
       <span className="w-4 shrink-0 font-bold select-none">
@@ -233,19 +321,27 @@ function FilaUnificada({ line, html }: { line: LineaDiff; html?: string }) {
       </span>
       {html && line.type !== 'header' && line.type !== 'meta' ? (
         <code
-          className="flex-1 overflow-x-auto whitespace-pre leading-relaxed [&_span]:bg-transparent"
+          className="flex-1 min-w-0 overflow-x-auto whitespace-pre leading-relaxed [&_span]:bg-transparent"
           dangerouslySetInnerHTML={{ __html: html }}
         />
       ) : (
-        <pre className="flex-1 overflow-x-auto whitespace-pre leading-relaxed">{line.code}</pre>
+        <pre className="flex-1 min-w-0 overflow-x-auto whitespace-pre leading-relaxed">{line.code}</pre>
       )}
     </div>
   );
 }
 
-function CeldaSplit({ lado, html }: { lado?: LineaDiff; html?: string }) {
+function CeldaSplit({
+  lado,
+  html,
+  className,
+}: {
+  lado?: LineaDiff;
+  html?: string;
+  className?: string;
+}) {
   if (!lado) {
-    return <div className="min-h-[1.4rem] bg-void" />;
+    return <div className={cn('min-h-[1.4rem] bg-void min-w-0', className)} />;
   }
   const bg =
     lado.type === 'addition'
@@ -257,15 +353,15 @@ function CeldaSplit({ lado, html }: { lado?: LineaDiff; html?: string }) {
           : 'text-on-surface-variant';
   const num = lado.type === 'addition' ? lado.newNo : lado.oldNo ?? lado.newNo;
   return (
-    <div className={`flex items-start px-2 py-0.5 ${bg}`}>
+    <div className={cn('flex items-start px-2 py-0.5 min-w-0 overflow-hidden', bg, className)}>
       <span className="w-10 shrink-0 text-right pr-2 text-on-surface-variant/50 select-none">{num ?? ''}</span>
       {html && lado.type !== 'header' && lado.type !== 'meta' ? (
         <code
-          className="flex-1 overflow-x-auto whitespace-pre leading-relaxed [&_span]:bg-transparent"
+          className="flex-1 min-w-0 overflow-x-auto whitespace-pre leading-relaxed [&_span]:bg-transparent"
           dangerouslySetInnerHTML={{ __html: html }}
         />
       ) : (
-        <pre className="flex-1 overflow-x-auto whitespace-pre leading-relaxed">{lado.code}</pre>
+        <pre className="flex-1 min-w-0 overflow-x-auto whitespace-pre leading-relaxed">{lado.code}</pre>
       )}
     </div>
   );

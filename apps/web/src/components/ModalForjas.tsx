@@ -262,6 +262,12 @@ export const ModalForjas: React.FC<ModalForjasProps> = ({
               );
             })}
           </div>
+          {!githubOk && !gitlabOk && (
+            <p className="text-[11px] text-on-surface-variant/80 leading-relaxed">
+              El Push usa esta sesión. En Docker no valen las credenciales de Git de Windows.
+              Añade CLIENT_ID/SECRET o un PAT (`ABYSSAN_GITHUB_TOKEN`) al `.env` y recrea el server.
+            </p>
+          )}
         </div>
 
         <div className="px-4 pt-3 border-b border-outline-variant">

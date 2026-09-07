@@ -27,6 +27,26 @@ Compose no tiene probe. Si `curl /health` falla: el proceso no está en `PORT`, 
 
 simple-git necesita `git` en el `PATH`. En Docker del server, el Dockerfile ya hace `apk add git`. En el host de desarrollo, instala Git y verifica `git --version`.
 
+## No hay identidad git en Docker
+
+El modal «Identidad Git» avisa que faltan nombre y correo aunque en el host `git config --global user.name` funcione. No es un fallo de Abyssan ni hace falta Rust/Python: Git corre **dentro del contenedor**, con su propio `HOME` (`/home/node`). Ahí no está tu `~/.gitconfig`.
+
+Solución: en el `.env` del host, monta ese archivo (solo lectura):
+
+```env
+ABYSSAN_GITCONFIG_HOST=C:/Users/tu_usuario/.gitconfig
+```
+
+Linux/macOS: `/home/tu_usuario/.gitconfig`. Tiene que ser un **archivo**. Si Docker creó una carpeta en esa ruta, bórrala y vuelve a crear el bind.
+
+Al arrancar, Abyssan copia **solo** nombre y correo. No importa `safe.directory` del host (si lo incluyéramos, Git en Linux avisa `not absolute` con rutas `C:/...` y esa «C» se pintaba encima de la consola).
+
+Luego:
+
+```bash
+docker compose up -d --build --force-recreate server
+```
+
 ## `dubious ownership` en Docker
 
 Mensaje típico: `fatal: detected dubious ownership in repository at '/workspace/proyectos/...'`.
@@ -39,9 +59,25 @@ docker compose up -d --build server
 
 No ejecutes `git config --global` en tu máquina host para “arreglarlo”; el fix es dentro del contenedor.
 
+## Staging muestra el doble de archivos / no deja preparar
+
+Abyssan listaba `modified` + `staged` + `created` de simple-git. Esas listas **se solapan**: un archivo ya preparado aparecía otra vez como “sin preparar”. El recuento del panel (p. ej. 55) no era `git status --short`.
+
+`git add .` (preparar todos) y `stash` escriben blobs en `.git/objects`. En Docker, si el volumen del host no es escribible por el usuario `node`, Git responde `insufficient permission for adding an object` y **no indexa nada** (un solo archivo como `SECURITY.md` aborta el lote).
+
+El entrypoint del server detecta eso y, si `node` no puede escribir, corre Git **como root dentro del contenedor** (sin `chown` del repo). Reconstruye el server:
+
+```bash
+docker compose up -d --build --force-recreate server
+```
+
+En los logs debe aparecer: `El volumen de repos no es escribible por node; Git corre como root…` o `Volumen de repos escribible por node`.
+
+Comprueba en el host: `git status --short`. Si ahí hay ~20 rutas, el panel ya debe acercarse a esa cifra.
+
 ## El contenedor carece de permisos
 
-El volumen RW debe ser escribible por el UID del contenedor. No pongas el volumen en `:ro`. No ejecutes el API como root en el host para saltarte ACL: corrige el montaje.
+El volumen debe ser RW (el compose oficial lo es). No montes `:ro`. Si tras recrear el server con el entrypoint actual `git add` sigue fallando, usa `pnpm dev:server` en la máquina (Git del host, mismos permisos que tu usuario).
 
 ## El volumen está en solo lectura
 
@@ -69,7 +105,35 @@ Debe mostrar tu carpeta de proyectos en el host, no solo el checkout de Abyssan.
 
 ## El push pide credenciales
 
-El adapter usa Git del sistema (HTTPS u SSH). Mensajes típicos se traducen en `mensajeErrorGit` (auth, publickey, red). Conecta OAuth de forja, usa el agent SSH, o un credential helper. Abyssan **no** guarda passwords de Git en el repo.
+El origin es HTTPS. Docker **no** ve el Administrador de credenciales de Windows. `ABYSSAN_API_TOKEN` es el token de la **app Abyssan**; **no** autentica contra GitHub.
+
+### Cómo crear el PAT (paso a paso)
+
+1. Inicia sesión en GitHub.
+2. Abre el formulario ya marcado con alcance `repo`: [github.com/settings/tokens/new?scopes=repo&description=Abyssan](https://github.com/settings/tokens/new?scopes=repo&description=Abyssan).  
+   Si el enlace no abre: foto de perfil → **Settings** → **Developer settings** → **Personal access tokens** → **Tokens (classic)** → **Generate new token (classic)**.
+3. **Note:** `Abyssan`. **Expiration:** 90 días (o la que prefieras).
+4. En scopes, deja marcado **repo** (push/pull al repositorio). No hace falta marcar el resto.
+5. **Generate token**. Copia el valor de una vez (`ghp_…`). GitHub **no lo vuelve a mostrar**.
+6. En el `.env` de la **raíz** del monorepo (archivo gitignorado; no lo subas):
+
+```env
+ABYSSAN_GITHUB_TOKEN=ghp_pegaAquiLoQueCopiaste
+```
+
+Sin comillas ni espacios alrededor del valor.
+
+7. Recrea el contenedor para que Compose inyecte la variable:
+
+```bash
+docker compose up -d --force-recreate server
+```
+
+8. En Abyssan, pulsa **Push**.
+
+No pegues el PAT en Issues, PRs, commits ni el chat. Si se filtró: GitHub → Settings → Developer settings → tokens → revoke.
+
+Otras opciones: OAuth (`GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` + **PRs → Conectar GitHub**), o push en el host con las credenciales de Windows: `git push -u origin <rama>`.
 
 ## Los cambios del disco no llegan a la UI
 

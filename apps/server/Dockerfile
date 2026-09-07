@@ -1,6 +1,6 @@
 FROM node:22-alpine
 
-RUN apk add --no-cache git
+RUN apk add --no-cache git su-exec
 
 WORKDIR /app
 
@@ -21,16 +21,17 @@ RUN mkdir -p "$COREPACK_HOME" \
 RUN pnpm install --filter @abyssan/server...
 
 COPY apps/server ./apps/server
+COPY apps/server/docker/entrypoint.sh /usr/local/bin/abyssan-entrypoint.sh
 
-RUN chown -R node:node /app
-
-USER node
+RUN sed -i 's/\r$//' /usr/local/bin/abyssan-entrypoint.sh \
+  && chmod 755 /usr/local/bin/abyssan-entrypoint.sh \
+  && chown -R node:node /app
 
 WORKDIR /app/apps/server
 
-# Bind mounts (p. ej. Windows → Docker): el dueño del FS no coincide con USER node.
-RUN git config --global --add safe.directory '*'
-
+# El entrypoint decide: node si el volumen es escribible; si no, root
+# (bind mounts Windows → .git/objects). safe.directory se aplica a --system.
 EXPOSE 3001
 
+ENTRYPOINT ["/usr/local/bin/abyssan-entrypoint.sh"]
 CMD ["pnpm", "dev"]
