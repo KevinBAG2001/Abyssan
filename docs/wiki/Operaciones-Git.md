@@ -65,6 +65,7 @@ Nuevo commit. Journal no deshacible. Preview API disponible. UI: menú contextua
 - Fetch: refs remotas; `prune` default true.
 - Pull: `modo` `merge` o `rebase`. No es rebase interactivo. Journal no deshacible.
 - Push: sin `--force-with-lease` en el adapter. Marca undo bloqueado.
+- En Docker, HTTPS a GitHub no usa las credenciales de Windows. Paso a paso del PAT: [El push pide credenciales](./Solucion-de-problemas.md#el-push-pide-credenciales).
 
 ## Remotos
 
@@ -88,7 +89,7 @@ Solo mismo `user.email`. Remoto: `confirmarRemoto` o 409. Journal no deshacible.
 
 ## Identidad git, journal, forjas
 
-Identidad: `user.name` / `user.email`. Journal persistente y deshacer de la punta. Forjas: OAuth y PR/MR; 503 si caen, Git local intacto.
+Identidad: `user.name` / `user.email` (local, global o `GIT_AUTHOR_*`). En Docker, Compose monta `ABYSSAN_GITCONFIG_HOST` y el arranque copia solo nombre y correo; no incluye el gitconfig entero del host. Journal persistente y deshacer de la punta. Forjas: OAuth y PR/MR; 503 si caen, Git local intacto.
 
 ## No localizado (README o plan)
 

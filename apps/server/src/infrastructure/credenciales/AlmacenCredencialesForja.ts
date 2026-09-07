@@ -1,7 +1,7 @@
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { obtenerDirAbyssan } from '../auditoria/AuditoriaJsonlAdapter.js';
 import type { ProveedorForja } from './inyectarTokenHttps.js';
 
 export type CredencialForja = {
@@ -17,7 +17,7 @@ type AlmacenPlano = {
 const ALGORITMO = 'aes-256-gcm';
 
 function directorioConfig(): string {
-  return path.join(os.homedir(), '.abyssan');
+  return obtenerDirAbyssan();
 }
 
 function rutaArchivo(): string {

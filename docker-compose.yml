@@ -18,10 +18,29 @@ services:
       - PROJECTS_ROOT=/workspace/proyectos
       - CORS_ORIGINS=http://localhost:5174,http://127.0.0.1:5174
       - ABYSSAN_API_TOKEN=${ABYSSAN_API_TOKEN:?Defina ABYSSAN_API_TOKEN en el archivo .env}
+      - ABYSSAN_HOME=/abyssan-home
+      - GIT_TERMINAL_PROMPT=0
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
+      - GITLAB_CLIENT_ID=${GITLAB_CLIENT_ID:-}
+      - GITLAB_CLIENT_SECRET=${GITLAB_CLIENT_SECRET:-}
+      - OAUTH_CALLBACK_URL=${OAUTH_CALLBACK_URL:-http://localhost:3001/api/auth/callback}
+      - ABYSSAN_SECRETO_CIFRADO=${ABYSSAN_SECRETO_CIFRADO:-}
+      - ABYSSAN_GITHUB_TOKEN=${ABYSSAN_GITHUB_TOKEN:-}
+      - ABYSSAN_GITLAB_TOKEN=${ABYSSAN_GITLAB_TOKEN:-}
+      - VITE_API_URL=http://localhost:3001
     volumes:
+      # RW a propósito: stage/commit/push escriben en .git. Si el UID del host
+      # no coincide con node, el entrypoint corre Git como root en el contenedor.
       # Por defecto solo este checkout. Para varios repos: ABYSSAN_PROJECTS_HOST en .env
       - ${ABYSSAN_PROJECTS_HOST:-.}:/workspace/proyectos
       - ./apps/server/src:/app/apps/server/src
+      # Identidad git del host (user.name / user.email). El archivo debe existir;
+      # si Docker crea una carpeta aquí, borra esa carpeta y corrige la ruta.
+      - ${ABYSSAN_GITCONFIG_HOST:-./apps/server/docker/gitconfig.host.placeholder}:/host-gitconfig:ro
+      # Tokens OAuth cifrados / PAT no van en el repo. Named volume por defecto;
+      # o ABYSSAN_HOME_HOST=C:/Users/tu_usuario/.abyssan para compartir con pnpm dev:server
+      - ${ABYSSAN_HOME_HOST:-abyssan-home}:/abyssan-home
     healthcheck:
       test:
         [
@@ -67,3 +86,6 @@ services:
 networks:
   abyssan-net:
     driver: bridge
+
+volumes:
+  abyssan-home:
