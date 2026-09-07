@@ -22,7 +22,12 @@ import {
 import type { EscuchaProgresoGit } from '../../domain/entities/GitOperacion.js';
 import { parsearHunksConflicto } from '../../application/conflictos/parsearConflictos.js';
 import { almacenCredencialesForja } from '../credenciales/AlmacenCredencialesForja.js';
-import { detectarForja, inyectarTokenHttps } from '../credenciales/inyectarTokenHttps.js';
+import {
+  detectarForja,
+  inyectarTokenHttps,
+  mensajePushSinCredencial,
+  tokenForjaDesdeEntorno,
+} from '../credenciales/inyectarTokenHttps.js';
 import { mapearEstadoPorcelain } from './mapearEstadoPorcelain.js';
 
 const DIRECTORIOS_IGNORADOS = new Set([
@@ -120,12 +125,18 @@ export class SimpleGitAdapter implements IGitRepository {
     }
   }
 
+  private tokenForja(forja: ReturnType<typeof detectarForja>): string | undefined {
+    if (!forja) return undefined;
+    const deAlmacen = almacenCredencialesForja.obtener(forja)?.token?.trim();
+    return deAlmacen || tokenForjaDesdeEntorno(forja);
+  }
+
   private async urlConTokenSiAplica(url: string): Promise<string> {
     const forja = detectarForja(url);
     if (!forja) return url;
-    const cred = almacenCredencialesForja.obtener(forja);
-    if (!cred?.token) return url;
-    return inyectarTokenHttps(url, cred.token, forja);
+    const token = this.tokenForja(forja);
+    if (!token) return url;
+    return inyectarTokenHttps(url, token, forja);
   }
 
   private async urlRemotoConToken(repoPath: string): Promise<string | undefined> {
@@ -402,6 +413,15 @@ export class SimpleGitAdapter implements IGitRepository {
     const status = await git.status();
     const rama = status.current || 'HEAD';
     const sinUpstream = !status.tracking;
+    if (!remotoToken) {
+      const remotes = await git.getRemotes(true);
+      const elegido = remotes.find((r) => r.name === 'origin') || remotes[0];
+      const urlOrigin = elegido?.refs?.push || elegido?.refs?.fetch || '';
+      const forja = detectarForja(urlOrigin);
+      if (forja) {
+        throw new Error(mensajePushSinCredencial(forja));
+      }
+    }
     try {
       if (remotoToken) {
         const args = sinUpstream

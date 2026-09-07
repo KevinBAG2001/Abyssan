@@ -26,6 +26,9 @@ import {
 import { aplicarIdentidadGitHost } from './infrastructure/git/aplicarIdentidadGitHost.js';
 
 cargarEntorno();
+if (!process.env.GIT_TERMINAL_PROMPT) {
+  process.env.GIT_TERMINAL_PROMPT = '0';
+}
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;

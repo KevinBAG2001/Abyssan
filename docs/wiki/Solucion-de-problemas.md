@@ -105,7 +105,15 @@ Debe mostrar tu carpeta de proyectos en el host, no solo el checkout de Abyssan.
 
 ## El push pide credenciales
 
-El adapter usa Git del sistema (HTTPS u SSH). Mensajes típicos se traducen en `mensajeErrorGit` (auth, publickey, red). Conecta OAuth de forja, usa el agent SSH, o un credential helper. Abyssan **no** guarda passwords de Git en el repo.
+El origin de este repo es HTTPS. En Docker, Git **no** ve el Administrador de credenciales de Windows ni `gh auth`. Sin token, Push falla (antes: «Autenticación Git fallida»).
+
+Opciones:
+
+1. **OAuth:** `GITHUB_CLIENT_ID` y `GITHUB_CLIENT_SECRET` en el `.env`, `docker compose up -d --force-recreate server`, luego **PRs → Conectar GitHub**.
+2. **PAT:** `ABYSSAN_GITHUB_TOKEN` (alcance `repo`) en el `.env` y recrear el server. No lo subas al git.
+3. Push en el host (mismas credenciales que GitKraken/CLI): `git push -u origin <rama>`.
+
+Abyssan **no** guarda passwords de Git en el repositorio. Los tokens OAuth van cifrados en `ABYSSAN_HOME` (`/abyssan-home` en Compose).
 
 ## Los cambios del disco no llegan a la UI
 

@@ -37,6 +37,7 @@ El lockfile es `pnpm-lock.yaml`. CI usa `pnpm install --frozen-lockfile`.
 | `NODE_ENV` | Entorno Node | `development` en el ejemplo |
 | `ABYSSAN_API_TOKEN` | Token de instancia si el bind no es loopback | Vacío en localhost |
 | `ABYSSAN_HOME` | Directorio de journal, auditoría y snapshots | `~/.abyssan` si no se define |
+| `ABYSSAN_HOME_HOST` | Compose: bind del home de Abyssan; si se omite, volumen `abyssan-home` | Named volume |
 | `ABYSSAN_GITCONFIG_HOST` | Compose: ruta del `~/.gitconfig` del host montada en `/host-gitconfig` (ro) | Placeholder sin identidad |
 | `VITE_API_URL` | Origen REST de la SPA | `http://localhost:3001` |
 | `VITE_WS_URL` | Origen WebSocket de la SPA | `ws://localhost:3001` |
@@ -48,6 +49,7 @@ El lockfile es `pnpm-lock.yaml`. CI usa `pnpm install --frozen-lockfile`.
 | `GITLAB_CLIENT_ID` / `GITLAB_CLIENT_SECRET` | OAuth GitLab (forjas) | Opcional |
 | `OAUTH_CALLBACK_URL` | Callback OAuth | `http://localhost:3001/api/auth/callback` |
 | `ABYSSAN_SECRETO_CIFRADO` | Semilla para cifrar tokens OAuth en disco | Si falta, se genera una clave local en `~/.abyssan/clave` |
+| `ABYSSAN_GITHUB_TOKEN` / `ABYSSAN_GITLAB_TOKEN` | PAT para push/fetch HTTPS (Docker no ve GCM de Windows) | Opcional |
 
 Ejemplo **genérico** (no copies rutas de un usuario concreto):
 

@@ -25,6 +25,13 @@ Ambas: `FROM node:22-alpine`. pnpm vía Corepack **11.25.0**. El server instala 
 - `PROJECTS_ROOT=/workspace/proyectos`
 - `CORS_ORIGINS=http://localhost:5174,http://127.0.0.1:5174`
 - `ABYSSAN_API_TOKEN=${ABYSSAN_API_TOKEN:?…}` — **obligatorio**, sin default
+- `ABYSSAN_HOME=/abyssan-home`
+- `GIT_TERMINAL_PROMPT=0`
+- `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` / `GITLAB_CLIENT_*` — desde el `.env` del host (vacío si no están)
+- `OAUTH_CALLBACK_URL` — default `http://localhost:3001/api/auth/callback`
+- `ABYSSAN_SECRETO_CIFRADO` — opcional
+- `ABYSSAN_GITHUB_TOKEN` / `ABYSSAN_GITLAB_TOKEN` — PAT opcional para push HTTPS
+- `VITE_API_URL=http://localhost:3001` — callback OAuth hacia la SPA
 
 **web**
 
@@ -63,13 +70,16 @@ Tras cambiar `VITE_ABYSSAN_API_TOKEN`, reconstruye o reinicia el contenedor `web
 - ${ABYSSAN_PROJECTS_HOST:-.}:/workspace/proyectos
 - ./apps/server/src:/app/apps/server/src
 - ${ABYSSAN_GITCONFIG_HOST:-./apps/server/docker/gitconfig.host.placeholder}:/host-gitconfig:ro
+- ${ABYSSAN_HOME_HOST:-abyssan-home}:/abyssan-home
 ```
 
 `PROJECTS_ROOT` **dentro** del contenedor es `/workspace/proyectos`. En el host, el default es el checkout de Abyssan. Amplía con `ABYSSAN_PROJECTS_HOST` si necesitas varios repos.
 
 `ABYSSAN_GITCONFIG_HOST` monta tu `~/.gitconfig` en `/host-gitconfig` (solo lectura). Al arrancar, el server copia **solo** `user.name` y `user.email` al gitconfig del contenedor. No incluye `safe.directory` ni helpers del host (en Windows esas rutas no son absolutas para Git de Linux y ensucian la consola).
 
-Sin el montaje RW, commit/stage fallarían (comentario en el propio compose).
+El volumen `abyssan-home` (o bind `ABYSSAN_HOME_HOST`) es `ABYSSAN_HOME` dentro del contenedor: journal, snapshots y tokens OAuth cifrados.
+
+Sin el montaje RW de proyectos, commit/stage fallarían (comentario en el propio compose).
 
 ## Puertos
 
@@ -77,7 +87,7 @@ Compose **no** publica `0.0.0.0:3001` en el host: usa `127.0.0.1`. El proceso in
 
 ## Credenciales
 
-No copies `.env` al contexto de build (los Dockerfiles copian package manifests y código, no `.env`). Pasa el token por el entorno del host. OAuth sigue necesitando variables en el proceso del server si usas forjas.
+OAuth y PAT se pasan desde el `.env` del host (`GITHUB_CLIENT_*`, `ABYSSAN_GITHUB_TOKEN`, …). El volumen `abyssan-home` (o `ABYSSAN_HOME_HOST`) guarda tokens cifrados. El contenedor **no** usa el Administrador de credenciales de Windows.
 
 ## Permisos
 

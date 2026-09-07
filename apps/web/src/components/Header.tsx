@@ -193,7 +193,7 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={onPush}
             disabled={loading}
             className={cn(ui.btnPrimario, 'shrink-0')}
-            title="Enviar cambios al remoto"
+            title="Enviar la rama al remoto (en Docker hace falta OAuth o ABYSSAN_GITHUB_TOKEN)"
           >
             <ArrowUp className="w-3.5 h-3.5" />
             <span className="hidden xl:inline">Push</span>

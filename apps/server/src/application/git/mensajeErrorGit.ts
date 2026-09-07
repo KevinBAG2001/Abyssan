@@ -16,7 +16,10 @@ export function mensajeErrorGit(error: unknown): string {
       mensaje
     )
   ) {
-    return 'Autenticación Git fallida. Conecta GitHub/GitLab (OAuth) o revisa el acceso.';
+    return (
+      'Autenticación Git fallida. En Docker no se usan las credenciales de Windows: ' +
+      'conecta GitHub/GitLab en PRs o define ABYSSAN_GITHUB_TOKEN en el .env y recrea el server.'
+    );
   }
   if (/Permission denied \(publickey\)|Could not read from remote repository/i.test(mensaje)) {
     return 'SSH rechazó la clave. Revisa el agent SSH o clona por HTTPS con OAuth.';
