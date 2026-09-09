@@ -6,7 +6,7 @@
   "scripts": {
     "dev:server": "pnpm --filter @abyssan/server dev",
     "dev:web": "pnpm --filter @abyssan/web dev",
-    "dev": "pnpm --filter @abyssan/server dev & pnpm --filter @abyssan/web dev",
+    "dev": "pnpm -r --parallel dev",
     "build": "pnpm --filter @abyssan/server build && pnpm --filter @abyssan/web build",
     "lint": "oxlint",
     "test": "vitest run",
