@@ -91,11 +91,10 @@ Si `BIND_HOST` no es `127.0.0.1` / `localhost` / `::1`, el arranque **falla** si
 
 ```bash
 pnpm install
-pnpm dev:server
-pnpm dev:web
+pnpm dev
 ```
 
-También existe `pnpm dev` en la raíz (lanza ambos con `&`). En Windows PowerShell ese patrón puede no comportarse igual que en Unix; los scripts documentados y usados en el README son `dev:server` y `dev:web` por separado.
+Levanta API (`:3001`) y SPA (`:5174`) en paralelo. Si necesitas solo uno: `pnpm dev:server` o `pnpm dev:web`.
 
 ## Build, lint y pruebas
 

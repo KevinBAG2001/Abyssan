@@ -259,7 +259,13 @@ En Linux o dentro de Docker: `PROJECTS_ROOT=/workspace/proyectos`.
 
 ### 3. Arrancar
 
-Dos procesos. El orden importa: el API debe estar vivo antes de usar la UI.
+Un solo comando levanta API y SPA en paralelo:
+
+```bash
+pnpm dev           # API :3001 + web :5174
+```
+
+Si necesitas solo uno de los dos:
 
 ```bash
 pnpm dev:server    # http://localhost:3001
@@ -271,8 +277,9 @@ Abre **[http://localhost:5174](http://localhost:5174)**, elige un repositorio ba
 
 | Script            | Qué hace                                  |
 | ----------------- | ----------------------------------------- |
-| `pnpm dev:server` | API + WebSocket en caliente (`tsx watch`) |
-| `pnpm dev:web`    | Vite HMR                                  |
+| `pnpm dev`        | API + SPA en paralelo (recomendado)       |
+| `pnpm dev:server` | Solo API + WebSocket (`tsx watch`)      |
+| `pnpm dev:web`    | Solo Vite HMR                             |
 | `pnpm build`      | Compila server y web                      |
 | `pnpm lint`       | oxlint                                    |
 | `pnpm test`       | Vitest                                    |
@@ -323,7 +330,7 @@ ABYSSAN_API_TOKEN=pega-aqui-el-secreto-generado
 VITE_ABYSSAN_API_TOKEN=pega-aqui-el-secreto-generado
 ```
 
-Con `pnpm dev:server` + `pnpm dev:web` en tu máquina (`BIND_HOST=127.0.0.1`) **no suele hacer falta** el token. Con `docker compose up` **sí**.
+Con `pnpm dev` en tu máquina (`BIND_HOST=127.0.0.1`) **no suele hacer falta** el token. Con `docker compose up` **sí**.
 
 Desde la raíz del repositorio:
 
