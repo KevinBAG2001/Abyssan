@@ -141,3 +141,27 @@ export function validarUrlClone(url: string): string {
   }
   return recortada;
 }
+
+/** Hash de commit (4–40 hex). Evita inyectar rangos o flags en git. */
+export function validarHashGit(hash: string): string {
+  const recortado = (hash ?? '').trim();
+  if (!/^[0-9a-fA-F]{4,40}$/.test(recortado)) {
+    throw new Error('Hash de commit no válido');
+  }
+  return recortado;
+}
+
+/** Nombre de rama/tag/ref. Rechaza rangos (`..`) y metacaracteres de shell. */
+export function validarRefGit(ref: string): string {
+  const recortado = (ref ?? '').trim();
+  if (!recortado || recortado.length > 255) {
+    throw new Error('Ref Git no válida');
+  }
+  if (recortado.startsWith('-') || recortado.includes('\0') || recortado.includes('..')) {
+    throw new Error('Ref Git no válida');
+  }
+  if (/[\s;|&$`<>]/.test(recortado)) {
+    throw new Error('Ref Git no válida');
+  }
+  return recortado;
+}

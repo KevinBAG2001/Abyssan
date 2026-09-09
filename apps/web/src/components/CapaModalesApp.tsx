@@ -29,6 +29,8 @@ type CapaModalesAppProps = {
   contextMenu: { commit: GitCommit; position: { x: number; y: number } } | null;
   onCerrarCommit: () => void;
   onCheckout: (target: string) => void;
+  onInspeccionarArchivo: (path: string, opciones: { commit?: string; desde?: string; hasta?: string }) => void;
+  ramaInspeccionada?: string | null;
   onSaveStash: (message?: string) => void;
   onPopStash: (index: number) => void;
   onDropStash: (index: number) => void;
@@ -60,7 +62,15 @@ type CapaModalesAppProps = {
 
 export const CapaModalesApp: React.FC<CapaModalesAppProps> = (p) => (
   <>
-    <CommitDetailsModal commit={p.selectedCommit} onClose={p.onCerrarCommit} onCheckout={p.onCheckout} />
+    <CommitDetailsModal
+      commit={p.selectedCommit}
+      repoPath={p.selectedRepo}
+      ramaActual={p.currentBranch}
+      ramaInspeccionada={p.ramaInspeccionada}
+      onClose={p.onCerrarCommit}
+      onCheckout={p.onCheckout}
+      onInspeccionarArchivo={p.onInspeccionarArchivo}
+    />
 
     {p.isStashModalOpen && (
       <StashManagerModal

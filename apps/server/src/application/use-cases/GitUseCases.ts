@@ -17,6 +17,8 @@ import {
   EntradaReflogEntity,
   PreviewOperacionEntity,
   TipoOperacionPreview,
+  ArchivoCambioEntity,
+  OpcionesDiff,
 } from '../../domain/entities/GitEntities.js';
 import {
   JournalOperaciones,
@@ -32,7 +34,7 @@ import {
   crearSnapshotArchivos,
   restaurarSnapshot,
 } from '../../infrastructure/deshacer/SnapshotArchivos.js';
-import { validarRutaArchivoEnRepositorio } from '../../infrastructure/seguridad/validarRutaRepositorio.js';
+import { validarRutaArchivoEnRepositorio, validarHashGit, validarRefGit } from '../../infrastructure/seguridad/validarRutaRepositorio.js';
 import type { EscuchaProgresoGit, GitOperacion, TipoGitOperacion } from '../../domain/entities/GitOperacion.js';
 
 export class GitUseCases {
@@ -85,8 +87,19 @@ export class GitUseCases {
     return await this.gitRepository.getBranches(repoPath);
   }
 
-  async getDiff(repoPath: string, filePath?: string, staged = false): Promise<string> {
-    return await this.gitRepository.getDiff(repoPath, filePath, staged);
+  async getDiff(repoPath: string, filePath?: string, staged = false, opciones?: OpcionesDiff): Promise<string> {
+    const commit = opciones?.commit ? validarHashGit(opciones.commit) : undefined;
+    const desde = opciones?.desde ? validarRefGit(opciones.desde) : undefined;
+    const hasta = opciones?.hasta ? validarRefGit(opciones.hasta) : undefined;
+    return await this.gitRepository.getDiff(repoPath, filePath, staged, { commit, desde, hasta });
+  }
+
+  async listarArchivosCommit(repoPath: string, hash: string): Promise<ArchivoCambioEntity[]> {
+    return await this.gitRepository.listarArchivosCommit(repoPath, validarHashGit(hash));
+  }
+
+  async listarArchivosEntreRefs(repoPath: string, base: string, target: string): Promise<ArchivoCambioEntity[]> {
+    return await this.gitRepository.listarArchivosEntreRefs(repoPath, validarRefGit(base), validarRefGit(target));
   }
 
   async stage(repoPath: string, filePath?: string, all = false): Promise<void> {

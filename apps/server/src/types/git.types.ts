@@ -71,6 +71,12 @@ export interface GitConflictData {
   rawConflict: string;
 }
 
+export interface GitArchivoCambio {
+  path: string;
+  status: 'modified' | 'added' | 'deleted' | 'renamed';
+  pathAnterior?: string;
+}
+
 export interface GitBranchComparison {
   baseBranch: string;
   targetBranch: string;
@@ -78,6 +84,7 @@ export interface GitBranchComparison {
   behindCount: number;
   commits: GitCommit[];
   diffSummary: string;
+  archivos?: GitArchivoCambio[];
 }
 
 export interface GitRebaseItem {

@@ -19,6 +19,7 @@ gitRouter.get('/branches', (req, res) => gitController.getBranches(req, res));
 gitRouter.get('/branches/compare', (req, res) => gitController.compareBranches(req, res));
 gitRouter.post('/merge', (req, res) => gitController.merge(req, res));
 gitRouter.get('/diff', (req, res) => gitController.getDiff(req, res));
+gitRouter.get('/archivos', (req, res) => gitController.listarArchivosCambio(req, res));
 gitRouter.post('/stage', (req, res) => gitController.stage(req, res));
 gitRouter.post('/unstage', (req, res) => gitController.unstage(req, res));
 gitRouter.post('/commit', (req, res) => gitController.commit(req, res));

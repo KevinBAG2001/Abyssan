@@ -14,7 +14,9 @@ interface SidebarProps {
   currentBranch: string;
   loading: boolean;
   headDesvinculado?: boolean;
+  ramaInspeccionada?: string | null;
   onCheckout: (branchName: string) => void;
+  onInspectarRama: (branch: IGitBranch) => void;
   onCreateBranch: (branchName: string) => void;
   onCreateTag: (tagName: string) => void;
   onDeleteBranch: (branchName: string) => void;
@@ -27,7 +29,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   currentBranch,
   loading,
   headDesvinculado = false,
+  ramaInspeccionada = null,
   onCheckout,
+  onInspectarRama,
   onCreateBranch,
   onCreateTag,
   onDeleteBranch,
@@ -113,6 +117,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="mt-0.5">
               {localBranches.map((branch) => {
                 const isCurrent = branch.current || branch.name === currentBranch;
+                const inspeccionada = ramaInspeccionada === branch.name;
                 return (
                   <div
                     key={branch.name}
@@ -120,19 +125,36 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       'group flex items-center justify-between pl-4 pr-2 py-1.5 text-label-md transition-colors',
                       isCurrent
                         ? ui.ramaActiva
-                        : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high/40 border-l-2 border-transparent'
+                        : inspeccionada
+                          ? 'text-on-surface bg-primary-container/10 border-l-2 border-l-primary'
+                          : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high/40 border-l-2 border-transparent'
                     )}
                   >
                     <button
                       type="button"
-                      disabled={isCurrent || loading}
-                      onClick={() => !isCurrent && !loading && onCheckout(branch.name)}
+                      disabled={loading}
+                      onClick={() => onInspectarRama(branch)}
                       className="truncate text-left flex-1 min-w-0 font-mono text-code-sm disabled:cursor-default"
+                      title="Ver info y archivos de la rama"
                     >
                       {branch.name}
                     </button>
                     <div className="flex items-center shrink-0 ml-1 gap-0.5">
                       {isCurrent && <CheckCircle2 className="w-3.5 h-3.5 text-primary" />}
+                      {!isCurrent && (
+                        <button
+                          type="button"
+                          title={`Checkout ${branch.name}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onCheckout(branch.name);
+                          }}
+                          className="p-0.5 text-on-surface-variant/80 hover:text-primary"
+                          aria-label={`Checkout ${branch.name}`}
+                        >
+                          <GitBranch className="w-3 h-3" />
+                        </button>
+                      )}
                       <button
                         type="button"
                         title="Renombrar rama"
@@ -143,7 +165,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             onRenameBranch(branch.name, nuevo.trim());
                           }
                         }}
-                        className="opacity-0 group-hover:opacity-100 p-0.5 text-on-surface-variant hover:text-ember"
+                        className="p-0.5 text-on-surface-variant/80 hover:text-ember"
                       >
                         <Pencil className="w-3 h-3" />
                       </button>
@@ -155,7 +177,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           e.stopPropagation();
                           if (!isCurrent) onDeleteBranch(branch.name);
                         }}
-                        className="opacity-0 group-hover:opacity-100 p-0.5 text-on-surface-variant hover:text-error disabled:opacity-30"
+                        className="p-0.5 text-on-surface-variant/80 hover:text-error disabled:opacity-30"
                       >
                         <Trash2 className="w-3 h-3" />
                       </button>
@@ -182,12 +204,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {remoteExpanded && (
             <div className="mt-0.5">
               {remoteBranches.map((branch) => (
-                <div
+                <button
+                  type="button"
                   key={branch.name}
-                  className="flex items-center px-4 py-1.5 text-label-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high/40 border-l-2 border-transparent transition-colors"
+                  onClick={() => onInspectarRama(branch)}
+                  className={cn(
+                    'w-full flex items-center px-4 py-1.5 text-label-md text-left text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high/40 border-l-2 transition-colors',
+                    ramaInspeccionada === branch.name
+                      ? 'border-l-primary bg-primary-container/10 text-on-surface'
+                      : 'border-transparent'
+                  )}
+                  title="Ver info y archivos de la rama remota"
                 >
                   <span className="truncate font-mono text-code-sm">{branch.name.replace('remotes/', '')}</span>
-                </div>
+                </button>
               ))}
             </div>
           )}

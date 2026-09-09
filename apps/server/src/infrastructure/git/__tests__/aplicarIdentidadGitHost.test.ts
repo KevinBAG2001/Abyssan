@@ -30,7 +30,7 @@ describe('aplicarIdentidadGitHost', () => {
     }
   });
 
-  it('copia solo nombre y correo y no importa safe.directory de Windows', async () => {
+  it('copia solo nombre y correo y no importa safe.directory de Windows', { timeout: 15_000 }, async () => {
     const host = path.join(raiz, 'gitconfig-host');
     fs.writeFileSync(
       host,

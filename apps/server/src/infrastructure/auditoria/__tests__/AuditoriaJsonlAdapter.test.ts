@@ -44,4 +44,15 @@ describe('auditoría jsonl', () => {
     expect(limpio).not.toMatch(/gho_abc/);
     expect(limpio).not.toContain('user:token@');
   });
+
+  it('sanitizarTextoAuditoria recorta PAT clásico ghp_', () => {
+    const enUrl = sanitizarTextoAuditoria(
+      "Authentication failed for 'https://x-access-token:ghp_falsoNoUsar@github.com/acme/repo.git'"
+    );
+    expect(enUrl).not.toContain('ghp_falsoNoUsar');
+    expect(enUrl).toContain('https://***@');
+    const suelto = sanitizarTextoAuditoria('token suelto ghp_falsoNoUsar en el mensaje');
+    expect(suelto).not.toContain('ghp_falsoNoUsar');
+    expect(suelto).toContain('[redactado]');
+  });
 });

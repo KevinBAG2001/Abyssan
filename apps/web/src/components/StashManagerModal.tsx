@@ -82,7 +82,7 @@ export const StashManagerModal: React.FC<StashManagerModalProps> = ({
                 </span>
               </div>
 
-              <div className="flex items-center gap-1.5 shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+              <div className="flex items-center gap-1.5 shrink-0">
                 <button
                   type="button"
                   onClick={() => onPopStash(stash.index)}
