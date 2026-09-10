@@ -18,6 +18,8 @@ import {
   EntradaReflogEntity,
   PreviewOperacionEntity,
   ArchivoAfectadoPreview,
+  ArchivoCambioEntity,
+  OpcionesDiff,
 } from '../../domain/entities/GitEntities.js';
 import type { EscuchaProgresoGit } from '../../domain/entities/GitOperacion.js';
 import { parsearHunksConflicto } from '../../application/conflictos/parsearConflictos.js';
@@ -29,6 +31,8 @@ import {
   tokenForjaDesdeEntorno,
 } from '../credenciales/inyectarTokenHttps.js';
 import { mapearEstadoPorcelain } from './mapearEstadoPorcelain.js';
+import { construirDiffArchivoNuevo, LIMITE_DIFF_ARCHIVO_NUEVO } from './diffArchivoNuevo.js';
+import { parsearNameStatus } from './parsearNameStatus.js';
 
 const DIRECTORIOS_IGNORADOS = new Set([
   'node_modules',
@@ -285,21 +289,102 @@ export class SimpleGitAdapter implements IGitRepository {
     }
   }
 
-  async getDiff(repoPath: string, filePath?: string, staged: boolean = false): Promise<string> {
+  async getDiff(
+    repoPath: string,
+    filePath?: string,
+    staged: boolean = false,
+    opciones?: OpcionesDiff
+  ): Promise<string> {
     const start = Date.now();
     const git = this.getGitInstance(repoPath);
-    const options: string[] = [];
-    if (staged) options.push('--cached');
-    if (filePath) options.push('--', filePath);
 
     try {
+      if (opciones?.desde && opciones?.hasta && filePath) {
+        const diff = await git.diff([`${opciones.desde}...${opciones.hasta}`, '--', filePath]);
+        this.logRepository.addLog(`git diff ${opciones.desde}...${opciones.hasta} -- ${filePath}`, Date.now() - start, true);
+        return diff;
+      }
+      if (opciones?.commit && filePath) {
+        const diffCommit = await this.diffDeCommit(git, opciones.commit, filePath);
+        this.logRepository.addLog(`git diff ${opciones.commit} -- ${filePath}`, Date.now() - start, true);
+        return diffCommit;
+      }
+
+      const options: string[] = [];
+      if (staged) options.push('--cached');
+      if (filePath) options.push('--', filePath);
+
       const diff = await git.diff(options);
+      if (diff) {
+        this.logRepository.addLog(`git diff ${options.join(' ')}`, Date.now() - start, true);
+        return diff;
+      }
+      if (!staged && filePath) {
+        const sintetico = await this.diffSiEsNuevoSinSeguimiento(repoPath, git, filePath);
+        if (sintetico !== null) {
+          this.logRepository.addLog(`git diff ${options.join(' ')} (archivo nuevo)`, Date.now() - start, true);
+          return sintetico;
+        }
+      }
       this.logRepository.addLog(`git diff ${options.join(' ')}`, Date.now() - start, true);
       return diff;
     } catch (err: any) {
-      this.logRepository.addLog(`git diff ${options.join(' ')}`, Date.now() - start, false, undefined, err.message);
+      this.logRepository.addLog('git diff', Date.now() - start, false, undefined, err.message);
       throw err;
     }
+  }
+
+  private async diffDeCommit(git: SimpleGit, hash: string, filePath: string): Promise<string> {
+    try {
+      return await git.diff([`${hash}^`, hash, '--', filePath]);
+    } catch {
+      try {
+        const contenido = await git.show([`${hash}:${filePath}`]);
+        return construirDiffArchivoNuevo(filePath, contenido);
+      } catch {
+        return '';
+      }
+    }
+  }
+
+  async listarArchivosCommit(repoPath: string, hash: string): Promise<ArchivoCambioEntity[]> {
+    const git = this.getGitInstance(repoPath);
+    const crudo = await git.raw(['diff-tree', '--no-commit-id', '--name-status', '-r', '-M', '--root', hash]);
+    return parsearNameStatus(crudo);
+  }
+
+  async listarArchivosEntreRefs(repoPath: string, base: string, target: string): Promise<ArchivoCambioEntity[]> {
+    const git = this.getGitInstance(repoPath);
+    const crudo = await git.raw(['diff', '--name-status', '-M', `${base}...${target}`]);
+    return parsearNameStatus(crudo);
+  }
+
+  /** `git diff` no lista untracked; el visor de la UI quedaba vacío al inspeccionar un archivo nuevo. */
+  private async diffSiEsNuevoSinSeguimiento(
+    repoPath: string,
+    git: SimpleGit,
+    filePath: string
+  ): Promise<string | null> {
+    let porcelain = '';
+    try {
+      porcelain = (await git.raw(['status', '--porcelain', '--', filePath])).trim();
+    } catch {
+      return null;
+    }
+    if (!porcelain.startsWith('??')) return null;
+
+    const abs = path.join(repoPath, filePath);
+    if (!fs.existsSync(abs)) return null;
+    const stat = fs.statSync(abs);
+    if (!stat.isFile()) return null;
+    if (stat.size > LIMITE_DIFF_ARCHIVO_NUEVO) {
+      return construirDiffArchivoNuevo(filePath, '', { omitidoPorTamano: true });
+    }
+    const buf = fs.readFileSync(abs);
+    if (buf.includes(0)) {
+      return construirDiffArchivoNuevo(filePath, '', { binario: true });
+    }
+    return construirDiffArchivoNuevo(filePath, buf.toString('utf8'));
   }
 
   async stageFile(repoPath: string, filePath: string): Promise<void> {
@@ -719,6 +804,7 @@ export class SimpleGitAdapter implements IGitRepository {
 
       const diffSummary = await git.diffSummary([`${baseBranch}...${targetBranch}`]);
       const formattedSummary = `${diffSummary.changed} archivos modificados, +${diffSummary.insertions} inserciones, -${diffSummary.deletions} eliminaciones`;
+      const archivos = await this.listarArchivosEntreRefs(repoPath, baseBranch, targetBranch);
 
       const commitsResult = await git.raw([
         'log',
@@ -749,6 +835,7 @@ export class SimpleGitAdapter implements IGitRepository {
         behindCount,
         commits,
         diffSummary: formattedSummary,
+        archivos,
       };
     } catch (err: any) {
       throw new Error(`Error comparando ramas: ${err.message}`);

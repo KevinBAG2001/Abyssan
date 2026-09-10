@@ -13,6 +13,7 @@ import {
   PreviewOperacionModel,
   TipoOperacionPreview,
   EntradaJournal,
+  ArchivoCambioModel,
 } from '../../domain/models/GitModels.js';
 import { tokenInstanciaCliente } from '../config/entornoCliente.js';
 
@@ -154,10 +155,30 @@ export class HttpGitApi {
     await this.post('/api/git/merge', { repoPath, sourceBranch, noFf });
   }
 
-  async getDiff(repoPath: string, file?: string, staged = false): Promise<string> {
+  async getDiff(
+    repoPath: string,
+    file?: string,
+    staged = false,
+    opciones?: { commit?: string; desde?: string; hasta?: string }
+  ): Promise<string> {
     let url = `/api/git/diff?path=${encodeURIComponent(repoPath)}&staged=${staged}`;
     if (file) url += `&file=${encodeURIComponent(file)}`;
+    if (opciones?.commit) url += `&commit=${encodeURIComponent(opciones.commit)}`;
+    if (opciones?.desde) url += `&desde=${encodeURIComponent(opciones.desde)}`;
+    if (opciones?.hasta) url += `&hasta=${encodeURIComponent(opciones.hasta)}`;
     return this.pedir(url);
+  }
+
+  async getArchivosCommit(repoPath: string, hash: string): Promise<ArchivoCambioModel[]> {
+    return this.pedir(
+      `/api/git/archivos?path=${encodeURIComponent(repoPath)}&hash=${encodeURIComponent(hash)}`
+    );
+  }
+
+  async getArchivosEntreRefs(repoPath: string, base: string, target: string): Promise<ArchivoCambioModel[]> {
+    return this.pedir(
+      `/api/git/archivos?path=${encodeURIComponent(repoPath)}&base=${encodeURIComponent(base)}&target=${encodeURIComponent(target)}`
+    );
   }
 
   async stage(repoPath: string, file?: string, all = false): Promise<void> {

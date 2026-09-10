@@ -13,6 +13,8 @@ import {
   EntradaReflogEntity,
   PreviewOperacionEntity,
   TipoOperacionPreview,
+  ArchivoCambioEntity,
+  OpcionesDiff,
 } from '../entities/GitEntities.js';
 import type { EscuchaProgresoGit } from '../entities/GitOperacion.js';
 
@@ -22,7 +24,9 @@ export interface IGitRepository {
   getStatus(repoPath: string): Promise<RepositoryStatusEntity>;
   getCommits(repoPath: string, maxCount?: number): Promise<CommitEntity[]>;
   getBranches(repoPath: string): Promise<BranchEntity[]>;
-  getDiff(repoPath: string, filePath?: string, staged?: boolean): Promise<string>;
+  getDiff(repoPath: string, filePath?: string, staged?: boolean, opciones?: OpcionesDiff): Promise<string>;
+  listarArchivosCommit(repoPath: string, hash: string): Promise<ArchivoCambioEntity[]>;
+  listarArchivosEntreRefs(repoPath: string, base: string, target: string): Promise<ArchivoCambioEntity[]>;
   stageFile(repoPath: string, filePath: string): Promise<void>;
   stageAll(repoPath: string): Promise<void>;
   unstageFile(repoPath: string, filePath: string): Promise<void>;
