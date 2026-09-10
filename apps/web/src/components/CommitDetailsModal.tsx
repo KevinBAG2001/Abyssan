@@ -96,10 +96,8 @@ export const CommitDetailsModal: React.FC<CommitDetailsModalProps> = ({
         const delCommit = await httpGitApi.getArchivosCommit(repoPath, commit.hash);
         if (!vivo) return;
         setArchivosCommit(delCommit);
-        const compararRama =
-          ramaInspeccionada && ramaActual && ramaInspeccionada !== ramaActual ? ramaInspeccionada : null;
-        if (compararRama) {
-          const entre = await httpGitApi.getArchivosEntreRefs(repoPath, ramaActual, compararRama);
+        if (ramaInspeccionada && ramaActual && ramaInspeccionada !== ramaActual) {
+          const entre = await httpGitApi.getArchivosEntreRefs(repoPath, ramaActual, ramaInspeccionada);
           if (!vivo) return;
           setArchivosRama(entre);
         } else {
