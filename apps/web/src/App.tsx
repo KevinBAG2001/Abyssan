@@ -9,10 +9,11 @@ import { AreaTrabajoGit } from './components/app/AreaTrabajoGit';
 import { useGitRepository } from './application/hooks/useGitRepository';
 import { useMutacionesGit } from './application/hooks/useMutacionesGit';
 import { useEfectosAppShell } from './application/hooks/useEfectosAppShell';
-import { GitCommit } from './types/git';
+import { GitCommit, GitBranch } from './types/git';
 import type { AccionPaleta } from './components/PaletaComandos';
 import { ui } from './lib/diseno';
 import { cn } from './lib/utils';
+import { httpGitApi } from './infrastructure/api/HttpGitApi';
 
 const CLAVE_PULL = 'abyssan.modoPull';
 
@@ -39,6 +40,7 @@ export const App: React.FC = () => {
   const [paletaAbierta, setPaletaAbierta] = useState(false);
   const [identidadAbierta, setIdentidadAbierta] = useState(false);
   const [timelineAbierta, setTimelineAbierta] = useState(false);
+  const [ramaInspeccionada, setRamaInspeccionada] = useState<string | null>(null);
   const [modoPull, setModoPull] = useState<'merge' | 'rebase'>(
     () => (localStorage.getItem(CLAVE_PULL) as 'merge' | 'rebase') || 'merge'
   );
@@ -57,6 +59,41 @@ export const App: React.FC = () => {
     onStageAll: mut.handleStageAll,
     onAbrirPaleta: abrirPaleta,
   });
+
+  const inspectarRama = (branch: GitBranch) => {
+    const hallado = git.commits.find(
+      (c) => c.hash.startsWith(branch.commit) || branch.commit.startsWith(c.hash)
+    );
+    git.setSelectedCommit(
+      hallado ?? {
+        hash: branch.commit,
+        shortHash: branch.commit.slice(0, 7),
+        parents: [],
+        authorName: '',
+        authorEmail: '',
+        date: '',
+        message: `Punta de ${branch.name.replace(/^remotes\//, '')}`,
+        branches: [branch.name.replace(/^remotes\//, '')],
+      }
+    );
+    setRamaInspeccionada(branch.name);
+    git.setSelectedFile(null);
+    git.setCurrentDiff('');
+  };
+
+  const inspectarArchivo = async (
+    filePath: string,
+    opciones: { commit?: string; desde?: string; hasta?: string }
+  ) => {
+    if (!git.selectedRepo) return;
+    try {
+      const diff = await httpGitApi.getDiff(git.selectedRepo, filePath, false, opciones);
+      git.setSelectedFile({ path: filePath, status: 'modified', staged: false });
+      git.setCurrentDiff(diff);
+    } catch (err: unknown) {
+      git.showToast(err instanceof Error ? err.message : 'Error obteniendo diferencias', 'error');
+    }
+  };
 
   const onPaleta = (accion: AccionPaleta) => {
     if (accion === 'fetch') void mut.handleFetch();
@@ -138,12 +175,17 @@ export const App: React.FC = () => {
         loading={ocupado}
         headDesvinculado={headDesvinculado}
         ramaActual={ramaActual}
+        ramaInspeccionada={ramaInspeccionada}
         onCheckout={mut.handleCheckout}
+        onInspectarRama={inspectarRama}
         onCreateBranch={(name) => mut.handleCreateBranch(name)}
         onCreateTag={(name) => mut.handleCreateTag(name)}
         onDeleteBranch={mut.handleDeleteBranch}
         onRenameBranch={mut.handleRenameBranch}
-        onSelectCommit={git.setSelectedCommit}
+        onSelectCommit={(commit) => {
+          setRamaInspeccionada(null);
+          git.setSelectedCommit(commit);
+        }}
         onContextMenu={(commit, position) => setContextMenu({ commit, position })}
         onSelectFile={mut.handleSelectFile}
         onStageFile={mut.handleStageFile}
@@ -193,8 +235,13 @@ export const App: React.FC = () => {
         paletaAbierta={paletaAbierta}
         confirmacion={mut.confirmacion}
         contextMenu={contextMenu}
-        onCerrarCommit={() => git.setSelectedCommit(null)}
+        onCerrarCommit={() => {
+          git.setSelectedCommit(null);
+          setRamaInspeccionada(null);
+        }}
         onCheckout={mut.handleCheckout}
+        onInspeccionarArchivo={(path, opciones) => void inspectarArchivo(path, opciones)}
+        ramaInspeccionada={ramaInspeccionada}
         onSaveStash={mut.handleSaveStash}
         onPopStash={mut.handlePopStash}
         onDropStash={mut.handleDropStash}

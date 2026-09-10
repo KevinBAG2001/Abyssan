@@ -6,6 +6,8 @@ import {
   validarRutaArchivoEnRepositorio,
   validarDestinoNuevo,
   validarUrlClone,
+  validarHashGit,
+  validarRefGit,
 } from '../../../infrastructure/seguridad/validarRutaRepositorio.js';
 import { codigoHttpDeError, responderExito, responderFallo } from '../respuestaApi.js';
 import { mensajeErrorGit } from '../../../application/git/mensajeErrorGit.js';
@@ -105,11 +107,46 @@ export class GitController {
       const repoPath = req.query.path as string;
       const file = req.query.file as string | undefined;
       const staged = req.query.staged === 'true';
+      const commit = req.query.commit as string | undefined;
+      const desde = req.query.desde as string | undefined;
+      const hasta = req.query.hasta as string | undefined;
       if (!repoPath) return this.falta(res, 'Parámetro path es requerido');
       const repoValidado = this.validarRepo(repoPath);
       const archivo = file ? validarRutaArchivoEnRepositorio(repoValidado, file) : undefined;
-      const diff = await this.gitUseCases.getDiff(repoValidado, archivo, staged);
+      const diff = await this.gitUseCases.getDiff(repoValidado, archivo, staged, {
+        commit: commit ? validarHashGit(commit) : undefined,
+        desde: desde ? validarRefGit(desde) : undefined,
+        hasta: hasta ? validarRefGit(hasta) : undefined,
+      });
       responderExito(res, diff, 'Diff obtenido');
+    } catch (error: unknown) {
+      this.responderError(res, error);
+    }
+  }
+
+  async listarArchivosCambio(req: Request, res: Response) {
+    try {
+      const repoPath = req.query.path as string;
+      const hash = req.query.hash as string | undefined;
+      const base = req.query.base as string | undefined;
+      const target = req.query.target as string | undefined;
+      if (!repoPath) return this.falta(res, 'Parámetro path es requerido');
+      const repoValidado = this.validarRepo(repoPath);
+      if (hash) {
+        const archivos = await this.gitUseCases.listarArchivosCommit(repoValidado, validarHashGit(hash));
+        responderExito(res, archivos, 'Archivos del commit');
+        return;
+      }
+      if (base && target) {
+        const archivos = await this.gitUseCases.listarArchivosEntreRefs(
+          repoValidado,
+          validarRefGit(base),
+          validarRefGit(target)
+        );
+        responderExito(res, archivos, 'Archivos entre refs');
+        return;
+      }
+      return this.falta(res, 'Indica hash de commit o base y target de ramas');
     } catch (error: unknown) {
       this.responderError(res, error);
     }

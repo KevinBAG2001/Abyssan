@@ -135,6 +135,19 @@ async function arrancar(): Promise<void> {
     console.error('[Abyssan] No se pudo aplicar la identidad git del host:', detalle);
   }
 
+  server.on('error', (err: NodeJS.ErrnoException) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(
+        `[Abyssan] Puerto ${PORT} ocupado en ${BIND_HOST}. ` +
+          'Docker (abyssan-server) y `pnpm dev` / `pnpm dev:server` no pueden escuchar a la vez. ' +
+          'Deja solo uno: `docker compose stop server` o no lances el API nativo.'
+      );
+      process.exit(1);
+    }
+    console.error('[Abyssan] Error del servidor HTTP:', err.message);
+    process.exit(1);
+  });
+
   server.listen(PORT, BIND_HOST, () => {
     console.log(`[Abyssan] API en http://${BIND_HOST}:${PORT}`);
     console.log(`[Abyssan] WebSocket en ws://${BIND_HOST}:${PORT}`);

@@ -1,25 +1,128 @@
-import React, { useState } from 'react';
-import { GitCommit } from '../types/git';
-import { GitCommit as GitCommitIcon, User, Calendar, Hash, Copy, Check, GitBranch, X } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { GitCommit, GitArchivoCambio } from '../types/git';
+import { GitCommit as GitCommitIcon, User, Calendar, Hash, Copy, Check, GitBranch, X, FileText } from 'lucide-react';
 import { ChipRama } from './ui/chip-rama';
 import { Portal } from './ui/portal';
 import { ui } from '../lib/diseno';
 import { cn } from '../lib/utils';
+import { httpGitApi } from '../infrastructure/api/HttpGitApi';
+
+type OpcionesDiffArchivo = { commit?: string; desde?: string; hasta?: string };
 
 interface CommitDetailsModalProps {
   commit: GitCommit | null;
+  repoPath: string | null;
+  ramaActual?: string;
+  ramaInspeccionada?: string | null;
   onClose: () => void;
-  onCheckout: (hash: string) => void;
+  onCheckout: (target: string) => void;
+  onInspeccionarArchivo: (path: string, opciones: OpcionesDiffArchivo) => void;
+}
+
+function etiquetaEstado(status: GitArchivoCambio['status']): string {
+  if (status === 'added') return 'A';
+  if (status === 'deleted') return 'D';
+  if (status === 'renamed') return 'R';
+  return 'M';
+}
+
+function ListaArchivos({
+  titulo,
+  archivos,
+  onElegir,
+}: {
+  titulo: string;
+  archivos: GitArchivoCambio[];
+  onElegir: (archivo: GitArchivoCambio) => void;
+}) {
+  if (archivos.length === 0) {
+    return (
+      <div>
+        <span className={cn(ui.labelCaps, 'block mb-1.5')}>{titulo}</span>
+        <p className="text-code-sm text-on-surface-variant/70 italic">Sin archivos en este alcance</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="flex items-center gap-1.5 mb-1.5">
+        <FileText className="w-3.5 h-3.5 text-tertiary-fixed-dim" />
+        <span className={ui.labelCaps}>
+          {titulo} ({archivos.length})
+        </span>
+      </div>
+      <div className={cn(ui.panelInset, 'divide-y divide-outline-variant/50 max-h-48 overflow-y-auto')}>
+        {archivos.map((archivo) => (
+          <button
+            type="button"
+            key={`${archivo.status}-${archivo.path}`}
+            onClick={() => onElegir(archivo)}
+            className="w-full flex items-center gap-2 px-2 py-1.5 text-left hover:bg-surface-container-high/60 transition-colors"
+          >
+            <span className="font-mono text-[10px] text-primary w-4 shrink-0">{etiquetaEstado(archivo.status)}</span>
+            <span className="truncate font-mono text-code-sm text-on-surface">{archivo.path}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export const CommitDetailsModal: React.FC<CommitDetailsModalProps> = ({
   commit,
+  repoPath,
+  ramaActual,
+  ramaInspeccionada,
   onClose,
   onCheckout,
+  onInspeccionarArchivo,
 }) => {
   const [copiado, setCopiado] = useState(false);
+  const [archivosCommit, setArchivosCommit] = useState<GitArchivoCambio[]>([]);
+  const [archivosRama, setArchivosRama] = useState<GitArchivoCambio[]>([]);
+  const [cargandoArchivos, setCargandoArchivos] = useState(false);
+
+  useEffect(() => {
+    if (!commit || !repoPath) {
+      setArchivosCommit([]);
+      setArchivosRama([]);
+      return;
+    }
+    let vivo = true;
+    setCargandoArchivos(true);
+    void (async () => {
+      try {
+        const delCommit = await httpGitApi.getArchivosCommit(repoPath, commit.hash);
+        if (!vivo) return;
+        setArchivosCommit(delCommit);
+        if (ramaInspeccionada && ramaActual && ramaInspeccionada !== ramaActual) {
+          const entre = await httpGitApi.getArchivosEntreRefs(repoPath, ramaActual, ramaInspeccionada);
+          if (!vivo) return;
+          setArchivosRama(entre);
+        } else {
+          setArchivosRama([]);
+        }
+      } catch {
+        if (vivo) {
+          setArchivosCommit([]);
+          setArchivosRama([]);
+        }
+      } finally {
+        if (vivo) setCargandoArchivos(false);
+      }
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, [commit?.hash, repoPath, ramaInspeccionada, ramaActual]);
 
   if (!commit) return null;
+
+  const nombreRama = ramaInspeccionada?.replace(/^remotes\//, '');
+  const fecha = commit.date ? new Date(commit.date).toLocaleString() : '—';
+  const checkoutTarget = ramaInspeccionada || commit.hash;
+  const checkoutEsActual = Boolean(ramaInspeccionada && ramaActual && ramaInspeccionada === ramaActual);
 
   const copiarHash = async () => {
     try {
@@ -50,7 +153,7 @@ export const CommitDetailsModal: React.FC<CommitDetailsModalProps> = ({
           </div>
           <div className="min-w-0">
             <h2 id="titulo-inspector-commit" className="text-headline-sm text-on-surface">
-              Inspector de commit
+              {nombreRama ? `Rama ${nombreRama}` : 'Inspector de commit'}
             </h2>
             <p className="text-code-sm text-primary font-mono mt-0.5">{commit.shortHash}</p>
           </div>
@@ -88,20 +191,22 @@ export const CommitDetailsModal: React.FC<CommitDetailsModalProps> = ({
             </div>
           </div>
 
-          <div className="flex items-start gap-2 text-code-sm text-on-surface-variant">
-            <User className="w-4 h-4 shrink-0 mt-0.5" />
-            <div className="min-w-0">
-              <span className={cn(ui.labelCaps, 'block mb-0.5')}>Autor</span>
-              <span className="text-on-surface">{commit.authorName}</span>
-              <span className="block text-on-surface-variant/70 truncate">{commit.authorEmail}</span>
+          {commit.authorName ? (
+            <div className="flex items-start gap-2 text-code-sm text-on-surface-variant">
+              <User className="w-4 h-4 shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <span className={cn(ui.labelCaps, 'block mb-0.5')}>Autor</span>
+                <span className="text-on-surface">{commit.authorName}</span>
+                <span className="block text-on-surface-variant/70 truncate">{commit.authorEmail}</span>
+              </div>
             </div>
-          </div>
+          ) : null}
 
           <div className="flex items-center gap-2 text-code-sm text-on-surface-variant">
             <Calendar className="w-4 h-4 shrink-0" />
             <div>
               <span className={cn(ui.labelCaps, 'block mb-0.5')}>Fecha</span>
-              <span>{new Date(commit.date).toLocaleString()}</span>
+              <span>{fecha}</span>
             </div>
           </div>
 
@@ -149,15 +254,37 @@ export const CommitDetailsModal: React.FC<CommitDetailsModalProps> = ({
             )}
           </div>
         ) : null}
+
+        {cargandoArchivos ? (
+          <p className="text-code-sm text-on-surface-variant">Cargando archivos…</p>
+        ) : (
+          <>
+            <ListaArchivos
+              titulo="Archivos en este commit"
+              archivos={archivosCommit}
+              onElegir={(archivo) => onInspeccionarArchivo(archivo.path, { commit: commit.hash })}
+            />
+            {ramaInspeccionada && ramaActual && ramaInspeccionada !== ramaActual ? (
+              <ListaArchivos
+                titulo={`Cambios respecto a ${ramaActual}`}
+                archivos={archivosRama}
+                onElegir={(archivo) =>
+                  onInspeccionarArchivo(archivo.path, { desde: ramaActual, hasta: ramaInspeccionada })
+                }
+              />
+            ) : null}
+          </>
+        )}
       </div>
 
       <div className="p-4 border-t border-outline-variant bg-surface-container shrink-0">
         <button
           type="button"
-          onClick={() => onCheckout(commit.hash)}
+          onClick={() => onCheckout(checkoutTarget)}
+          disabled={checkoutEsActual}
           className={cn(ui.btnPrimario, 'w-full py-2 font-semibold')}
         >
-          Checkout a este commit
+          {nombreRama ? `Checkout ${nombreRama}` : 'Checkout a este commit'}
         </button>
       </div>
     </aside>

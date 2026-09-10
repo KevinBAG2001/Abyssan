@@ -82,6 +82,12 @@ export interface ConflictModel {
   hunks?: HunkConflictoModel[];
 }
 
+export interface ArchivoCambioModel {
+  path: string;
+  status: 'modified' | 'added' | 'deleted' | 'renamed';
+  pathAnterior?: string;
+}
+
 export interface BranchComparisonModel {
   baseBranch: string;
   targetBranch: string;
@@ -89,6 +95,7 @@ export interface BranchComparisonModel {
   behindCount: number;
   commits: CommitModel[];
   diffSummary: string;
+  archivos?: ArchivoCambioModel[];
 }
 
 export interface CommandLogModel {
