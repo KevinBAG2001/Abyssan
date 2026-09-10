@@ -17,7 +17,9 @@ type AreaTrabajoGitProps = {
   loading: boolean;
   headDesvinculado?: boolean;
   ramaActual: string;
+  ramaInspeccionada?: string | null;
   onCheckout: (target: string) => void;
+  onInspectarRama: (branch: GitBranch) => void;
   onCreateBranch: (name: string) => void;
   onCreateTag: (name: string) => void;
   onDeleteBranch: (name: string) => void;
@@ -51,7 +53,9 @@ export function AreaTrabajoGit({
   loading,
   headDesvinculado = false,
   ramaActual,
+  ramaInspeccionada = null,
   onCheckout,
+  onInspectarRama,
   onCreateBranch,
   onCreateTag,
   onDeleteBranch,
@@ -80,7 +84,9 @@ export function AreaTrabajoGit({
         currentBranch={ramaActual}
         loading={loading}
         headDesvinculado={headDesvinculado}
+        ramaInspeccionada={ramaInspeccionada}
         onCheckout={onCheckout}
+        onInspectarRama={onInspectarRama}
         onCreateBranch={onCreateBranch}
         onCreateTag={onCreateTag}
         onDeleteBranch={onDeleteBranch}

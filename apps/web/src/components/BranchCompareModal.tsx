@@ -141,6 +141,27 @@ export const BranchCompareModal: React.FC<BranchCompareModalProps> = ({
               <span className="font-mono truncate">{comparison.diffSummary}</span>
             </div>
 
+            {(comparison.archivos?.length ?? 0) > 0 && (
+              <div>
+                <span className={cn(ui.labelCaps, 'block mb-2')}>
+                  Archivos ({comparison.archivos?.length})
+                </span>
+                <div className="space-y-1 max-h-40 overflow-y-auto">
+                  {comparison.archivos?.map((archivo) => (
+                    <div
+                      key={`${archivo.status}-${archivo.path}`}
+                      className={cn(ui.panelInset, 'px-2 py-1.5 flex items-center gap-2 text-code-sm')}
+                    >
+                      <span className="font-mono text-[10px] text-primary w-4 shrink-0">
+                        {archivo.status === 'added' ? 'A' : archivo.status === 'deleted' ? 'D' : archivo.status === 'renamed' ? 'R' : 'M'}
+                      </span>
+                      <span className="truncate font-mono">{archivo.path}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div>
               <span className={cn(ui.labelCaps, 'block mb-2')}>
                 Commits en {targetBranch} ({comparison.commits.length})

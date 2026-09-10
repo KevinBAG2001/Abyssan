@@ -10,6 +10,8 @@ import {
   validarDestinoNuevo,
   validarUrlClone,
   canonizarRuta,
+  validarHashGit,
+  validarRefGit,
 } from '../validarRutaRepositorio.js';
 
 describe('validarRutaRepositorio', () => {
@@ -105,5 +107,17 @@ describe('validarRutaRepositorio', () => {
     expect(() => validarUrlClone('file:///tmp/repo')).toThrow();
     expect(() => validarUrlClone('C:\\secret')).toThrow();
     expect(validarUrlClone('https://github.com/org/repo.git')).toContain('https://');
+  });
+
+  it('validarHashGit acepta hex y rechaza rangos', () => {
+    expect(validarHashGit('abc1234')).toBe('abc1234');
+    expect(() => validarHashGit('main...feature')).toThrow();
+    expect(() => validarHashGit('--output=/tmp/x')).toThrow();
+  });
+
+  it('validarRefGit acepta ramas con barra y rechaza ..', () => {
+    expect(validarRefGit('feature/auth')).toBe('feature/auth');
+    expect(() => validarRefGit('main...otra')).toThrow();
+    expect(() => validarRefGit('-uorigin')).toThrow();
   });
 });

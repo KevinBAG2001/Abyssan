@@ -127,4 +127,50 @@ describe('Flujo Daily Driver (mutaciones Git reales)', { timeout: 20_000 }, () =
     const limpio = await casos.getRepositoryStatus(repo);
     expect(limpio.isClean).toBe(true);
   });
+
+  it('diff de un archivo nuevo (untracked) incluye el contenido', async () => {
+    const { repo } = await crearRepo(raiz, 'diff-nuevo');
+    fs.writeFileSync(path.join(repo, 'nuevo.ts'), 'export const visible = true;\n');
+    const diff = await casos.getDiff(repo, 'nuevo.ts', false);
+    expect(diff).toContain('nuevo.ts');
+    expect(diff).toContain('export const visible = true;');
+  });
+
+  it('stash save → pop restaura el working tree', async () => {
+    const { repo } = await crearRepo(raiz, 'stash-ciclo');
+    fs.writeFileSync(path.join(repo, 'archivo.txt'), 'en-stash\n');
+    await casos.saveStash(repo, 'wip daily driver');
+    expect(fs.readFileSync(path.join(repo, 'archivo.txt'), 'utf8').replace(/\r\n/g, '\n')).toBe('hola\n');
+    const lista = await casos.getStashes(repo);
+    expect(lista.length).toBeGreaterThan(0);
+    await casos.popStash(repo, 0);
+    expect(fs.readFileSync(path.join(repo, 'archivo.txt'), 'utf8').replace(/\r\n/g, '\n')).toBe('en-stash\n');
+  });
+
+  it('remoto y tag locales no dependen de la forja', async () => {
+    const { repo } = await crearRepo(raiz, 'remoto-tag');
+    await casos.addRemote(repo, 'origin', 'https://github.com/abyssan/inexistente.git');
+    const remotos = await casos.getRemotes(repo);
+    expect(remotos.some((r) => r.name === 'origin')).toBe(true);
+    await casos.createTag(repo, 'v0-test');
+    const tags = await casos.getTags(repo);
+    expect(tags.some((t) => t.name === 'v0-test')).toBe(true);
+  });
+
+  it('lista archivos de un commit y entre dos ramas', async () => {
+    const { repo, git } = await crearRepo(raiz, 'archivos-rama');
+    const ramaBase = (await git.status()).current!;
+    await git.checkoutLocalBranch('feature-docs');
+    fs.writeFileSync(path.join(repo, 'doc-rama.md'), '# feature\n');
+    await git.add('.');
+    await git.commit('docs de la rama');
+    const hash = (await git.revparse(['HEAD'])).trim();
+    const delCommit = await casos.listarArchivosCommit(repo, hash);
+    expect(delCommit.some((a) => a.path === 'doc-rama.md' && a.status === 'added')).toBe(true);
+    await git.checkout(ramaBase);
+    const entre = await casos.listarArchivosEntreRefs(repo, ramaBase, 'feature-docs');
+    expect(entre.some((a) => a.path === 'doc-rama.md')).toBe(true);
+    const diff = await casos.getDiff(repo, 'doc-rama.md', false, { desde: ramaBase, hasta: 'feature-docs' });
+    expect(diff).toContain('feature');
+  });
 });

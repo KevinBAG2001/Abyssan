@@ -12,7 +12,7 @@ export type EntradaAuditoria = {
 };
 
 const TOKEN_EN_URL = /https?:\/\/[^/\s]*:[^/\s]+@/gi;
-const PATRON_TOKEN = /(bearer\s+|token[=:]\s*|gho_|glpat-|github_pat_)[^\s"']+/gi;
+const PATRON_TOKEN = /(bearer\s+|token[=:]\s*|gho_|ghp_|glpat-|github_pat_)[^\s"']+/gi;
 
 export function sanitizarTextoAuditoria(texto: string): string {
   return texto

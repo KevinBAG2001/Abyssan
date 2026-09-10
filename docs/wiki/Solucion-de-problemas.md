@@ -19,6 +19,19 @@ Mismo host/puerto que HTTP. `VITE_WS_URL` default `ws://localhost:3001`. Con tok
 
 Compose no tiene probe. Si `curl /health` falla: el proceso no está en `PORT`, `PROJECTS_ROOT` vacío (el server ni siquiera llega a listen), o el puerto no está publicado en `127.0.0.1:3001`.
 
+## Puerto 3001 ocupado (`EADDRINUSE`)
+
+`pnpm dev` / `pnpm dev:server` y el contenedor `abyssan-server` **no** pueden escuchar el mismo `127.0.0.1:3001`. Vite, si :5174 está ocupado, salta a :5175 y la SPA deja de coincidir con CORS (`localhost:5174`).
+
+Elige **un** stack:
+
+```bash
+docker compose stop server
+pnpm dev:server
+```
+
+o deja Docker y no lances el API nativo. No cambies `PORT` ni abras `0.0.0.0` para “salir del paso”.
+
 ## El repositorio queda fuera de `PROJECTS_ROOT`
 
 403 «Ruta de repositorio no autorizada». Mueve el repo bajo la raíz o cambia `PROJECTS_ROOT` al ancestro **mínimo** correcto y reinicia el API. Un symlink que escapa también es 403.

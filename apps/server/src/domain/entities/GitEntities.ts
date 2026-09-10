@@ -96,6 +96,20 @@ export interface EntradaReflogEntity {
   fecha: string;
 }
 
+export type EstadoArchivoCambio = 'modified' | 'added' | 'deleted' | 'renamed';
+
+export interface ArchivoCambioEntity {
+  path: string;
+  status: EstadoArchivoCambio;
+  pathAnterior?: string;
+}
+
+export type OpcionesDiff = {
+  commit?: string;
+  desde?: string;
+  hasta?: string;
+};
+
 export interface BranchComparisonEntity {
   baseBranch: string;
   targetBranch: string;
@@ -103,6 +117,7 @@ export interface BranchComparisonEntity {
   behindCount: number;
   commits: CommitEntity[];
   diffSummary: string;
+  archivos: ArchivoCambioEntity[];
 }
 
 // --- Preview de operaciones peligrosas (no mutante) ---
