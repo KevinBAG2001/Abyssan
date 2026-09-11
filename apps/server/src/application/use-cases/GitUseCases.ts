@@ -532,6 +532,12 @@ export class GitUseCases {
     return this.gitRepository.configurarIdentidad(repoPath, nombre, correo, global);
   }
 
+  // --- Merge-base ---
+
+  async mergeBase(repoPath: string, refA: string, refB: string): Promise<string | null> {
+    return this.gitRepository.mergeBase(repoPath, refA, refB);
+  }
+
   // --- Preview de operaciones peligrosas (no mutante) ---
 
   async previewOperacion(

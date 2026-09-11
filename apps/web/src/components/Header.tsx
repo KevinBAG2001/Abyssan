@@ -14,6 +14,7 @@ import {
   GitPullRequest,
   History,
   ChevronDown,
+  GraduationCap,
 } from 'lucide-react';
 import { GitRepoSummary, GitRepoStatus } from '../types/git';
 import { ui } from '../lib/diseno';
@@ -45,6 +46,8 @@ interface HeaderProps {
   onCambiarModoPull: (modo: 'merge' | 'rebase') => void;
   puedeDeshacer: boolean;
   motivoDeshacer?: string;
+  modoAprendizaje: boolean;
+  onCambiarModoAprendizaje: (activo: boolean) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -71,6 +74,8 @@ export const Header: React.FC<HeaderProps> = ({
   onCambiarModoPull,
   puedeDeshacer,
   motivoDeshacer,
+  modoAprendizaje,
+  onCambiarModoAprendizaje,
 }) => {
   const { avatarId } = useAvatarIdentidad();
   const nombreRepo = selectedRepo
@@ -225,6 +230,16 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="size-5 overflow-hidden rounded-full ring-1 ring-primary/40">
               <GlifoAvatar id={avatarId} className="block size-5 [&_svg]:size-full" />
             </span>
+          </button>
+
+          <button
+            onClick={() => onCambiarModoAprendizaje(!modoAprendizaje)}
+            className={cn(ui.btnIcono, modoAprendizaje && 'ring-1 ring-tertiary-fixed-dim bg-tertiary-fixed-dim/15')}
+            title={modoAprendizaje ? 'Modo aprendizaje: activado' : 'Modo aprendizaje: desactivado'}
+            aria-label="Alternar modo aprendizaje"
+            aria-pressed={modoAprendizaje}
+          >
+            <GraduationCap className={cn('w-3.5 h-3.5', modoAprendizaje ? 'text-tertiary-fixed-dim' : 'text-on-surface-variant')} />
           </button>
 
           <button onClick={onOpenTimeline} className={ui.btnIcono} title="Timeline de operaciones">

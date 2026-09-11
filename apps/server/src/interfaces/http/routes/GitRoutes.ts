@@ -67,6 +67,9 @@ gitRouter.post('/deshacer', (req, res) => gitController.deshacer(req, res));
 gitRouter.get('/identity', (req, res) => gitController.obtenerIdentidad(req, res));
 gitRouter.post('/identity', (req, res) => gitController.configurarIdentidad(req, res));
 
+// Merge-base
+gitRouter.get('/merge-base', (req, res) => gitController.mergeBase(req, res));
+
 // Preview de operaciones peligrosas
 gitRouter.post('/preview', (req, res) => gitController.previewOperacion(req, res));
 
