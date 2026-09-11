@@ -605,6 +605,25 @@ export class GitController {
     }
   }
 
+  async mergeBase(req: Request, res: Response) {
+    try {
+      const repoPath = req.query.path as string;
+      const refA = req.query.refA as string;
+      const refB = req.query.refB as string;
+      if (!repoPath || !refA || !refB) {
+        return this.falta(res, 'Parámetros path, refA y refB son requeridos');
+      }
+      const hash = await this.gitUseCases.mergeBase(
+        this.validarRepo(repoPath),
+        validarRefGit(refA),
+        validarRefGit(refB),
+      );
+      responderExito(res, { hash }, hash ? 'Merge-base encontrado' : 'Sin ancestro común');
+    } catch (error: unknown) {
+      this.responderError(res, error);
+    }
+  }
+
   async previewOperacion(req: Request, res: Response) {
     try {
       const { repoPath, operacion, sourceBranch, type, target, hash } = req.body;
