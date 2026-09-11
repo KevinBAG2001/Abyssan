@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Header } from './components/Header';
 import { GitConsoleDrawer } from './components/GitConsoleDrawer';
 import { CapaModalesApp } from './components/CapaModalesApp';
@@ -14,6 +14,12 @@ import type { AccionPaleta } from './components/PaletaComandos';
 import { ui } from './lib/diseno';
 import { cn } from './lib/utils';
 import { httpGitApi } from './infrastructure/api/HttpGitApi';
+import { PanelExplicacion } from './components/PanelExplicacion';
+import {
+  leerModoAprendizaje,
+  guardarModoAprendizaje,
+} from './domain/explicaciones/plantillasExplicacion';
+import type { TipoOperacionJournal } from './domain/models/GitModels';
 
 const CLAVE_PULL = 'abyssan.modoPull';
 
@@ -44,10 +50,35 @@ export const App: React.FC = () => {
   const [modoPull, setModoPull] = useState<'merge' | 'rebase'>(
     () => (localStorage.getItem(CLAVE_PULL) as 'merge' | 'rebase') || 'merge'
   );
+  const [modoAprendizaje, setModoAprendizaje] = useState(leerModoAprendizaje);
+  const [explicacionActiva, setExplicacionActiva] = useState<{
+    tipo: TipoOperacionJournal;
+    comandoGit?: string;
+  } | null>(null);
   const [contextMenu, setContextMenu] = useState<{
     commit: GitCommit;
     position: { x: number; y: number };
   } | null>(null);
+
+  const ultimaOpIdRef = useRef(mut.ultimaOp.id);
+
+  useEffect(() => {
+    if (!modoAprendizaje) return;
+    if (!mut.ultimaOp.id || mut.ultimaOp.id === ultimaOpIdRef.current) return;
+    ultimaOpIdRef.current = mut.ultimaOp.id;
+    if (mut.ultimaOp.tipo) {
+      setExplicacionActiva({
+        tipo: mut.ultimaOp.tipo as TipoOperacionJournal,
+        comandoGit: mut.ultimaOp.comandoGit,
+      });
+    }
+  }, [modoAprendizaje, mut.ultimaOp.id, mut.ultimaOp.tipo, mut.ultimaOp.comandoGit]);
+
+  const cambiarModoAprendizaje = useCallback((activo: boolean) => {
+    setModoAprendizaje(activo);
+    guardarModoAprendizaje(activo);
+    if (!activo) setExplicacionActiva(null);
+  }, []);
 
   const abrirConsola = useCallback(() => setIsConsoleOpen(true), []);
   const abrirPaleta = useCallback(() => setPaletaAbierta(true), []);
@@ -134,6 +165,14 @@ export const App: React.FC = () => {
         <ToastNotificacion mensaje={git.toast.message} tipo={git.toast.type} />
       )}
 
+      {explicacionActiva && (
+        <PanelExplicacion
+          tipo={explicacionActiva.tipo}
+          comandoGit={explicacionActiva.comandoGit}
+          onCerrar={() => setExplicacionActiva(null)}
+        />
+      )}
+
       <Header
         repos={git.repos}
         selectedRepo={git.selectedRepo}
@@ -161,9 +200,12 @@ export const App: React.FC = () => {
         }}
         puedeDeshacer={Boolean(mut.ultimaOp.puedeDeshacer)}
         motivoDeshacer={mut.ultimaOp.motivoBloqueo}
+        modoAprendizaje={modoAprendizaje}
+        onCambiarModoAprendizaje={cambiarModoAprendizaje}
       />
 
       <AreaTrabajoGit
+        selectedRepo={git.selectedRepo}
         branches={git.branches}
         tags={git.tags}
         commits={git.commits}
