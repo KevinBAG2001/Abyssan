@@ -82,6 +82,9 @@ export interface IGitRepository {
   obtenerIdentidad(repoPath: string): Promise<{ nombre: string; correo: string; alcance: 'local' | 'global' }>;
   configurarIdentidad(repoPath: string, nombre: string, correo: string, global: boolean): Promise<void>;
 
+  // Merge-base
+  mergeBase(repoPath: string, refA: string, refB: string): Promise<string | null>;
+
   // Preview de operaciones peligrosas (no mutante)
   previewMerge(repoPath: string, sourceBranch: string): Promise<PreviewOperacionEntity>;
   previewReset(repoPath: string, type: 'soft' | 'mixed' | 'hard', target: string): Promise<PreviewOperacionEntity>;

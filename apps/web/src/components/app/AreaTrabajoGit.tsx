@@ -6,6 +6,7 @@ import { ConflictResolver } from '../ConflictResolver';
 import type { GitBranch, GitCommit, GitConflictData, GitFileStatus, GitRepoStatus, GitTag } from '../../types/git';
 
 type AreaTrabajoGitProps = {
+  selectedRepo?: string | null;
   branches: GitBranch[];
   tags: GitTag[];
   commits: GitCommit[];
@@ -42,6 +43,7 @@ type AreaTrabajoGitProps = {
 };
 
 export function AreaTrabajoGit({
+  selectedRepo,
   branches,
   tags,
   commits,
@@ -123,6 +125,7 @@ export function AreaTrabajoGit({
             commits={commits}
             selectedCommit={selectedCommit}
             currentBranch={ramaActual}
+            selectedRepo={selectedRepo}
             onSelectCommit={onSelectCommit}
             onContextMenu={onContextMenu}
           />

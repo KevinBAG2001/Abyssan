@@ -1092,6 +1092,16 @@ export class SimpleGitAdapter implements IGitRepository {
     }).filter((a) => a.path);
   }
 
+  async mergeBase(repoPath: string, refA: string, refB: string): Promise<string | null> {
+    const git = simpleGit(repoPath);
+    try {
+      const result = await git.raw(['merge-base', refA, refB]);
+      return result.trim() || null;
+    } catch {
+      return null;
+    }
+  }
+
   async previewMerge(repoPath: string, sourceBranch: string): Promise<PreviewOperacionEntity> {
     const git = this.getGitInstance(repoPath);
     const riesgos: string[] = [];

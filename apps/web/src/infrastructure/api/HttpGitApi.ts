@@ -302,6 +302,13 @@ export class HttpGitApi {
     await this.post('/api/git/identity', { repoPath, nombre, correo, global });
   }
 
+  async mergeBase(repoPath: string, refA: string, refB: string): Promise<string | null> {
+    const datos = await this.pedir<{ hash: string | null }>(
+      `/api/git/merge-base?path=${encodeURIComponent(repoPath)}&refA=${encodeURIComponent(refA)}&refB=${encodeURIComponent(refB)}`
+    );
+    return datos.hash;
+  }
+
   async previewOperacion(
     repoPath: string,
     operacion: TipoOperacionPreview,
