@@ -29,8 +29,7 @@ export function PanelExplicacion({ tipo, comandoGit, onCerrar }: Props) {
   };
 
   return (
-    <div
-      role="complementary"
+    <aside
       aria-label="Explicación de la operación Git"
       className={cn(
         'fixed top-16 right-4 z-[55] w-[min(22rem,calc(100vw-2rem))]',
@@ -100,6 +99,6 @@ export function PanelExplicacion({ tipo, comandoGit, onCerrar }: Props) {
           </p>
         )}
       </div>
-    </div>
+    </aside>
   );
 }
