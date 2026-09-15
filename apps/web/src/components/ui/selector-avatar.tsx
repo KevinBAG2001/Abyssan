@@ -1,5 +1,6 @@
 import { Check } from 'lucide-react';
-import { AVATARES_IDENTIDAD, GlifoAvatar, avatarPorId } from './avatares-identidad';
+import { AVATARES_IDENTIDAD, avatarPorId } from './avatares-identidad-datos';
+import { GlifoAvatar } from './avatares-identidad';
 import { cn } from '@/lib/utils';
 import { ui } from '@/lib/diseno';
 
