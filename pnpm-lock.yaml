@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  simple-git: ^3.36.0
+
 importers:
 
   .:
@@ -30,7 +33,7 @@ importers:
         specifier: ^4.21.2
         version: 4.22.2
       simple-git:
-        specifier: ^3.27.0
+        specifier: ^3.36.0
         version: 3.36.0
       ws:
         specifier: ^8.18.0

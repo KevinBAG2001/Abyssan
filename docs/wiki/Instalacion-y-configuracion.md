@@ -83,7 +83,7 @@ Toda operación con `repoPath` pasa por `validarRutaRepositorio`: resolución + 
 | API + WebSocket | `pnpm dev:server` | `http://127.0.0.1:3001` y `ws://127.0.0.1:3001` |
 | SPA Vite | `pnpm dev:web` | `http://127.0.0.1:5174` (`vite.config.ts`: puerto **5174**, `host: '127.0.0.1'`) |
 
-El orden importa: el API debe estar vivo antes de usar la UI. El cliente HTTP único es `HttpGitApi` (`VITE_API_URL`). El WebSocket envía `WATCH_REPO` y, si hay token, `?token=`.
+El orden importa: el API debe estar vivo antes de usar la UI. El cliente HTTP único es `HttpGitApi` (`VITE_API_URL`). El WebSocket abre sin query; si hay `VITE_ABYSSAN_API_TOKEN`, el primer mensaje es `AUTH` y después `WATCH_REPO`.
 
 Si `BIND_HOST` no es `127.0.0.1` / `localhost` / `::1`, el arranque **falla** sin `ABYSSAN_API_TOKEN`. El middleware Bearer cubre `/api/*` salvo el callback OAuth, que se registra antes. `/health` es público.
 

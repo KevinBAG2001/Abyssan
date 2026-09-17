@@ -33,6 +33,22 @@ describe('contrato API { exito, mensaje, datos, meta }', () => {
     expect(codigoHttpDeError(new Error('Confirmación requerida para esta operación destructiva'))).toBe(400);
   });
 
+  it('URL file:// o nombre de remoto inválido se mapean a 400', () => {
+    expect(codigoHttpDeError(new Error('Solo se permite clonar por HTTPS o SSH. file:// no está permitido.'))).toBe(400);
+    expect(codigoHttpDeError(new Error('La URL debe ser HTTPS o SSH'))).toBe(400);
+    expect(codigoHttpDeError(new Error('Nombre de remoto no válido'))).toBe(400);
+  });
+
+  it('ref o hash Git inválidos se mapean a 400, no a 500', () => {
+    expect(codigoHttpDeError(new Error('Ref Git no válida'))).toBe(400);
+    expect(codigoHttpDeError(new Error('Hash de commit no válido'))).toBe(400);
+    expect(codigoHttpDeError(new Error('Índice de stash no válido'))).toBe(400);
+  });
+
+  it('un preview no soportado se mapea a 400', () => {
+    expect(codigoHttpDeError(new Error('Operación de preview no soportada: rebase'))).toBe(400);
+  });
+
   it('un error genérico se mapea a 500', () => {
     expect(codigoHttpDeError(new Error('fatal: not a git repository'))).toBe(500);
   });

@@ -28,19 +28,28 @@ export function codigoHttpDeError(error: unknown): number {
   if (error instanceof ErrorForja) return error.codigoHttp;
   const mensaje = error instanceof Error ? error.message : '';
   if (
+    mensaje.includes('Ref Git no válida') ||
+    mensaje.includes('Hash de commit no válido') ||
+    mensaje.includes('Índice de stash no válido') ||
+    mensaje.includes('Tipo de reset no válido') ||
+    mensaje.includes('No se puede borrar la rama activa') ||
+    mensaje.includes('son requeridos') ||
+    mensaje.includes('Confirmación requerida') ||
+    mensaje.includes('file:// no está permitido') ||
+    mensaje.includes('La URL debe ser HTTPS o SSH') ||
+    mensaje.includes('La URL de clonado es requerida') ||
+    mensaje.includes('Nombre de remoto no válido') ||
+    mensaje.includes('Operación de preview no soportada')
+  ) {
+    return 400;
+  }
+  if (
     mensaje.includes('no autorizada') ||
     mensaje.includes('no válida') ||
     mensaje.includes('fuera del repositorio') ||
     mensaje.includes('Origen no permitido')
   ) {
     return 403;
-  }
-  if (
-    mensaje.includes('No se puede borrar la rama activa') ||
-    mensaje.includes('son requeridos') ||
-    mensaje.includes('Confirmación requerida')
-  ) {
-    return 400;
   }
   if (mensaje.includes('ya está en el remoto')) {
     return 409;

@@ -59,10 +59,8 @@ export const BranchCompareModal: React.FC<BranchCompareModalProps> = ({
 
   const fusionar = () => {
     if (!comparison || comparison.aheadCount === 0) return;
-    if (confirm(`¿Fusionar la rama "${targetBranch}" en "${baseBranch}"?`)) {
-      onMerge(targetBranch, noFf);
-      onClose();
-    }
+    onMerge(targetBranch, noFf);
+    onClose();
   };
 
   return (

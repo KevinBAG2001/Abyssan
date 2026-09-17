@@ -19,6 +19,7 @@ type AreaTrabajoGitProps = {
   headDesvinculado?: boolean;
   ramaActual: string;
   ramaInspeccionada?: string | null;
+  nombresRemotos?: string[];
   onCheckout: (target: string) => void;
   onInspectarRama: (branch: GitBranch) => void;
   onCreateBranch: (name: string) => void;
@@ -56,6 +57,7 @@ export function AreaTrabajoGit({
   headDesvinculado = false,
   ramaActual,
   ramaInspeccionada = null,
+  nombresRemotos = [],
   onCheckout,
   onInspectarRama,
   onCreateBranch,
@@ -126,6 +128,7 @@ export function AreaTrabajoGit({
             selectedCommit={selectedCommit}
             currentBranch={ramaActual}
             selectedRepo={selectedRepo}
+            nombresRemotos={nombresRemotos}
             onSelectCommit={onSelectCommit}
             onContextMenu={onContextMenu}
           />

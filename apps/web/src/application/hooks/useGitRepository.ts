@@ -167,12 +167,19 @@ export function useGitRepository() {
   }, [showToast]);
 
   useEffect(() => {
+    let t: ReturnType<typeof setTimeout> | undefined;
     const unsubscribe = wsClient.onRepoChange((data) => {
       if (selectedRepo && data.repoPath.toLowerCase() === selectedRepo.toLowerCase()) {
-        void refreshRepoData(selectedRepo);
+        if (t) clearTimeout(t);
+        t = setTimeout(() => {
+          void refreshRepoData(selectedRepo);
+        }, 300);
       }
     });
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      if (t) clearTimeout(t);
+    };
   }, [selectedRepo, refreshRepoData]);
 
   useEffect(() => {

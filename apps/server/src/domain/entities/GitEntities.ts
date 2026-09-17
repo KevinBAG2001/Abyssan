@@ -122,7 +122,7 @@ export interface BranchComparisonEntity {
 
 // --- Preview de operaciones peligrosas (no mutante) ---
 
-export type TipoOperacionPreview = 'merge' | 'rebase' | 'reset' | 'cherry-pick' | 'revert' | 'force-push';
+export type TipoOperacionPreview = 'merge' | 'reset' | 'cherry-pick' | 'revert';
 
 export interface ArchivoAfectadoPreview {
   path: string;

@@ -23,7 +23,7 @@ Workspaces: `apps/*` (`pnpm-workspace.yaml`). Scope npm interno: `@abyssan/web`,
 - UI: header, sidebar de ramas/tags, grafo DAG, staging, diff (Shiki), conflictos, consola, paleta, modales (stash, remotos, forjas, identidad git, timeline).
 - Orquestación: `useGitRepository`, `useMutacionesGit`.
 - Un cliente HTTP: `HttpGitApi`.
-- WebSocket: `wsClient` (`WATCH_REPO`, escucha `REPO_CHANGED` y `OPERACION_PROGRESO`).
+- WebSocket: `wsClient` (handshake `AUTH` si hay token, luego `WATCH_REPO`; escucha `REPO_CHANGED` y `OPERACION_PROGRESO`).
 - Estado de UI en React; preferencias puntuales en `localStorage` (por ejemplo modo pull).
 
 ### `apps/server`
@@ -108,16 +108,18 @@ El servidor crea `WebSocketServer` sobre el mismo `http.Server`.
 
 | Dirección | Tipo | Contenido |
 |-----------|------|-----------|
-| Cliente → servidor | `WATCH_REPO` | `{ type, repoPath }` validado con `validarRutaRepositorio` |
+| Cliente → servidor | `AUTH` | `{ type, token }` en el **primer mensaje**. El token **no** viaja en la query (`?token=` se ignora) |
+| Cliente → servidor | `WATCH_REPO` | `{ type, repoPath }` validado con `validarRutaRepositorio`. Exige sesión autenticada si el bind no es loopback |
+| Servidor → cliente | `AUTH_OK` | Handshake aceptado |
 | Servidor → cliente | `REPO_CHANGED` | `repoPath`, `eventType`, `filePath` relativo, `timestamp`. **No** envía el contenido del archivo |
-| Servidor → cliente | `OPERACION_PROGRESO` | Metadatos de `GitOperacion` |
+| Servidor → cliente | `OPERACION_PROGRESO` | Metadatos de `GitOperacion`, solo a clientes que vigilan ese repo |
 | Servidor → cliente | `ERROR` | Ruta no autorizada en `WATCH_REPO` |
 
-Si el token LAN es obligatorio, la conexión debe incluir `?token=`; si falla, el socket se cierra con código `4401`.
+Si el token LAN es obligatorio, hay 5 s para enviar `AUTH`. Fallo o `WATCH_REPO` prematuro: cierre `4401`. Origin no permitido: `4403`.
 
 ## Observación del filesystem
 
-`ChokidarWatcherAdapter`: un watcher por `repoPath`, debounce 300 ms, ignora `node_modules`, objetos de `.git` y archivos ocultos. Profundidad 4.
+`ChokidarWatcherAdapter`: un watcher por `repoPath`, N oyentes (un cliente extra no pisa al primero). El último `close` cierra chokidar. Debounce 300 ms, ignora `node_modules`, objetos de `.git` y archivos ocultos. Profundidad 4.
 
 ## Estado
 
@@ -131,13 +133,14 @@ Sin base de datos.
 
 ## Validación de repositorios
 
-`validarRutaRepositorio` canoniza con `realpath` y exige contención en `PROJECTS_ROOT`. `validarRutaArchivoEnRepositorio` rechaza rutas absolutas y `..`. Clone/init: `validarDestinoNuevo` + `validarUrlClone`.
+`validarRutaRepositorio` canoniza con `realpath` y exige contención en `PROJECTS_ROOT`. `validarRutaArchivoEnRepositorio` rechaza rutas absolutas y `..`. Clone/init: `validarDestinoNuevo` + `validarUrlClone`. `git remote add` reutiliza `validarUrlClone` y `validarNombreRemoto` (mismo perímetro que clone). Mutaciones (checkout, branch, merge, reset, cherry-pick, revert, tag) pasan por `validarRefGit` / `validarHashGit` en `GitUseCases`. Fetch/pull rechazan remotos cuya URL no sea HTTPS/SSH.
 
 ## Restricciones
 
 - Un adaptador Git. Un `HttpGitApi`.
 - Forjas no bloquean Git local si la API remota falla (`ErrorForja`, típicamente 503).
-- Preview no debe escribir el worktree (comandos de solo lectura como `merge-tree`).
+- Preview no debe escribir el worktree (comandos de solo lectura como `merge-tree`). La UI llama `POST /api/git/preview` y muestra el resultado en `ModalConfirmacion` antes de mutar. Contrato: merge, reset, cherry-pick, revert.
+- El grafo marca HEAD con la ref `%D` (`HEAD` / `HEAD -> rama`), no con la primera fila de `git log --all`.
 - IA fuera del horizonte del producto.
 
 ## Siguiente

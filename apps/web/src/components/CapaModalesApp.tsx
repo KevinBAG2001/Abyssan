@@ -152,6 +152,8 @@ export const CapaModalesApp: React.FC<CapaModalesAppProps> = (p) => (
         etiquetaConfirmar={p.confirmacion.etiqueta}
         peligro={p.confirmacion.peligro}
         nombreRequerido={p.confirmacion.nombreRequerido}
+        preview={p.confirmacion.preview}
+        bloquearConfirmar={p.confirmacion.bloquearConfirmar}
         onCancelar={p.onCancelarConfirmacion}
         onConfirmar={p.onConfirmar}
       />

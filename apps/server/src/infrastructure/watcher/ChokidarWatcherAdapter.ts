@@ -1,14 +1,25 @@
-// Austria: Adaptador de infraestructura para monitoreo del sistema de archivos con Chokidar
 import chokidar, { FSWatcher } from 'chokidar';
 import path from 'path';
+import { RegistroSuscripciones } from '../ws/RegistroSuscripciones.js';
 
 export type ChangeCallback = (repoPath: string, eventType: string, filePath: string) => void;
 
+type EntradaWatcher = {
+  watcher: FSWatcher;
+  rutaOriginal: string;
+};
+
 export class ChokidarWatcherAdapter {
-  private watchers: Map<string, FSWatcher> = new Map();
+  private watchers = new Map<string, EntradaWatcher>();
+  private suscripciones = new RegistroSuscripciones<ChangeCallback>();
+
+  private clave(repoPath: string): string {
+    return repoPath.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+  }
 
   watchRepo(repoPath: string, onChange: ChangeCallback): void {
-    if (this.watchers.has(repoPath)) {
+    const primero = this.suscripciones.agregar(repoPath, onChange);
+    if (!primero) {
       return;
     }
 
@@ -29,7 +40,10 @@ export class ChokidarWatcherAdapter {
     const notify = (event: string, itemPath: string) => {
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
-        onChange(repoPath, event, path.relative(repoPath, itemPath));
+        const relativo = path.relative(repoPath, itemPath);
+        for (const cb of this.suscripciones.oyentes(repoPath)) {
+          cb(repoPath, event, relativo);
+        }
       }, 300);
     };
 
@@ -40,22 +54,48 @@ export class ChokidarWatcherAdapter {
       .on('addDir', (p) => notify('addDir', p))
       .on('unlinkDir', (p) => notify('unlinkDir', p));
 
-    this.watchers.set(repoPath, watcher);
+    this.watchers.set(this.clave(repoPath), { watcher, rutaOriginal: repoPath });
   }
 
-  unwatchRepo(repoPath: string): void {
-    const watcher = this.watchers.get(repoPath);
-    if (watcher) {
-      watcher.close();
-      this.watchers.delete(repoPath);
+  unwatchRepo(repoPath: string, onChange?: ChangeCallback): void {
+    if (onChange) {
+      const ultimo = this.suscripciones.quitar(repoPath, onChange);
+      if (ultimo) this.cerrarWatcher(repoPath);
+      return;
+    }
+    this.suscripciones.vaciar(repoPath);
+    this.cerrarWatcher(repoPath);
+  }
+
+  dejarDeEscuchar(onChange: ChangeCallback): void {
+    const vacios = this.suscripciones.quitarDeTodos(onChange);
+    for (const clave of vacios) {
+      const entrada = this.watchers.get(clave);
+      if (entrada) this.cerrarWatcher(entrada.rutaOriginal);
     }
   }
 
-  closeAll(): void {
-    for (const [, watcher] of this.watchers) {
-      watcher.close();
-    }
+  cantidadOyentes(repoPath: string): number {
+    return this.suscripciones.cantidad(repoPath);
+  }
+
+  cantidadWatchers(): number {
+    return this.watchers.size;
+  }
+
+  closeAll(): Promise<void> {
+    const pendientes = [...this.watchers.values()].map((entrada) => Promise.resolve(entrada.watcher.close()));
     this.watchers.clear();
+    this.suscripciones.vaciarTodo();
+    return Promise.all(pendientes).then(() => undefined);
+  }
+
+  private cerrarWatcher(repoPath: string): void {
+    const clave = this.clave(repoPath);
+    const entrada = this.watchers.get(clave);
+    if (!entrada) return;
+    entrada.watcher.close();
+    this.watchers.delete(clave);
   }
 }
 
