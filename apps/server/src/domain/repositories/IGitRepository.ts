@@ -12,7 +12,6 @@ import {
   InfoAmendEntity,
   EntradaReflogEntity,
   PreviewOperacionEntity,
-  TipoOperacionPreview,
   ArchivoCambioEntity,
   OpcionesDiff,
 } from '../entities/GitEntities.js';
@@ -84,6 +83,9 @@ export interface IGitRepository {
 
   // Merge-base
   mergeBase(repoPath: string, refA: string, refB: string): Promise<string | null>;
+
+  /** Hash de HEAD (rev-parse). Vacío si el repo no tiene commits. */
+  obtenerHashHead(repoPath: string): Promise<string>;
 
   // Preview de operaciones peligrosas (no mutante)
   previewMerge(repoPath: string, sourceBranch: string): Promise<PreviewOperacionEntity>;

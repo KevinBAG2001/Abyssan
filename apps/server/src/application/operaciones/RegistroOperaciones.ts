@@ -71,7 +71,7 @@ export class RegistroOperaciones {
   }
 
   private emitir(op: GitOperacion): void {
-    hubWebSocket.emitir({
+    hubWebSocket.emitirARepo(op.repo, {
       type: 'OPERACION_PROGRESO',
       datos: { ...op, timestamps: { ...op.timestamps } },
     });

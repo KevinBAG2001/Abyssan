@@ -34,7 +34,15 @@ import {
   crearSnapshotArchivos,
   restaurarSnapshot,
 } from '../../infrastructure/deshacer/SnapshotArchivos.js';
-import { validarRutaArchivoEnRepositorio, validarHashGit, validarRefGit } from '../../infrastructure/seguridad/validarRutaRepositorio.js';
+import {
+  validarRutaArchivoEnRepositorio,
+  validarHashGit,
+  validarRefGit,
+  validarUrlClone,
+  validarNombreRemoto,
+  validarIndiceStash,
+  validarTipoReset,
+} from '../../infrastructure/seguridad/validarRutaRepositorio.js';
 import type { EscuchaProgresoGit, GitOperacion, TipoGitOperacion } from '../../domain/entities/GitOperacion.js';
 
 export class GitUseCases {
@@ -69,6 +77,13 @@ export class GitUseCases {
 
   listarOperaciones(): GitOperacion[] {
     return registroOperaciones.listar();
+  }
+
+  private asegurarUrlsDeRemotos(remotos: RemoteEntity[]): void {
+    for (const remoto of remotos) {
+      if (remoto.fetchUrl) validarUrlClone(remoto.fetchUrl);
+      if (remoto.pushUrl) validarUrlClone(remoto.pushUrl);
+    }
   }
 
   async listRepositories(rootPath: string): Promise<RepositorySummaryEntity[]> {
@@ -115,8 +130,7 @@ export class GitUseCases {
   }
 
   async commit(repoPath: string, message: string, description?: string): Promise<string> {
-    const grafo = await this.gitRepository.getCommits(repoPath, 1);
-    const hashAnterior = grafo[0]?.hash ?? '';
+    const hashAnterior = await this.gitRepository.obtenerHashHead(repoPath);
     const hash = await this.gitRepository.commit(repoPath, message, description);
     this.journal.registrar({
       tipo: 'commit',
@@ -129,62 +143,69 @@ export class GitUseCases {
   }
 
   async checkout(repoPath: string, target: string): Promise<void> {
+    const destino = validarRefGit(target);
     return this.ejecutarExclusiva(repoPath, 'checkout', async () => {
       const status = await this.gitRepository.getStatus(repoPath);
       const anterior = status.currentBranch;
-      await this.gitRepository.checkout(repoPath, target);
+      await this.gitRepository.checkout(repoPath, destino);
       this.journal.registrar({
         tipo: 'checkout',
         repoPath,
-        descripcion: `Checkout a ${target}`,
+        descripcion: `Checkout a ${destino}`,
         puedeDeshacer: Boolean(anterior) && anterior !== 'HEAD desvinculado',
         motivoBloqueo: anterior ? undefined : 'No hay rama previa para volver',
-        payload: { anterior, destino: target },
+        payload: { anterior, destino },
       });
     });
   }
 
   async createBranch(repoPath: string, branchName: string, startPoint?: string): Promise<void> {
+    const rama = validarRefGit(branchName);
+    const origen = startPoint ? validarRefGit(startPoint) : undefined;
     const status = await this.gitRepository.getStatus(repoPath);
-    await this.gitRepository.createBranch(repoPath, branchName, startPoint);
+    await this.gitRepository.createBranch(repoPath, rama, origen);
     this.journal.registrar({
       tipo: 'crearRama',
       repoPath,
-      descripcion: `Rama ${branchName} creada`,
+      descripcion: `Rama ${rama} creada`,
       puedeDeshacer: true,
-      payload: { rama: branchName, anterior: status.currentBranch },
+      payload: { rama, anterior: status.currentBranch },
     });
   }
 
   async deleteLocalBranch(repoPath: string, branchName: string): Promise<void> {
+    const rama = validarRefGit(branchName);
     return this.ejecutarExclusiva(repoPath, 'borrarRama', async () => {
       const ramas = await this.gitRepository.getBranches(repoPath);
-      const rama = ramas.find((r) => r.name === branchName);
-      await this.gitRepository.deleteLocalBranch(repoPath, branchName);
+      const encontrada = ramas.find((r) => r.name === rama);
+      await this.gitRepository.deleteLocalBranch(repoPath, rama);
       this.journal.registrar({
         tipo: 'borrarRama',
         repoPath,
-        descripcion: `Rama ${branchName} borrada`,
-        puedeDeshacer: Boolean(rama?.commit),
-        motivoBloqueo: rama?.commit ? undefined : 'No se conservó el hash de la rama',
-        payload: { rama: branchName, hash: rama?.commit ?? '' },
+        descripcion: `Rama ${rama} borrada`,
+        puedeDeshacer: Boolean(encontrada?.commit),
+        motivoBloqueo: encontrada?.commit ? undefined : 'No se conservó el hash de la rama',
+        payload: { rama, hash: encontrada?.commit ?? '' },
       });
     });
   }
 
   async renameLocalBranch(repoPath: string, nombreActual: string, nombreNuevo: string): Promise<void> {
-    await this.gitRepository.renameLocalBranch(repoPath, nombreActual, nombreNuevo);
+    const actual = validarRefGit(nombreActual);
+    const nuevo = validarRefGit(nombreNuevo);
+    await this.gitRepository.renameLocalBranch(repoPath, actual, nuevo);
     this.journal.registrar({
       tipo: 'renombrarRama',
       repoPath,
-      descripcion: `Rama ${nombreActual} → ${nombreNuevo}`,
+      descripcion: `Rama ${actual} → ${nuevo}`,
       puedeDeshacer: true,
-      payload: { nombreActual, nombreNuevo },
+      payload: { nombreActual: actual, nombreNuevo: nuevo },
     });
   }
 
   async pull(repoPath: string, modo: 'merge' | 'rebase' = 'merge'): Promise<void> {
     const tipo: TipoGitOperacion = modo === 'rebase' ? 'rebase' : 'pull';
+    this.asegurarUrlsDeRemotos(await this.gitRepository.getRemotes(repoPath));
     return this.ejecutarExclusiva(repoPath, tipo, async (onProgreso) => {
       await this.gitRepository.pull(repoPath, modo, onProgreso);
       this.journal.registrar({
@@ -235,8 +256,9 @@ export class GitUseCases {
   }
 
   async clonarRepositorio(url: string, destino: string): Promise<void> {
+    const urlValida = validarUrlClone(url);
     return this.ejecutarExclusiva(destino, 'clone', async (onProgreso) => {
-      await this.gitRepository.clonarRepositorio(url, destino, onProgreso);
+      await this.gitRepository.clonarRepositorio(urlValida, destino, onProgreso);
       this.journal.registrar({
         tipo: 'clone',
         repoPath: destino,
@@ -350,31 +372,36 @@ export class GitUseCases {
       switch (op.tipo) {
         case 'crearRama': {
           const actual = await this.gitRepository.getStatus(repoPath);
-          if (actual.currentBranch === op.payload.rama && op.payload.anterior) {
-            await this.gitRepository.checkout(repoPath, op.payload.anterior);
+          const rama = validarRefGit(op.payload.rama);
+          if (actual.currentBranch === rama && op.payload.anterior) {
+            await this.gitRepository.checkout(repoPath, validarRefGit(op.payload.anterior));
           }
-          await this.gitRepository.deleteLocalBranch(repoPath, op.payload.rama);
+          await this.gitRepository.deleteLocalBranch(repoPath, rama);
           break;
         }
         case 'borrarRama':
-          await this.gitRepository.recrearRama(repoPath, op.payload.rama, op.payload.hash);
+          await this.gitRepository.recrearRama(
+            repoPath,
+            validarRefGit(op.payload.rama),
+            validarHashGit(op.payload.hash)
+          );
           break;
         case 'renombrarRama':
           await this.gitRepository.renameLocalBranch(
             repoPath,
-            op.payload.nombreNuevo,
-            op.payload.nombreActual
+            validarRefGit(op.payload.nombreNuevo),
+            validarRefGit(op.payload.nombreActual)
           );
           break;
         case 'commit':
           if (op.payload.hashAnterior) {
-            await this.gitRepository.reset(repoPath, 'soft', op.payload.hashAnterior);
+            await this.gitRepository.reset(repoPath, 'soft', validarHashGit(op.payload.hashAnterior));
           } else {
             throw new Error('No hay commit anterior al que volver');
           }
           break;
         case 'reset':
-          await this.gitRepository.reset(repoPath, 'hard', op.payload.hashAnterior);
+          await this.gitRepository.reset(repoPath, 'hard', validarHashGit(op.payload.hashAnterior));
           if (op.snapshotId) {
             restaurarSnapshot(op.snapshotId, repoPath, this.journal.directorioPersistencia());
           }
@@ -387,7 +414,7 @@ export class GitUseCases {
           }
           break;
         case 'checkout':
-          await this.gitRepository.checkout(repoPath, op.payload.anterior);
+          await this.gitRepository.checkout(repoPath, validarRefGit(op.payload.anterior));
           break;
         default:
           throw new Error('Esta operación no se puede deshacer');
@@ -403,33 +430,41 @@ export class GitUseCases {
   }
 
   async addRemote(repoPath: string, name: string, url: string): Promise<void> {
-    await this.gitRepository.addRemote(repoPath, name, url);
+    const nombre = validarNombreRemoto(name);
+    const urlValida = validarUrlClone(url);
+    await this.gitRepository.addRemote(repoPath, nombre, urlValida);
   }
 
   async removeRemote(repoPath: string, name: string): Promise<void> {
-    await this.gitRepository.removeRemote(repoPath, name);
+    await this.gitRepository.removeRemote(repoPath, validarNombreRemoto(name));
   }
 
   async fetchAll(repoPath: string, prune = true): Promise<void> {
+    this.asegurarUrlsDeRemotos(await this.gitRepository.getRemotes(repoPath));
     return this.ejecutarExclusiva(repoPath, 'fetch', async (onProgreso) => {
       await this.gitRepository.fetchAll(repoPath, prune, onProgreso);
     });
   }
 
   async compareBranches(repoPath: string, baseBranch: string, targetBranch: string): Promise<BranchComparisonEntity> {
-    return await this.gitRepository.compareBranches(repoPath, baseBranch, targetBranch);
+    return await this.gitRepository.compareBranches(
+      repoPath,
+      validarRefGit(baseBranch),
+      validarRefGit(targetBranch)
+    );
   }
 
   async merge(repoPath: string, sourceBranch: string, noFf = false): Promise<void> {
+    const origen = validarRefGit(sourceBranch);
     return this.ejecutarExclusiva(repoPath, 'merge', async () => {
-      await this.gitRepository.mergeBranch(repoPath, sourceBranch, noFf);
+      await this.gitRepository.mergeBranch(repoPath, origen, noFf);
       this.journal.registrar({
         tipo: 'merge',
         repoPath,
-        descripcion: `Merge de ${sourceBranch}`,
+        descripcion: `Merge de ${origen}`,
         puedeDeshacer: false,
         motivoBloqueo: 'Un merge se aborta con “Abortar merge”, no con Deshacer.',
-        payload: { sourceBranch },
+        payload: { sourceBranch: origen },
       });
     });
   }
@@ -443,13 +478,14 @@ export class GitUseCases {
   }
 
   async popStash(repoPath: string, index = 0): Promise<void> {
+    const indice = validarIndiceStash(index);
     return this.ejecutarExclusiva(repoPath, 'stash', async () => {
-      await this.gitRepository.popStash(repoPath, index);
+      await this.gitRepository.popStash(repoPath, indice);
     });
   }
 
   async dropStash(repoPath: string, index = 0): Promise<void> {
-    await this.gitRepository.dropStash(repoPath, index);
+    await this.gitRepository.dropStash(repoPath, validarIndiceStash(index));
   }
 
   async getTags(repoPath: string): Promise<TagEntity[]> {
@@ -457,43 +493,48 @@ export class GitUseCases {
   }
 
   async createTag(repoPath: string, tagName: string, targetHash?: string): Promise<void> {
-    await this.gitRepository.createTag(repoPath, tagName, targetHash);
+    const nombre = validarRefGit(tagName);
+    const hash = targetHash ? validarHashGit(targetHash) : undefined;
+    await this.gitRepository.createTag(repoPath, nombre, hash);
   }
 
   async cherryPick(repoPath: string, hash: string): Promise<void> {
+    const commit = validarHashGit(hash);
     return this.ejecutarExclusiva(repoPath, 'cherry-pick', async () => {
-      await this.gitRepository.cherryPick(repoPath, hash);
+      await this.gitRepository.cherryPick(repoPath, commit);
       this.journal.registrar({
         tipo: 'cherry-pick',
         repoPath,
-        descripcion: `Cherry-pick ${hash.substring(0, 7)}`,
+        descripcion: `Cherry-pick ${commit.substring(0, 7)}`,
         puedeDeshacer: false,
         motivoBloqueo: 'Un cherry-pick no se deshace en un paso seguro; usa reflog si hace falta.',
-        payload: { hash },
+        payload: { hash: commit },
       });
     });
   }
 
   async revert(repoPath: string, hash: string): Promise<void> {
+    const commit = validarHashGit(hash);
     return this.ejecutarExclusiva(repoPath, 'revert', async () => {
-      await this.gitRepository.revertCommit(repoPath, hash);
+      await this.gitRepository.revertCommit(repoPath, commit);
       this.journal.registrar({
         tipo: 'revert',
         repoPath,
-        descripcion: `Revert ${hash.substring(0, 7)}`,
+        descripcion: `Revert ${commit.substring(0, 7)}`,
         puedeDeshacer: false,
         motivoBloqueo: 'Un revert no se deshace en un paso seguro; usa reflog si hace falta.',
-        payload: { hash },
+        payload: { hash: commit },
       });
     });
   }
 
   async reset(repoPath: string, type: 'soft' | 'mixed' | 'hard', target: string): Promise<void> {
+    const tipo = validarTipoReset(type);
+    const destino = validarRefGit(target);
     return this.ejecutarExclusiva(repoPath, 'reset', async () => {
-      const grafo = await this.gitRepository.getCommits(repoPath, 1);
-      const hashAnterior = grafo[0]?.hash ?? '';
+      const hashAnterior = await this.gitRepository.obtenerHashHead(repoPath);
       let snapshotId: string | undefined;
-      if (type === 'hard') {
+      if (tipo === 'hard') {
         const status = await this.gitRepository.getStatus(repoPath);
         const sucios = status.files.filter((f) => f.status !== 'deleted').map((f) => f.path);
         if (sucios.length > 0) {
@@ -501,14 +542,14 @@ export class GitUseCases {
           snapshotId = snap.manifest.archivos.length > 0 ? snap.id : undefined;
         }
       }
-      await this.gitRepository.reset(repoPath, type, target);
+      await this.gitRepository.reset(repoPath, tipo, destino);
       this.journal.registrar({
         tipo: 'reset',
         repoPath,
-        descripcion: `Reset --${type} a ${target.substring(0, 7)}`,
+        descripcion: `Reset --${tipo} a ${destino.substring(0, 7)}`,
         puedeDeshacer: Boolean(hashAnterior),
         motivoBloqueo: hashAnterior ? undefined : 'No se conservó HEAD previo',
-        payload: { hashAnterior, type, target },
+        payload: { hashAnterior, type: tipo, target: destino },
         snapshotId,
       });
     });
@@ -535,7 +576,7 @@ export class GitUseCases {
   // --- Merge-base ---
 
   async mergeBase(repoPath: string, refA: string, refB: string): Promise<string | null> {
-    return this.gitRepository.mergeBase(repoPath, refA, refB);
+    return this.gitRepository.mergeBase(repoPath, validarRefGit(refA), validarRefGit(refB));
   }
 
   // --- Preview de operaciones peligrosas (no mutante) ---
@@ -548,19 +589,19 @@ export class GitUseCases {
     switch (operacion) {
       case 'merge': {
         if (!params.sourceBranch) throw new Error('sourceBranch es requerido para preview de merge');
-        return this.gitRepository.previewMerge(repoPath, params.sourceBranch);
+        return this.gitRepository.previewMerge(repoPath, validarRefGit(params.sourceBranch));
       }
       case 'reset': {
         if (!params.type || !params.target) throw new Error('type y target son requeridos para preview de reset');
-        return this.gitRepository.previewReset(repoPath, params.type, params.target);
+        return this.gitRepository.previewReset(repoPath, validarTipoReset(params.type), validarRefGit(params.target));
       }
       case 'cherry-pick': {
         if (!params.hash) throw new Error('hash es requerido para preview de cherry-pick');
-        return this.gitRepository.previewCherryPick(repoPath, params.hash);
+        return this.gitRepository.previewCherryPick(repoPath, validarHashGit(params.hash));
       }
       case 'revert': {
         if (!params.hash) throw new Error('hash es requerido para preview de revert');
-        return this.gitRepository.previewRevert(repoPath, params.hash);
+        return this.gitRepository.previewRevert(repoPath, validarHashGit(params.hash));
       }
       default:
         throw new Error(`Operación de preview no soportada: ${operacion}`);

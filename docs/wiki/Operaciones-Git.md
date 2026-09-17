@@ -46,19 +46,19 @@ save, pop, drop, listado. Disponible (gestión básica).
 
 ## Merge
 
-Modifica WT/índice/refs si Git aplica. Journal: no deshacible (usar abort). Abort/continue disponibles. Preview API `operacion=merge` **no muta**. UI de preview **no cableada**.
+Modifica WT/índice/refs si Git aplica. Journal: no deshacible (usar abort). Abort/continue disponibles. Preview `operacion=merge` **no muta**; la UI lo muestra en `ModalConfirmacion` antes de fusionar.
 
 ## Cherry-pick y revert
 
-Nuevo commit. Journal no deshacible. Preview API disponible. UI: menú contextual.
+Nuevo commit. Journal no deshacible. Preview no mutante en `ModalConfirmacion` desde el menú contextual.
 
 ## Reset
 
 | Tipo | WT | Índice | HEAD | Confirmación UI |
 |------|----|--------|------|-----------------|
-| soft | No | No | Sí | No |
-| mixed | No | Sí | Sí | No |
-| hard | Sí | Sí | Sí | Sí; sucio: escribir `RESET`. Snapshot para undo |
+| soft | No | No | Sí | Preview + `ModalConfirmacion` |
+| mixed | No | Sí | Sí | Preview + `ModalConfirmacion` |
+| hard | Sí | Sí | Sí | Preview; sucio: escribir `RESET`. Snapshot para undo |
 
 ## Fetch / pull / push
 
@@ -93,7 +93,7 @@ Identidad: `user.name` / `user.email` (local, global o `GIT_AUTHOR_*`). En Docke
 
 ## No localizado (README o plan)
 
-Blame; stage hunk/línea; rebase visual; preview rebase/force-push en el use case; UI Cancelar/Ver/Ejecutar de preview; Explain Mode; worktrees.
+Blame; stage hunk/línea; rebase visual interactivo; preview rebase/force-push; worktrees.
 
 ## Siguiente
 

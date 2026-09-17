@@ -7,6 +7,8 @@ import {
   commitsDeLaRama,
   autoresUnicos,
   ramasUnicas,
+  esCommitHead,
+  esRefRemota,
 } from '../grafo-utils';
 import type { GitCommit } from '../../types/git';
 
@@ -21,6 +23,7 @@ function commit(hash: string, parents: string[], extra?: Partial<GitCommit>): Gi
     message: extra?.message ?? `Commit ${hash}`,
     branches: extra?.branches,
     tags: extra?.tags,
+    refs: extra?.refs,
   };
 }
 
@@ -153,5 +156,28 @@ describe('ramasUnicas', () => {
     expect(ramas).toContain('main');
     expect(ramas).toContain('feature');
     expect(ramas.length).toBe(2);
+  });
+});
+
+describe('esCommitHead', () => {
+  it('usa la ref HEAD, no el índice 0 del listado', () => {
+    const headViejo = commit('aaaaa', [], { refs: ['HEAD -> main'] });
+    const masNuevo = commit('eeeee', ['ccccc'], { refs: ['feature'], branches: ['feature'] });
+    expect(esCommitHead(headViejo)).toBe(true);
+    expect(esCommitHead(masNuevo)).toBe(false);
+    expect(esCommitHead(commit('bbbbb', ['aaaaa']))).toBe(false);
+  });
+
+  it('detecta HEAD desvinculado', () => {
+    expect(esCommitHead(commit('ccccc', ['bbbbb'], { refs: ['HEAD'] }))).toBe(true);
+  });
+});
+
+describe('esRefRemota', () => {
+  it('distingue origin/main de una rama local con barra', () => {
+    expect(esRefRemota('origin/main', ['origin'])).toBe(true);
+    expect(esRefRemota('remotes/origin/main', ['origin'])).toBe(true);
+    expect(esRefRemota('feature/login', ['origin'])).toBe(false);
+    expect(esRefRemota('main', ['origin'])).toBe(false);
   });
 });

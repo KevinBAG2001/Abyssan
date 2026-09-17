@@ -86,7 +86,7 @@ JSON body. Confirmación de UI, no de API (excepto `confirmarRemoto`).
 | POST | `/api/git/deshacer` | `repoPath`, `id?` | Undo punta |
 | POST | `/api/git/preview` | `repoPath`, `operacion`, params | **No muta** |
 
-Preview: el controlador acepta merge, rebase, reset, cherry-pick, revert, force-push. El use case implementa merge, reset, cherry-pick, revert. Rebase y force-push: error «no soportada».
+Preview: `operacion` es `merge` | `reset` | `cherry-pick` | `revert`. Rebase y force-push **no** forman parte del contrato (400). La UI abre `ModalConfirmacion` con el preview **antes** de mutar.
 
 ## Auth y forjas
 
@@ -102,7 +102,7 @@ Preview: el controlador acepta merge, rebase, reset, cherry-pick, revert, force-
 | POST | `/api/forjas/solicitudes/:numero/checkout` | `repoPath`, `ramaOrigen`, `esFork` |
 | POST | `/api/forjas/solicitudes` | `titulo`, `base`, `cabeza`; **201** |
 
-WebSocket: [Arquitectura](./Arquitectura.md).
+WebSocket (mismo puerto que HTTP): primer mensaje `AUTH` si el bind no es loopback; luego `WATCH_REPO`. El token no va en la query. Detalle: [Arquitectura](./Arquitectura.md).
 
 ## Siguiente
 

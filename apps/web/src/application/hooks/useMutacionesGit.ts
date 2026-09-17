@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { httpGitApi, type EntradaReflog, type UltimaOperacion } from '../../infrastructure/api/HttpGitApi';
-import type { ConflictModel, EntradaJournal, FileStatusModel, RepositoryStatusModel } from '../../domain/models/GitModels';
+import type { ConflictModel, EntradaJournal, FileStatusModel, PreviewOperacionModel, RepositoryStatusModel } from '../../domain/models/GitModels';
 
 export type ConfirmacionPendiente = {
   titulo: string;
@@ -8,6 +8,8 @@ export type ConfirmacionPendiente = {
   peligro?: boolean;
   etiqueta?: string;
   nombreRequerido?: string;
+  preview?: PreviewOperacionModel;
+  bloquearConfirmar?: boolean;
   ejecutar: () => Promise<void>;
 };
 
@@ -240,9 +242,20 @@ export function useMutacionesGit({
   const handleMerge = async (sourceBranch: string, noFf: boolean) => {
     if (!selectedRepo) return;
     try {
-      await httpGitApi.merge(selectedRepo, sourceBranch, noFf);
-      showToast(`Fusión con ${sourceBranch} completada`, 'success');
-      await afterMutacion();
+      const preview = await httpGitApi.previewOperacion(selectedRepo, 'merge', { sourceBranch });
+      setConfirmacion({
+        titulo: `Fusionar ${sourceBranch}`,
+        descripcion: preview.resumen,
+        preview,
+        peligro: preview.conflictos.length > 0 || preview.riesgos.length > 0,
+        etiqueta: preview.viable ? 'Fusionar' : 'No viable',
+        bloquearConfirmar: !preview.viable,
+        ejecutar: async () => {
+          await httpGitApi.merge(selectedRepo, sourceBranch, noFf);
+          showToast(`Fusión con ${sourceBranch} completada`, 'success');
+          await afterMutacion();
+        },
+      });
     } catch (err: unknown) {
       showToast(err instanceof Error ? err.message : 'Error', 'error');
     }
@@ -292,23 +305,38 @@ export function useMutacionesGit({
     }
   };
 
-  const handleDropStash = async (index: number) => {
-    if (!selectedRepo) return;
-    try {
-      await httpGitApi.dropStash(selectedRepo, index);
-      showToast('Stash eliminado', 'success');
-      await afterMutacion();
-    } catch (err: unknown) {
-      showToast(err instanceof Error ? err.message : 'Error', 'error');
-    }
+  const handleDropStash = (index: number) => {
+    setConfirmacion({
+      titulo: 'Eliminar stash',
+      descripcion: `Se eliminará stash@{${index}}. No hay preview de contenido: el stash deja de ser recuperable por este cliente.`,
+      etiqueta: 'Eliminar stash',
+      peligro: true,
+      ejecutar: async () => {
+        if (!selectedRepo) return;
+        await httpGitApi.dropStash(selectedRepo, index);
+        showToast('Stash eliminado', 'success');
+        await afterMutacion();
+      },
+    });
   };
 
   const handleCherryPick = async (hash: string) => {
     if (!selectedRepo) return;
     try {
-      await httpGitApi.cherryPick(selectedRepo, hash);
-      showToast(`Cherry-pick aplicado (${hash.substring(0, 7)})`, 'success');
-      await afterMutacion();
+      const preview = await httpGitApi.previewOperacion(selectedRepo, 'cherry-pick', { hash });
+      setConfirmacion({
+        titulo: `Cherry-pick ${hash.substring(0, 7)}`,
+        descripcion: preview.resumen,
+        preview,
+        peligro: preview.conflictos.length > 0,
+        etiqueta: preview.viable ? 'Aplicar cherry-pick' : 'No viable',
+        bloquearConfirmar: !preview.viable,
+        ejecutar: async () => {
+          await httpGitApi.cherryPick(selectedRepo, hash);
+          showToast(`Cherry-pick aplicado (${hash.substring(0, 7)})`, 'success');
+          await afterMutacion();
+        },
+      });
     } catch (err: unknown) {
       showToast(err instanceof Error ? err.message : 'Error', 'error');
     }
@@ -317,38 +345,48 @@ export function useMutacionesGit({
   const handleRevert = async (hash: string) => {
     if (!selectedRepo) return;
     try {
-      await httpGitApi.revert(selectedRepo, hash);
-      showToast(`Commit revertido (${hash.substring(0, 7)})`, 'success');
-      await afterMutacion();
+      const preview = await httpGitApi.previewOperacion(selectedRepo, 'revert', { hash });
+      setConfirmacion({
+        titulo: `Revertir ${hash.substring(0, 7)}`,
+        descripcion: preview.resumen,
+        preview,
+        peligro: true,
+        etiqueta: preview.viable ? 'Revertir' : 'No viable',
+        bloquearConfirmar: !preview.viable,
+        ejecutar: async () => {
+          await httpGitApi.revert(selectedRepo, hash);
+          showToast(`Commit revertido (${hash.substring(0, 7)})`, 'success');
+          await afterMutacion();
+        },
+      });
     } catch (err: unknown) {
       showToast(err instanceof Error ? err.message : 'Error', 'error');
     }
   };
 
-  const ejecutarReset = async (type: 'soft' | 'mixed' | 'hard', hash: string) => {
-    if (!selectedRepo) return;
-    await httpGitApi.reset(selectedRepo, type, hash);
-    showToast(`Reset (${type}) ejecutado`, 'success');
-    await afterMutacion();
-  };
-
   const handleReset = (type: 'soft' | 'mixed' | 'hard', hash: string) => {
-    if (type === 'hard') {
-      const sucios = status?.files.length ?? 0;
-      const sucio = sucios > 0;
-      setConfirmacion({
-        titulo: 'Reset hard',
-        descripcion: sucio
-          ? `Se moverá HEAD a ${hash.substring(0, 7)} y se perderán ${sucios} cambio${sucios === 1 ? '' : 's'} no confirmado${sucios === 1 ? '' : 's'} del working tree y del índice.`
-          : `Se moverá HEAD a ${hash.substring(0, 7)}. El working tree está limpio.`,
-        etiqueta: 'Reset hard',
-        peligro: true,
-        nombreRequerido: sucio ? 'RESET' : undefined,
-        ejecutar: () => ejecutarReset(type, hash),
-      });
-      return;
-    }
-    void ejecutarReset(type, hash).catch((err) => showToast(err.message, 'error'));
+    if (!selectedRepo) return;
+    void (async () => {
+      try {
+        const preview = await httpGitApi.previewOperacion(selectedRepo, 'reset', { type, target: hash });
+        const sucios = status?.files.length ?? 0;
+        setConfirmacion({
+          titulo: `Reset ${type}`,
+          descripcion: preview.resumen,
+          preview,
+          peligro: type === 'hard' || preview.riesgos.length > 0,
+          etiqueta: `Reset ${type}`,
+          nombreRequerido: type === 'hard' && sucios > 0 ? 'RESET' : undefined,
+          ejecutar: async () => {
+            await httpGitApi.reset(selectedRepo, type, hash);
+            showToast(`Reset (${type}) ejecutado`, 'success');
+            await afterMutacion();
+          },
+        });
+      } catch (err: unknown) {
+        showToast(err instanceof Error ? err.message : 'Error', 'error');
+      }
+    })();
   };
 
   const handleDiscard = (filePath: string) => {
