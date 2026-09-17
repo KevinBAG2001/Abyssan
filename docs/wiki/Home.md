@@ -12,7 +12,7 @@ Hacer visible la historia (DAG), preparar el commit con diff y ejecutar flujos G
 
 - El `git log` lineal no muestra merges, HEAD y refs de un vistazo.
 - Preparar un commit (`git add`, diff, mensaje) es fácil de equivocar en CLI.
-- Un botón de merge o reset no explica el efecto antes de ejecutarlo (preview de Identidad: API disponible; la UI de preview **aún no está cableada** en componentes).
+- Merge, reset, cherry-pick y revert muestran un preview no mutante (`POST /api/git/preview`) en `ModalConfirmacion` antes de aplicar. Stash drop y reset hard siguen pidiendo confirmación contextual.
 - Un reset o discard mal aplicado pierde trabajo local.
 
 ## Alcance actual (verificado en código)
@@ -33,7 +33,7 @@ Disponible en este repositorio:
 
 El producto **no se declara estable para Internet**. El modelo de despliegue por defecto es **localhost** (`BIND_HOST=127.0.0.1`). `package.json` indica versión `1.0.0` y `"private": true`: no hay un proceso de release público documentado en el código.
 
-Las fases 0–3 del plan (higiene, Daily Driver, power, forjas) están marcadas como cerradas en `docs/PLAN-TRABAJO.md`. Identidad (Fase 4) está **abierta**: 4.0–4.2 hechas en código; Explain Mode y grafo excepcional **pendientes**. Varias capacidades anunciadas en el README (blame, stage por hunk/línea, rebase interactivo, `date-fns`) **no aparecen** como módulos o rutas en el árbol actual.
+Las fases 0–3 del plan (higiene, Daily Driver, power, forjas) están marcadas como cerradas. Identidad (Fase 4): cola, preview cableado, journal, explain de plantillas y grafo con HEAD real están en código. Varias capacidades anunciadas en el README (blame, stage por hunk/línea, rebase interactivo, `date-fns`) **no aparecen** como módulos o rutas en el árbol actual.
 
 ## Tecnologías (comprobadas en `package.json`)
 
@@ -41,7 +41,7 @@ Las fases 0–3 del plan (higiene, Daily Driver, power, forjas) están marcadas 
 |------|------------|-------------------|
 | Monorepo | pnpm workspaces | CI y Docker: `pnpm@11.25.0` |
 | Frontend | React, TypeScript, Vite, Tailwind CSS, Lucide, Shiki | React `^19.0.0`, Vite `^6.2.0`, Tailwind `^4.0.9` |
-| Backend | Node.js, Express, TypeScript, simple-git, ws, chokidar | Express `^4.21.2`, simple-git `^3.27.0` |
+| Backend | Node.js, Express, TypeScript, simple-git, ws, chokidar | Express `^4.21.2`, simple-git `^3.36.0` |
 | Calidad | Vitest, oxlint | Vitest `^3.2.7` |
 | Empaque | Docker Compose | Imágenes `node:22-alpine` |
 

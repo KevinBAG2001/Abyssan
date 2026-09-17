@@ -2,24 +2,16 @@ import { cargarEntorno } from './infrastructure/seguridad/cargarEntorno.js';
 import express from 'express';
 import cors from 'cors';
 import http from 'http';
-import { WebSocketServer, WebSocket } from 'ws';
 import { gitRouter } from './interfaces/http/routes/GitRoutes.js';
 import { authRouter } from './interfaces/http/routes/AuthForjasRoutes.js';
 import { forjasRouter } from './interfaces/http/routes/ForjasRoutes.js';
 import { authForjasController } from './interfaces/http/controllers/AuthForjasController.js';
-import { watcherAdapter } from './infrastructure/watcher/ChokidarWatcherAdapter.js';
-import { validarRutaRepositorio } from './infrastructure/seguridad/validarRutaRepositorio.js';
-import {
-  conexionWsAutorizada,
-  obtenerBindHost,
-  validarConfiguracionToken,
-} from './infrastructure/seguridad/tokenInstancia.js';
+import { adjuntarWebSocket } from './infrastructure/ws/adjuntarWebSocket.js';
 import { middlewareTokenInstancia } from './interfaces/http/middlewareToken.js';
 import { middlewareOrigenMutacion } from './interfaces/http/middlewareOrigen.js';
-import { hubWebSocket } from './infrastructure/ws/HubWebSocket.js';
+import { obtenerBindHost, validarConfiguracionToken } from './infrastructure/seguridad/tokenInstancia.js';
 import { middlewareLimiteTasa } from './infrastructure/seguridad/limiteTasa.js';
 import {
-  extraerOrigin,
   listarOrigenesPermitidos,
   origenDePeticionPermitido,
 } from './infrastructure/seguridad/origenesPermitidos.js';
@@ -72,57 +64,7 @@ app.use('/api/git', gitRouter);
 app.use('/api/forjas', forjasRouter);
 
 const server = http.createServer(app);
-const wss = new WebSocketServer({ server });
-
-wss.on('connection', (ws: WebSocket, req) => {
-  if (!conexionWsAutorizada(req)) {
-    ws.close(4401, 'Token de instancia requerido');
-    return;
-  }
-  if (!origenDePeticionPermitido(extraerOrigin(req.headers.origin))) {
-    ws.close(4403, 'Origen no permitido');
-    return;
-  }
-
-  hubWebSocket.registrar(ws);
-
-  console.log('[Abyssan] Cliente WebSocket conectado');
-
-  ws.on('message', (message: string) => {
-    try {
-      const data = JSON.parse(message.toString());
-      if (data.type === 'WATCH_REPO' && data.repoPath) {
-        let rutaValidada: string;
-        try {
-          rutaValidada = validarRutaRepositorio(data.repoPath);
-        } catch {
-          ws.send(JSON.stringify({ type: 'ERROR', message: 'Ruta de repositorio no autorizada' }));
-          return;
-        }
-        console.log(`[Abyssan] Monitoreando repositorio: ${rutaValidada}`);
-        watcherAdapter.watchRepo(rutaValidada, (repoPath, eventType, filePath) => {
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(
-              JSON.stringify({
-                type: 'REPO_CHANGED',
-                repoPath,
-                eventType,
-                filePath,
-                timestamp: new Date().toISOString(),
-              })
-            );
-          }
-        });
-      }
-    } catch (err) {
-      console.error('[Abyssan] Error procesando mensaje WS:', err);
-    }
-  });
-
-  ws.on('close', () => {
-    console.log('[Abyssan] Cliente WebSocket desconectado');
-  });
-});
+adjuntarWebSocket(server);
 
 async function arrancar(): Promise<void> {
   try {

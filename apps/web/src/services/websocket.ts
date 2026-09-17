@@ -6,12 +6,6 @@ const TOKEN_INSTANCIA = tokenInstanciaCliente;
 type RepoChangeCallback = (data: { repoPath: string; eventType: string; filePath: string }) => void;
 type OperacionCallback = (data: unknown) => void;
 
-function urlWebSocket(): string {
-  if (!TOKEN_INSTANCIA) return WS_BASE;
-  const sep = WS_BASE.includes('?') ? '&' : '?';
-  return `${WS_BASE}${sep}token=${encodeURIComponent(TOKEN_INSTANCIA)}`;
-}
-
 export class WebSocketClient {
   private socket: WebSocket | null = null;
   private listeners: Set<RepoChangeCallback> = new Set();
@@ -25,10 +19,13 @@ export class WebSocketClient {
     }
 
     try {
-      this.socket = new WebSocket(urlWebSocket());
+      // El token LAN va en el primer mensaje AUTH, nunca en la query.
+      this.socket = new WebSocket(WS_BASE);
 
       this.socket.onopen = () => {
-        console.log('[Abyssan] Conectado al WebSocket');
+        if (TOKEN_INSTANCIA) {
+          this.socket?.send(JSON.stringify({ type: 'AUTH', token: TOKEN_INSTANCIA }));
+        }
         if (this.currentRepoPath) {
           this.watchRepo(this.currentRepoPath);
         }
@@ -49,16 +46,13 @@ export class WebSocketClient {
       };
 
       this.socket.onclose = () => {
-        console.log('[Abyssan] Conexion WS cerrada. Reintentando en 3s...');
         this.scheduleReconnect();
       };
 
-      this.socket.onerror = (err) => {
-        console.error('[Abyssan] Error en WebSocket:', err);
+      this.socket.onerror = () => {
         this.socket?.close();
       };
-    } catch (err) {
-      console.error('[Abyssan] Fallo al inicializar WebSocket:', err);
+    } catch {
       this.scheduleReconnect();
     }
   }

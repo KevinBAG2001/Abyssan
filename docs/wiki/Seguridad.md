@@ -23,7 +23,7 @@ Un atacante en LAN contra un `BIND_HOST` expuesto es un escenario **real** si se
 
 `validarRutaArchivoEnRepositorio` exige ruta relativa, rechaza absolutas POSIX/Win32 y `..`, y vuelve a comprobar contención canónica.
 
-Clone: `validarUrlClone` bloquea `file://` y rutas locales.
+Clone y `git remote add`: `validarUrlClone` bloquea `file://`, rutas locales, UNC, `git://` y protocolos que no sean HTTPS/SSH. El nombre del remoto pasa por `validarNombreRemoto`.
 
 ## Enlaces simbólicos
 
@@ -33,7 +33,7 @@ Un symlink **dentro** de `PROJECTS_ROOT` que apunta **fuera** es el caso de esca
 
 El camino Git es `GitController` → `GitUseCases` → `SimpleGitAdapter`. Las llamadas usan la API de simple-git o `raw` con lista de argumentos. No hay `child_process.exec` de comandos libres en ese camino.
 
-Eso **no** elimina por sí solo todas las inyecciones: hay que seguir validando nombres de rama, hashes y paths (el controller valida paths de archivo en diff/stage/discard/conflict).
+Eso **no** elimina por sí solo todas las inyecciones: `GitUseCases` valida refs (`validarRefGit`), hashes (`validarHashGit`), nombres de remoto y URLs antes de `SimpleGitAdapter`. Un checkout/merge/reset con `-u`, `HEAD~1` o un remoto `file://` ya persistido se rechaza en aplicación, no en el CLI.
 
 ## Operaciones destructivas
 
@@ -43,8 +43,10 @@ Reset hard sucio y discard generan **snapshots** bajo `ABYSSAN_HOME/snapshots` (
 
 ## WebSocket
 
-- Validación de `repoPath` en `WATCH_REPO` (mismo validador HTTP).
-- Token por query si LAN.
+- Handshake: primer mensaje `AUTH` con el token en el cuerpo. `?token=` en la URL **no** autentica (evita fugas en logs/proxies).
+- Validación de `repoPath` en `WATCH_REPO` (mismo validador HTTP). En LAN, `WATCH_REPO` antes de `AUTH` cierra `4401`.
+- Un watcher de filesystem por repo, multiplexado entre clientes; al cerrar el último socket se deja de vigilar.
+- `OPERACION_PROGRESO` se emite solo a clientes asociados a ese repo (`emitirARepo`).
 - Payload: metadatos de cambio y de operación, `filePath` relativo. No se envía el cuerpo del archivo.
 - Código de cierre `4401` si el token falta cuando es obligatorio; `4403` si el Origin no está permitido.
 
@@ -78,7 +80,7 @@ El contenedor del API monta un volumen RW. El origen por defecto es el checkout 
 ## Limitaciones
 
 - Sin `Origin`, curl en la misma máquina puede mutar (mismo usuario OS).
-- Preview rebase/force-push no implementados en el use case.
+- Preview de rebase/force-push **fuera del contrato** (400). Merge, reset, cherry-pick y revert tienen preview no mutante en API y en `ModalConfirmacion`.
 - Token de Vite es visible para quien carga la SPA.
 - Diseñado para uso local; no afirmar aislamiento multi-tenant.
 

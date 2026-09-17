@@ -41,6 +41,8 @@ Vitest en `apps/**/*.test.ts`. Cobertura notable:
 - Journal persistente (restart, snapshot, traversal en manifiesto).
 - Rate limit, token, envelope, forjas HTTP mockeadas.
 - Auditoría JSONL sin tokens.
+- Handshake WS (`AUTH` / `WATCH_REPO`), multiplex de watchers y fan-out `emitirARepo`.
+- Preview no mutante y HEAD real (`rev-parse`, no `log --all`).
 
 Las pruebas **no** deben usar remotos Git reales ni operar fuera de un `PROJECTS_ROOT` temporal. Para mutaciones destructivas, el patrón del repo es `fs.mkdtempSync` + `simpleGit().init()`.
 

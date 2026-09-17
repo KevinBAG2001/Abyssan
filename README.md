@@ -389,7 +389,7 @@ Abyssan ejecuta Git sobre el filesystem del host. El modelo de amenaza de Daily 
 | Superficie Git           | Solo operaciones vía `simple-git`. Sin shell arbitrario.                                      |
 | Operaciones destructivas | Confirmación en UI **y** `confirmado: true` en el API (reset hard, discard, borrar rama, abortar merge). |
 | CORS / Origin            | Solo la SPA en `:5174` (o `CORS_ORIGINS`). Mutación con Origin ajeno → **403**. |
-| WebSocket                | Valida `WATCH_REPO` y Origin. Emite eventos de cambio, no diffs ni secretos.                  |
+| WebSocket                | Handshake `AUTH` (sin token en la query). Valida `WATCH_REPO` y Origin. Progreso acotado al repo vigilado. No emite diffs ni secretos. |
 | Credenciales             | No se versionan. SSH usa el agent del sistema.                                                |
 | Exposición de red        | Default **localhost**. Vite en `127.0.0.1`. Si `BIND_HOST` no es loopback, `ABYSSAN_API_TOKEN` es obligatorio. |
 
@@ -449,7 +449,7 @@ Los packages internos usan el scope `@abyssan/*`. El nombre comercial del produc
 
 ## Documentación
 
-La documentación técnica versionada está en `docs/wiki/` y `documents/wiki/`. La política de reporte de vulnerabilidades está en la raíz. Plan de elevación: [documents/seguridad/PLAN-ELEVACION.md](./documents/seguridad/PLAN-ELEVACION.md).
+La documentación técnica versionada está en `docs/wiki/`. La política de reporte de vulnerabilidades está en [SECURITY.md](./SECURITY.md).
 
 - [Home de la documentación](./docs/wiki/Home.md)
 - [Instalación y configuración](./docs/wiki/Instalacion-y-configuracion.md)

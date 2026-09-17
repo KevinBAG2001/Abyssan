@@ -128,18 +128,47 @@ export function validarDestinoNuevo(nombreCarpeta: string): string {
   return validarRutaRepositorio(destino);
 }
 
+/**
+ * Allowlist de URL para clone y `git remote add`.
+ * Bloquea file://, rutas locales, UNC, git:// y protocolos ext.
+ */
 export function validarUrlClone(url: string): string {
   if (!url || typeof url !== 'string') {
     throw new Error('La URL de clonado es requerida');
   }
   const recortada = url.trim();
-  if (/^file:/i.test(recortada) || recortada.startsWith('/') || /^[a-zA-Z]:[\\/]/.test(recortada)) {
+  if (
+    !recortada ||
+    recortada.includes('\0') ||
+    recortada.includes('\r') ||
+    recortada.includes('\n')
+  ) {
+    throw new Error('La URL de clonado es requerida');
+  }
+  if (
+    /^file:/i.test(recortada) ||
+    recortada.startsWith('/') ||
+    recortada.startsWith('\\\\') ||
+    /^[a-zA-Z]:[\\/]/.test(recortada)
+  ) {
     throw new Error('Solo se permite clonar por HTTPS o SSH. file:// no está permitido.');
   }
   if (!/^https:\/\//i.test(recortada) && !/^git@/i.test(recortada) && !/^ssh:\/\//i.test(recortada)) {
     throw new Error('La URL debe ser HTTPS o SSH');
   }
   return recortada;
+}
+
+/** Nombre de remoto Git: un token, sin flags (`-u`) ni metacaracteres. */
+export function validarNombreRemoto(nombre: string): string {
+  const recortado = (nombre ?? '').trim();
+  if (!recortado || recortado.length > 100) {
+    throw new Error('Nombre de remoto no válido');
+  }
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(recortado)) {
+    throw new Error('Nombre de remoto no válido');
+  }
+  return recortado;
 }
 
 /** Hash de commit (4–40 hex). Evita inyectar rangos o flags en git. */
@@ -151,17 +180,53 @@ export function validarHashGit(hash: string): string {
   return recortado;
 }
 
-/** Nombre de rama/tag/ref. Rechaza rangos (`..`) y metacaracteres de shell. */
+const CARACTERES_REF_PROHIBIDOS = ['~', '^', ':', '?', '*', '[', '\\', ';', '|', '&', '$', '`', '<', '>'];
+
+/**
+ * Nombre de rama/tag/ref o hash. Alineado con git-check-ref-format:
+ * rechaza flags (`-u`), rangos (`..`), reflog (`@{`) y metacaracteres.
+ * No acepta `HEAD~1` ni `main^{}`: el API trabaja con nombres y hashes.
+ */
 export function validarRefGit(ref: string): string {
   const recortado = (ref ?? '').trim();
   if (!recortado || recortado.length > 255) {
     throw new Error('Ref Git no válida');
   }
-  if (recortado.startsWith('-') || recortado.includes('\0') || recortado.includes('..')) {
+  if (recortado === '@') {
     throw new Error('Ref Git no válida');
   }
-  if (/[\s;|&$`<>]/.test(recortado)) {
+  if (
+    recortado.startsWith('-') ||
+    recortado.startsWith('/') ||
+    recortado.endsWith('.') ||
+    recortado.endsWith('.lock') ||
+    recortado.includes('\0') ||
+    recortado.includes('\r') ||
+    recortado.includes('\n') ||
+    recortado.includes('..') ||
+    recortado.includes('//') ||
+    recortado.includes('@{')
+  ) {
+    throw new Error('Ref Git no válida');
+  }
+  if (/\s/.test(recortado) || CARACTERES_REF_PROHIBIDOS.some((c) => recortado.includes(c))) {
     throw new Error('Ref Git no válida');
   }
   return recortado;
+}
+
+/** Índice de stash@{n}: entero ≥ 0. Evita interpolar texto en el refspec. */
+export function validarIndiceStash(indice: unknown): number {
+  const n = typeof indice === 'number' ? indice : Number(indice);
+  if (!Number.isInteger(n) || n < 0 || n > 10_000) {
+    throw new Error('Índice de stash no válido');
+  }
+  return n;
+}
+
+export function validarTipoReset(tipo: string): 'soft' | 'mixed' | 'hard' {
+  if (tipo !== 'soft' && tipo !== 'mixed' && tipo !== 'hard') {
+    throw new Error('Tipo de reset no válido');
+  }
+  return tipo;
 }

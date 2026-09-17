@@ -2,3 +2,5 @@ packages:
   - 'apps/*'
 allowBuilds:
   esbuild: true
+overrides:
+  simple-git: ^3.36.0

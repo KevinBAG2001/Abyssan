@@ -10,6 +10,8 @@ import {
   encontrarCamino,
   autoresUnicos,
   ramasUnicas,
+  esCommitHead,
+  esRefRemota,
 } from '../lib/grafo-utils';
 import { httpGitApi } from '../infrastructure/api/HttpGitApi';
 import { BarraSuperiorGrafo } from './grafo/BarraSuperiorGrafo';
@@ -44,6 +46,7 @@ interface CommitGraphProps {
   selectedCommit: GitCommit | null;
   currentBranch?: string;
   selectedRepo?: string | null;
+  nombresRemotos?: string[];
   onSelectCommit: (commit: GitCommit) => void;
   onContextMenu: (commit: GitCommit, position: { x: number; y: number }) => void;
 }
@@ -55,6 +58,7 @@ export const CommitGraph: React.FC<CommitGraphProps> = ({
   selectedCommit,
   currentBranch,
   selectedRepo,
+  nombresRemotos = [],
   onSelectCommit,
   onContextMenu,
 }) => {
@@ -256,6 +260,7 @@ export const CommitGraph: React.FC<CommitGraphProps> = ({
             commitB={commitB}
             onSelectCommit={onSelectCommit}
             onContextMenu={onContextMenu}
+            nombresRemotos={nombresRemotos}
             esResaltado={esResaltado}
             scrollTop={scrollTop}
             viewportH={viewportH}
@@ -391,6 +396,7 @@ function GrafoVirtualizado({
   processedGraph,
   selectedCommit,
   commitB,
+  nombresRemotos,
   onSelectCommit,
   onContextMenu,
   esResaltado,
@@ -403,6 +409,7 @@ function GrafoVirtualizado({
   processedGraph: CommitGrafo[];
   selectedCommit: GitCommit | null;
   commitB: string | null;
+  nombresRemotos: string[];
   onSelectCommit: (commit: GitCommit) => void;
   onContextMenu: (commit: GitCommit, position: { x: number; y: number }) => void;
   esResaltado: (hash: string) => boolean | null;
@@ -473,10 +480,11 @@ function GrafoVirtualizado({
           key={commit.hash}
           commit={commit}
           index={start + localIdx}
-          isHead={start + localIdx === 0}
+          isHead={esCommitHead(commit)}
           isSelected={selectedCommit?.hash === commit.hash}
           isCompareB={commitB === commit.hash}
           atenuado={esResaltado(commit.hash) === false}
+          nombresRemotos={nombresRemotos}
           nodeX={GRAPH_OFFSET_X + (commit.column || 0) * COL_WIDTH}
           ROW_HEIGHT={ROW_HEIGHT}
           onSelectCommit={onSelectCommit}
@@ -494,6 +502,7 @@ function FilaCommit({
   isSelected,
   isCompareB,
   atenuado,
+  nombresRemotos,
   nodeX,
   ROW_HEIGHT,
   onSelectCommit,
@@ -505,14 +514,26 @@ function FilaCommit({
   isSelected: boolean;
   isCompareB: boolean;
   atenuado: boolean;
+  nombresRemotos: string[];
   nodeX: number;
   ROW_HEIGHT: number;
   onSelectCommit: (commit: GitCommit) => void;
   onContextMenu: (commit: GitCommit, position: { x: number; y: number }) => void;
 }) {
+  const etiqueta = [
+    isHead ? 'HEAD' : null,
+    commit.shortHash,
+    commit.message,
+    commit.branches?.length ? `ramas ${commit.branches.join(', ')}` : null,
+  ]
+    .filter(Boolean)
+    .join('. ');
+
   return (
     <button
       type="button"
+      aria-label={etiqueta}
+      aria-current={isHead ? 'true' : undefined}
       onClick={() => onSelectCommit(commit)}
       onContextMenu={(e) => {
         e.preventDefault();
@@ -520,9 +541,9 @@ function FilaCommit({
       }}
       style={{ top: `${index * ROW_HEIGHT}px`, height: `${ROW_HEIGHT}px` }}
       className={cn(
-        'absolute left-0 right-0 px-4 flex items-center text-label-md cursor-pointer border-b border-outline-variant/30 text-left w-full transition-opacity',
+        'absolute left-0 right-0 px-4 flex items-center text-label-md cursor-pointer border-b border-outline-variant/30 text-left w-full transition-opacity motion-reduce:transition-none',
         isSelected
-          ? 'bg-primary-container/10 border-l-2 border-l-primary text-on-surface glow-biolume-sm'
+          ? 'bg-primary-container/10 border-l-2 border-l-primary text-on-surface glow-biolume-sm motion-reduce:shadow-none'
           : isCompareB
             ? 'bg-secondary/10 border-l-2 border-l-secondary text-on-surface'
             : isHead
@@ -535,7 +556,7 @@ function FilaCommit({
         <div
           className={cn(
             'absolute w-3.5 h-3.5 rounded-full border-2 border-surface-container-lowest transform -translate-x-1/2 -translate-y-1/2',
-            isHead && 'glow-biolume-sm ring-2 ring-ion/30',
+            isHead && 'glow-biolume-sm ring-2 ring-ion/30 motion-reduce:shadow-none motion-reduce:ring-0',
             isCompareB && 'ring-2 ring-secondary/60',
           )}
           style={{
@@ -546,8 +567,9 @@ function FilaCommit({
         />
       </div>
       <div className="flex-1 flex items-center gap-1.5 truncate pr-4 min-w-0">
+        {isHead && <ChipRama nombre="HEAD" tipo="head" />}
         {commit.branches?.map((b) => (
-          <ChipRama key={b} nombre={b} tipo="rama" />
+          <ChipRama key={b} nombre={b} tipo={esRefRemota(b, nombresRemotos) ? 'remota' : 'rama'} />
         ))}
         {commit.tags?.map((t) => (
           <ChipRama key={t} nombre={t} tipo="tag" />

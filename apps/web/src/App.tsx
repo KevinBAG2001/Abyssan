@@ -14,6 +14,7 @@ import type { AccionPaleta } from './components/PaletaComandos';
 import { PanelExplicacion } from './components/PanelExplicacion';
 import { ui } from './lib/diseno';
 import { cn } from './lib/utils';
+import { esCommitHead } from './lib/grafo-utils';
 
 export const App: React.FC = () => {
   const git = useGitRepository();
@@ -63,8 +64,9 @@ export const App: React.FC = () => {
     git.loading ||
     mut.mutando ||
     git.operaciones.some((o) => o.estado === 'en_cola' || o.estado === 'corriendo');
+  const commitHead = git.commits.find((c) => esCommitHead(c));
   const headShort =
-    git.commits[0]?.shortHash ||
+    commitHead?.shortHash ||
     git.branches.find((b) => b.current)?.commit?.slice(0, 7) ||
     undefined;
 
@@ -126,6 +128,7 @@ export const App: React.FC = () => {
         headDesvinculado={headDesvinculado}
         ramaActual={ramaActual}
         ramaInspeccionada={shell.ramaInspeccionada}
+        nombresRemotos={git.remotes.map((r) => r.name)}
         onCheckout={mut.handleCheckout}
         onInspectarRama={shell.inspectarRama}
         onCreateBranch={(name) => mut.handleCreateBranch(name)}
