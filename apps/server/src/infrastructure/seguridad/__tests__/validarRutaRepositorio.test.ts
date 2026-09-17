@@ -9,9 +9,12 @@ import {
   esRutaArchivoAbsoluta,
   validarDestinoNuevo,
   validarUrlClone,
+  validarNombreRemoto,
   canonizarRuta,
   validarHashGit,
   validarRefGit,
+  validarIndiceStash,
+  validarTipoReset,
 } from '../validarRutaRepositorio.js';
 
 describe('validarRutaRepositorio', () => {
@@ -109,6 +112,23 @@ describe('validarRutaRepositorio', () => {
     expect(validarUrlClone('https://github.com/org/repo.git')).toContain('https://');
   });
 
+  it('validarUrlClone rechaza git://, ext, UNC y rutas relativas', () => {
+    expect(() => validarUrlClone('git://github.com/org/repo.git')).toThrow('HTTPS o SSH');
+    expect(() => validarUrlClone('ext::sh -c evil')).toThrow('HTTPS o SSH');
+    expect(() => validarUrlClone('\\\\servidor\\share\\repo.git')).toThrow();
+    expect(() => validarUrlClone('../otro-repo')).toThrow('HTTPS o SSH');
+    expect(validarUrlClone('ssh://git@github.com/org/repo.git')).toContain('ssh://');
+    expect(validarUrlClone('git@github.com:org/repo.git')).toContain('git@');
+  });
+
+  it('validarNombreRemoto acepta origin y rechaza flags', () => {
+    expect(validarNombreRemoto('origin')).toBe('origin');
+    expect(validarNombreRemoto('upstream_1')).toBe('upstream_1');
+    expect(() => validarNombreRemoto('-uorigin')).toThrow('Nombre de remoto');
+    expect(() => validarNombreRemoto('origin/main')).toThrow('Nombre de remoto');
+    expect(() => validarNombreRemoto('foo;bar')).toThrow('Nombre de remoto');
+  });
+
   it('validarHashGit acepta hex y rechaza rangos', () => {
     expect(validarHashGit('abc1234')).toBe('abc1234');
     expect(() => validarHashGit('main...feature')).toThrow();
@@ -117,7 +137,28 @@ describe('validarRutaRepositorio', () => {
 
   it('validarRefGit acepta ramas con barra y rechaza ..', () => {
     expect(validarRefGit('feature/auth')).toBe('feature/auth');
+    expect(validarRefGit('HEAD')).toBe('HEAD');
+    expect(validarRefGit('origin/main')).toBe('origin/main');
+    expect(validarRefGit('v1.0.0')).toBe('v1.0.0');
     expect(() => validarRefGit('main...otra')).toThrow();
     expect(() => validarRefGit('-uorigin')).toThrow();
+  });
+
+  it('validarRefGit rechaza reflog, padres y globs', () => {
+    expect(() => validarRefGit('HEAD~1')).toThrow('Ref Git');
+    expect(() => validarRefGit('main^{}')).toThrow('Ref Git');
+    expect(() => validarRefGit('HEAD@{1}')).toThrow('Ref Git');
+    expect(() => validarRefGit('--output=/tmp/x')).toThrow('Ref Git');
+    expect(() => validarRefGit('foo:bar')).toThrow('Ref Git');
+    expect(() => validarRefGit('feature/*')).toThrow('Ref Git');
+  });
+
+  it('validarIndiceStash y validarTipoReset rechazan valores extraños', () => {
+    expect(validarIndiceStash(0)).toBe(0);
+    expect(validarIndiceStash(3)).toBe(3);
+    expect(() => validarIndiceStash(-1)).toThrow('Índice de stash');
+    expect(() => validarIndiceStash('0};rm')).toThrow('Índice de stash');
+    expect(validarTipoReset('hard')).toBe('hard');
+    expect(() => validarTipoReset('--hard')).toThrow('Tipo de reset');
   });
 });

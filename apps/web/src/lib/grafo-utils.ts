@@ -229,3 +229,16 @@ export function ramasUnicas(commits: GitCommit[]): string[] {
   }
   return [...set].sort((a, b) => a.localeCompare(b));
 }
+
+/** True si `%D` del commit incluye HEAD (rama actual o detached). */
+export function esCommitHead(commit: GitCommit): boolean {
+  return (commit.refs ?? []).some((ref) => ref === 'HEAD' || ref.startsWith('HEAD ->'));
+}
+
+/** True si la etiqueta es un tracking branch de un remoto conocido. */
+export function esRefRemota(nombre: string, nombresRemotos: string[]): boolean {
+  if (!nombre) return false;
+  const normalizado = nombre.replace(/^remotes\//, '');
+  if (nombre.startsWith('remotes/')) return true;
+  return nombresRemotos.some((remoto) => normalizado === remoto || normalizado.startsWith(`${remoto}/`));
+}

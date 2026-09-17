@@ -13,7 +13,7 @@ Si `BIND_HOST` no es loopback y falta el Bearer, la SPA recibe **401**. Define `
 
 ## El WebSocket no conecta
 
-Mismo host/puerto que HTTP. `VITE_WS_URL` default `ws://localhost:3001`. Con token LAN, el cliente añade `?token=`. Cierre `4401` = token ausente o inválido. La UI reintenta cada 3 s (`websocket.ts`).
+Mismo host/puerto que HTTP. `VITE_WS_URL` default `ws://localhost:3001`. Con token LAN, el cliente envía `{ type: 'AUTH', token }` como primer mensaje (no uses `?token=`). Cierre `4401` = token ausente, inválido o `WATCH_REPO` antes de autenticar. Cierre `4403` = Origin no permitido. La UI reintenta cada 3 s (`websocket.ts`).
 
 ## El healthcheck falla
 
@@ -161,7 +161,7 @@ Solo con bind no loopback y cliente no-localhost. Espera un minuto o trabaja con
 
 ## Preview «no soportada»
 
-`POST /api/git/preview` con `rebase` o `force-push` está en la lista del controlador pero el use case no lo implementa. Usa merge/reset/cherry-pick/revert.
+`POST /api/git/preview` solo acepta `merge`, `reset`, `cherry-pick` y `revert`. `rebase` o `force-push` responden **400**. El merge/reset/cherry-pick/revert de la UI pide ese preview antes de confirmar.
 
 ## Siguiente
 

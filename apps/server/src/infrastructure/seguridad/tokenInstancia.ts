@@ -1,4 +1,3 @@
-import type { IncomingMessage } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
 
 const HOSTS_LOOPBACK = new Set(['127.0.0.1', '::1', 'localhost']);
@@ -30,16 +29,6 @@ export function extraerTokenBearer(header?: string): string | undefined {
   return valor;
 }
 
-export function extraerTokenDesdeUrl(urlCruda?: string): string | undefined {
-  if (!urlCruda) return undefined;
-  try {
-    const url = new URL(urlCruda, 'http://abyssan.local');
-    return url.searchParams.get('token') || undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 function tokensIguales(recibido: string, esperado: string): boolean {
   const a = Buffer.from(recibido);
   const b = Buffer.from(esperado);
@@ -52,9 +41,4 @@ export function tokenEsValido(token?: string | null): boolean {
   const esperado = process.env.ABYSSAN_API_TOKEN?.trim();
   if (!esperado || !token) return false;
   return tokensIguales(token, esperado);
-}
-
-export function conexionWsAutorizada(req: IncomingMessage): boolean {
-  if (!tokenLanEsObligatorio()) return true;
-  return tokenEsValido(extraerTokenDesdeUrl(req.url));
 }

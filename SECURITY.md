@@ -120,7 +120,7 @@ Ver [docs/wiki/Despliegue-con-Docker.md](docs/wiki/Despliegue-con-Docker.md). Co
 - Sin `Origin`, un cliente en la misma máquina (curl, malware con el mismo usuario OS) puede llamar al API. Eso está fuera de alcance si el atacante ya es el usuario del proceso.
 - El token de Vite (`VITE_ABYSSAN_API_TOKEN`) viaja en el bundle de la SPA.
 - El journal y los snapshots viven en disco local; no son un backup cifrado de grado empresarial.
-- Preview de rebase y force-push no está implementado en el caso de uso (el controlador lista esos nombres).
+- Preview de rebase y force-push está **fuera del contrato** (`POST /api/git/preview` responde 400). Merge, reset, cherry-pick y revert sí tienen preview no mutante.
 - Compose sigue siendo desarrollo, no Fase 6 (producción multi-usuario).
 
 Abyssan **no** es “completamente seguro”.
@@ -131,4 +131,4 @@ Se aceptan reportes en **español** o **inglés**.
 
 ## Documentación técnica
 
-El modelo de amenaza y los controles de implementación están en [documents/wiki/Seguridad.md](documents/wiki/Seguridad.md).
+El modelo de amenaza y los controles de implementación están en [docs/wiki/Seguridad.md](docs/wiki/Seguridad.md).

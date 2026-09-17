@@ -6,9 +6,13 @@ import {
   validarRutaArchivoEnRepositorio,
   validarDestinoNuevo,
   validarUrlClone,
+  validarNombreRemoto,
   validarHashGit,
   validarRefGit,
+  validarIndiceStash,
+  validarTipoReset,
 } from '../../../infrastructure/seguridad/validarRutaRepositorio.js';
+import type { TipoOperacionPreview } from '../../../domain/entities/GitEntities.js';
 import { codigoHttpDeError, responderExito, responderFallo } from '../respuestaApi.js';
 import { mensajeErrorGit } from '../../../application/git/mensajeErrorGit.js';
 import { exigirConfirmacion } from '../../../infrastructure/seguridad/confirmacionDestructiva.js';
@@ -82,7 +86,11 @@ export class GitController {
       if (!repoPath || !base || !target) {
         return this.falta(res, 'Parámetros path, base y target son requeridos');
       }
-      const comparison = await this.gitUseCases.compareBranches(this.validarRepo(repoPath), base, target);
+      const comparison = await this.gitUseCases.compareBranches(
+        this.validarRepo(repoPath),
+        validarRefGit(base),
+        validarRefGit(target)
+      );
       responderExito(res, comparison, 'Comparación de ramas');
     } catch (error: unknown) {
       this.responderError(res, error);
@@ -95,8 +103,9 @@ export class GitController {
       if (!repoPath || !sourceBranch) {
         return this.falta(res, 'repoPath y sourceBranch son requeridos');
       }
-      await this.gitUseCases.merge(this.validarRepo(repoPath), sourceBranch, noFf);
-      responderExito(res, {}, `Merge de ${sourceBranch} completado`);
+      const origen = validarRefGit(sourceBranch);
+      await this.gitUseCases.merge(this.validarRepo(repoPath), origen, noFf);
+      responderExito(res, {}, `Merge de ${origen} completado`);
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -193,8 +202,9 @@ export class GitController {
     try {
       const { repoPath, target } = req.body;
       if (!repoPath || !target) return this.falta(res, 'repoPath y target son requeridos');
-      await this.gitUseCases.checkout(this.validarRepo(repoPath), target);
-      responderExito(res, {}, `Cambiado a ${target}`);
+      const destino = validarRefGit(target);
+      await this.gitUseCases.checkout(this.validarRepo(repoPath), destino);
+      responderExito(res, {}, `Cambiado a ${destino}`);
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -204,8 +214,10 @@ export class GitController {
     try {
       const { repoPath, branchName, startPoint } = req.body;
       if (!repoPath || !branchName) return this.falta(res, 'repoPath y branchName son requeridos');
-      await this.gitUseCases.createBranch(this.validarRepo(repoPath), branchName, startPoint);
-      responderExito(res, {}, `Rama ${branchName} creada con éxito`);
+      const rama = validarRefGit(branchName);
+      const origen = startPoint ? validarRefGit(startPoint) : undefined;
+      await this.gitUseCases.createBranch(this.validarRepo(repoPath), rama, origen);
+      responderExito(res, {}, `Rama ${rama} creada con éxito`);
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -251,8 +263,10 @@ export class GitController {
       if (!repoPath || !name || !url) {
         return this.falta(res, 'repoPath, name y url son requeridos');
       }
-      await this.gitUseCases.addRemote(this.validarRepo(repoPath), name, url);
-      responderExito(res, {}, `Remoto ${name} añadido`);
+      const nombre = validarNombreRemoto(name);
+      const urlValida = validarUrlClone(url);
+      await this.gitUseCases.addRemote(this.validarRepo(repoPath), nombre, urlValida);
+      responderExito(res, {}, `Remoto ${nombre} añadido`);
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -264,8 +278,9 @@ export class GitController {
       if (!repoPath || !name) {
         return this.falta(res, 'repoPath y name son requeridos');
       }
-      await this.gitUseCases.removeRemote(this.validarRepo(repoPath), name);
-      responderExito(res, {}, `Remoto ${name} eliminado`);
+      const nombre = validarNombreRemoto(name);
+      await this.gitUseCases.removeRemote(this.validarRepo(repoPath), nombre);
+      responderExito(res, {}, `Remoto ${nombre} eliminado`);
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -308,7 +323,7 @@ export class GitController {
     try {
       const { repoPath, index } = req.body;
       if (!repoPath) return this.falta(res, 'repoPath es requerido');
-      await this.gitUseCases.popStash(this.validarRepo(repoPath), index ?? 0);
+      await this.gitUseCases.popStash(this.validarRepo(repoPath), validarIndiceStash(index ?? 0));
       responderExito(res, {}, 'Stash aplicado y removido');
     } catch (error: unknown) {
       this.responderError(res, error);
@@ -319,7 +334,7 @@ export class GitController {
     try {
       const { repoPath, index } = req.body;
       if (!repoPath) return this.falta(res, 'repoPath es requerido');
-      await this.gitUseCases.dropStash(this.validarRepo(repoPath), index ?? 0);
+      await this.gitUseCases.dropStash(this.validarRepo(repoPath), validarIndiceStash(index ?? 0));
       responderExito(res, {}, 'Stash eliminado');
     } catch (error: unknown) {
       this.responderError(res, error);
@@ -341,8 +356,10 @@ export class GitController {
     try {
       const { repoPath, tagName, targetHash } = req.body;
       if (!repoPath || !tagName) return this.falta(res, 'repoPath y tagName son requeridos');
-      await this.gitUseCases.createTag(this.validarRepo(repoPath), tagName, targetHash);
-      responderExito(res, {}, `Tag "${tagName}" creado`);
+      const nombre = validarRefGit(tagName);
+      const hash = targetHash ? validarHashGit(targetHash) : undefined;
+      await this.gitUseCases.createTag(this.validarRepo(repoPath), nombre, hash);
+      responderExito(res, {}, `Tag "${nombre}" creado`);
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -352,8 +369,9 @@ export class GitController {
     try {
       const { repoPath, hash } = req.body;
       if (!repoPath || !hash) return this.falta(res, 'repoPath y hash son requeridos');
-      await this.gitUseCases.cherryPick(this.validarRepo(repoPath), hash);
-      responderExito(res, {}, `Cherry-pick de ${hash.substring(0, 7)} aplicado`);
+      const commit = validarHashGit(hash);
+      await this.gitUseCases.cherryPick(this.validarRepo(repoPath), commit);
+      responderExito(res, {}, `Cherry-pick de ${commit.substring(0, 7)} aplicado`);
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -363,8 +381,9 @@ export class GitController {
     try {
       const { repoPath, hash } = req.body;
       if (!repoPath || !hash) return this.falta(res, 'repoPath y hash son requeridos');
-      await this.gitUseCases.revert(this.validarRepo(repoPath), hash);
-      responderExito(res, {}, `Commit ${hash.substring(0, 7)} revertido`);
+      const commit = validarHashGit(hash);
+      await this.gitUseCases.revert(this.validarRepo(repoPath), commit);
+      responderExito(res, {}, `Commit ${commit.substring(0, 7)} revertido`);
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -374,9 +393,11 @@ export class GitController {
     try {
       const { repoPath, type, target, confirmado } = req.body;
       if (!repoPath || !type || !target) return this.falta(res, 'repoPath, type y target son requeridos');
-      if (type === 'hard') exigirConfirmacion(confirmado);
-      await this.gitUseCases.reset(this.validarRepo(repoPath), type, target);
-      responderExito(res, {}, `Reset (${type}) a ${target} ejecutado`);
+      const tipo = validarTipoReset(type);
+      const destino = validarRefGit(target);
+      if (tipo === 'hard') exigirConfirmacion(confirmado);
+      await this.gitUseCases.reset(this.validarRepo(repoPath), tipo, destino);
+      responderExito(res, {}, `Reset (${tipo}) a ${destino} ejecutado`);
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -486,9 +507,10 @@ export class GitController {
     try {
       const { repoPath, branchName, confirmado } = req.body;
       if (!repoPath || !branchName) return this.falta(res, 'repoPath y branchName son requeridos');
+      const rama = validarRefGit(branchName);
       exigirConfirmacion(confirmado);
-      await this.gitUseCases.deleteLocalBranch(this.validarRepo(repoPath), branchName);
-      responderExito(res, {}, `Rama ${branchName} eliminada`);
+      await this.gitUseCases.deleteLocalBranch(this.validarRepo(repoPath), rama);
+      responderExito(res, {}, `Rama ${rama} eliminada`);
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -500,8 +522,10 @@ export class GitController {
       if (!repoPath || !nombreActual || !nombreNuevo) {
         return this.falta(res, 'repoPath, nombreActual y nombreNuevo son requeridos');
       }
-      await this.gitUseCases.renameLocalBranch(this.validarRepo(repoPath), nombreActual, nombreNuevo);
-      responderExito(res, {}, `Rama renombrada a ${nombreNuevo}`);
+      const actual = validarRefGit(nombreActual);
+      const nuevo = validarRefGit(nombreNuevo);
+      await this.gitUseCases.renameLocalBranch(this.validarRepo(repoPath), actual, nuevo);
+      responderExito(res, {}, `Rama renombrada a ${nuevo}`);
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -628,14 +652,22 @@ export class GitController {
     try {
       const { repoPath, operacion, sourceBranch, type, target, hash } = req.body;
       if (!repoPath || !operacion) return this.falta(res, 'repoPath y operacion son requeridos');
-      const operacionesValidas = ['merge', 'rebase', 'reset', 'cherry-pick', 'revert', 'force-push'];
+      const operacionesValidas = ['merge', 'reset', 'cherry-pick', 'revert'];
       if (!operacionesValidas.includes(operacion)) {
-        return this.falta(res, `Operación inválida. Válidas: ${operacionesValidas.join(', ')}`);
+        return this.falta(
+          res,
+          `Operación de preview no soportada: ${operacion}. Válidas: ${operacionesValidas.join(', ')}`
+        );
       }
       const preview = await this.gitUseCases.previewOperacion(
         this.validarRepo(repoPath),
-        operacion,
-        { sourceBranch, type, target, hash }
+        operacion as TipoOperacionPreview,
+        {
+          sourceBranch: sourceBranch ? validarRefGit(sourceBranch) : undefined,
+          type: type ? validarTipoReset(type) : undefined,
+          target: target ? validarRefGit(target) : undefined,
+          hash: hash ? validarHashGit(hash) : undefined,
+        }
       );
       responderExito(res, preview, `Preview de ${operacion}`);
     } catch (error: unknown) {

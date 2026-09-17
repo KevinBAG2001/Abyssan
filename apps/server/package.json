@@ -12,7 +12,7 @@
     "chokidar": "^4.0.3",
     "cors": "^2.8.5",
     "express": "^4.21.2",
-    "simple-git": "^3.27.0",
+    "simple-git": "^3.36.0",
     "ws": "^8.18.0"
   },
   "devDependencies": {

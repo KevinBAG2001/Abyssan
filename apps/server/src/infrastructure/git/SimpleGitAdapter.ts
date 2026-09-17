@@ -1092,6 +1092,14 @@ export class SimpleGitAdapter implements IGitRepository {
     }).filter((a) => a.path);
   }
 
+  async obtenerHashHead(repoPath: string): Promise<string> {
+    try {
+      return (await this.getGitInstance(repoPath).raw(['rev-parse', 'HEAD'])).trim();
+    } catch {
+      return '';
+    }
+  }
+
   async mergeBase(repoPath: string, refA: string, refB: string): Promise<string | null> {
     const git = simpleGit(repoPath);
     try {
@@ -1130,8 +1138,6 @@ export class SimpleGitAdapter implements IGitRepository {
     try {
       const result = await git.raw(['merge-tree', '--write-tree', '--no-messages', ramaActual, sourceBranch]);
       const lineas = result.trim().split('\n');
-      const treeHash = lineas[0];
-      // Si hay archivos conflictivos, se listan después del hash
       for (let i = 1; i < lineas.length; i++) {
         const l = lineas[i].trim();
         if (l) conflictos.push(l);
