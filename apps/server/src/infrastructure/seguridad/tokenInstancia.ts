@@ -42,3 +42,12 @@ export function tokenEsValido(token?: string | null): boolean {
   if (!esperado || !token) return false;
   return tokensIguales(token, esperado);
 }
+
+/** Instancia permanente o id de sesión de corta duración. */
+export function credencialWsValida(
+  token: string | null | undefined,
+  sesionValida: (id?: string | null) => boolean
+): boolean {
+  if (!tokenLanEsObligatorio()) return true;
+  return tokenEsValido(token) || sesionValida(token);
+}

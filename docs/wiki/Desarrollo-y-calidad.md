@@ -17,10 +17,14 @@ No introduzcas `package-lock.json` ni `yarn.lock`.
 | `pnpm dev` | Ambos (Unix `&`) |
 | `pnpm build` | `tsc` server + `tsc && vite build` web |
 | `pnpm lint` | oxlint |
+| `pnpm typecheck` | `tsc --noEmit` server + web |
 | `pnpm test` | `vitest run` |
+| `pnpm test:seguridad` | perímetro de refs, remotes, WS y validadores |
 | `pnpm test:watch` | vitest |
 
-CI (`.github/workflows/ci.yml`): lint → test → build en Ubuntu, Node 22, pnpm 11.25.0, ramas `main`, `qa`, `dev` y pull requests.
+CI (`.github/workflows/ci.yml`): typecheck → lint → test → test:seguridad → `pnpm audit --prod --audit-level high` → build. En PR: build de imágenes Docker + Trivy (fs, CRITICAL/HIGH). Dependabot abre PRs; **no** se auto-aceptan: cada uno debe pasar CI.
+
+`pnpm audit --prod` (sin umbral) hoy reporta 2 *moderate* en `qs` transitivo de Express 4. No se sube Express en este ciclo. El gate de CI usa `--audit-level high` (flag oficial de pnpm) para no bloquear por avisos moderate no explotados en el modelo JSON de Abyssan.
 
 ## Arquitectura
 
@@ -53,8 +57,10 @@ Las pruebas **no** deben usar remotos Git reales ni operar fuera de un `PROJECTS
 Recomendación alineada con CI (no hay hook de rama obligatorio en el código):
 
 ```bash
+pnpm typecheck
 pnpm lint
 pnpm test
+pnpm test:seguridad
 pnpm build
 ```
 

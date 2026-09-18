@@ -1,0 +1,61 @@
+FROM node:22-alpine AS build
+
+RUN apk add --no-cache git
+
+WORKDIR /app
+
+ENV CI=true
+ENV COREPACK_DEFAULT_TO_LATEST=0
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+ENV COREPACK_HOME=/usr/local/share/corepack
+
+COPY .npmrc package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY apps/server/package.json ./apps/server/
+
+RUN mkdir -p "$COREPACK_HOME" \
+  && corepack enable \
+  && corepack prepare pnpm@11.25.0 --activate \
+  && chmod -R a+rX "$COREPACK_HOME"
+
+RUN pnpm install --filter @abyssan/server... --frozen-lockfile
+
+COPY apps/server ./apps/server
+
+RUN pnpm --filter @abyssan/server build
+
+FROM node:22-alpine
+
+RUN apk add --no-cache git \
+  && addgroup -S abyssan && adduser -S -G abyssan abyssan
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV CI=true
+ENV COREPACK_DEFAULT_TO_LATEST=0
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+ENV COREPACK_HOME=/usr/local/share/corepack
+
+COPY .npmrc package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY apps/server/package.json ./apps/server/
+
+RUN mkdir -p "$COREPACK_HOME" \
+  && corepack enable \
+  && corepack prepare pnpm@11.25.0 --activate \
+  && chmod -R a+rX "$COREPACK_HOME" \
+  && pnpm install --filter @abyssan/server... --frozen-lockfile --prod
+
+COPY --from=build /app/apps/server/dist ./apps/server/dist
+COPY apps/server/docker/entrypoint.prod.sh /usr/local/bin/abyssan-entrypoint.prod.sh
+
+RUN sed -i 's/\r$//' /usr/local/bin/abyssan-entrypoint.prod.sh \
+  && chmod 755 /usr/local/bin/abyssan-entrypoint.prod.sh \
+  && chown -R abyssan:abyssan /app
+
+USER abyssan
+
+WORKDIR /app/apps/server
+
+EXPOSE 3001
+
+ENTRYPOINT ["/usr/local/bin/abyssan-entrypoint.prod.sh"]

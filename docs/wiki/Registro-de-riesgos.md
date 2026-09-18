@@ -1,0 +1,49 @@
+# Registro de riesgos de seguridad
+
+Fuente única de IDs. Un ID no puede estar a la vez “mitigado” y “abierto”.
+
+Estados:
+
+- **Mitigado** — hay control y evidencia (código + test).
+- **Parcialmente mitigado** — el vector original se redujo, queda residuo documentado.
+- **Abierto** — sin control suficiente.
+- **Aceptado** — riesgo residual consciente, fuera de este ciclo o del modelo local.
+
+## P0
+
+Ninguno abierto en este ciclo.
+
+| ID | Estado | Evidencia |
+|----|--------|-----------|
+| PREV-01 | Mitigado | Preview no mutante + `previewPerimetro.test.ts` |
+| GRAPH-01 | Mitigado | HEAD real del grafo + tests de `grafo-utils` |
+
+## P1
+
+| ID | Estado | Qué se mitigó | Qué sigue abierto |
+|----|--------|---------------|-------------------|
+| SEC-REF-01 | Mitigado | `validarRefGit` / `validarHashGit` / `validarRefspecFetch` en use cases y controller | Contrato: no se aceptan `HEAD~1`, `HEAD^`, reflog |
+| SEC-REM-01 | Mitigado | `RemotePolicy` revalida fetch/pull/push de remotos persistidos; bloquea `file://` | Un remoto peligroso puede existir en `.git/config`; Abyssan lo rechaza al usarlo, no lo borra solo |
+| SEC-WS-01 | Parcialmente mitigado | `?token=` **no autentica**. Handshake `AUTH` o cookie de sesión. | El token permanente sigue existiendo en el servidor. Si alguien lo pega en una URL a mano, no se usa, pero el secreto de instancia sigue siendo de larga duración |
+| SEC-WS-02 | Mitigado | Un watcher por repo, unwatch al último cliente, `UNWATCH` | — |
+| SEC-WS-03 | Mitigado | `emitirARepo`; progreso no es broadcast global | — |
+| SEC-VITE-01 | Mitigado | La SPA ya no lee `VITE_ABYSSAN_API_TOKEN`. Sesión HttpOnly + id en memoria | El operador sigue pegando el token permanente una vez en LAN/Docker |
+| SEC-DKR-01 | Parcialmente mitigado | Prod: no-root, `safe.directory` explícito, sin wildcard. Dev: fallback root **solo** si el volumen Windows no es escribible | El compose de desarrollo puede seguir corriendo Git como root dentro del contenedor |
+| CI-01 | Mitigado | typecheck, lint, test, test:seguridad, `pnpm audit --prod`, build; Docker+Trivy en PR | Dependabot no se auto-mergea; cada PR debe pasar CI |
+| TEST-01 | Mitigado | Tests reales de WS (auth, Origin, cleanup, broadcast, reconnect) | — |
+| OPS-01 | Parcialmente mitigado | Contrato + tests de `RepositoryOperationLock`. La cola in-process ya serializa por repo | El motor async/cancelación no está implementado |
+| OPS-02 | Parcialmente mitigado | Contrato de recuperación documentado | No hay RecoveryManager |
+| REC-01 | Parcialmente mitigado | Journal + snapshots en discard/reset hard | Pull/push/merge no tienen undo seguro |
+| DEP-QS-01 | Abierto (residual) | — | `qs` moderate transitivo de Express 4 (`pnpm audit --prod`). No se confirma explotable en el API JSON de Abyssan. Gate CI: `--audit-level high` |
+
+## Contradicción resuelta: SEC-WS-01
+
+El ciclo anterior marcó SEC-WS-01 como mitigado (porque el handshake dejó de leer la query) y a la vez como abierto (porque `?token=` todavía podía aparecer en clientes o docs).
+
+Hecho verificable ahora:
+
+1. `adjuntarWebSocket` no lee `req.url` ni `?token=`.
+2. En LAN, `?token=secreto` + `WATCH_REPO` cierra `4401` (`adjuntarWebSocket.test.ts`).
+3. El cliente `websocket.ts` abre `ws://…` sin query.
+
+Por eso el ID queda **parcialmente mitigado**: el vector de filtrado en logs/proxies por query string está cerrado; el token permanente de instancia no desapareció (se usa para abrir una sesión de corta duración).

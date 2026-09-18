@@ -82,6 +82,26 @@ describe('Perímetro addRemote (SEC-REM-01)', { timeout: 20_000 }, () => {
     }
   });
 
+  it('push y pull rechazan un remoto file:// ya persistido', async () => {
+    const { repo, git } = await crearRepo(raiz, 'push-file');
+    const fuera = fs.mkdtempSync(path.join(os.tmpdir(), 'abyssan-fuera-push-'));
+    try {
+      await git.addRemote('escape', `file://${fuera.replace(/\\/g, '/')}`);
+      await expect(casos.push(repo)).rejects.toThrow('file://');
+      await expect(casos.pull(repo)).rejects.toThrow('file://');
+    } finally {
+      fs.rmSync(fuera, { recursive: true, force: true });
+    }
+  });
+
+  it('getRemotes oculta credenciales embebidas al mostrar', async () => {
+    const { repo, git } = await crearRepo(raiz, 'remoto-creds');
+    await git.addRemote('origin', 'https://github.com/abyssan/inexistente.git');
+    const remotos = await casos.getRemotes(repo);
+    expect(remotos[0]?.fetchUrl).not.toMatch(/:[^/]+@/);
+    expect(remotos[0]?.fetchUrl).toContain('github.com');
+  });
+
   it('rechaza nombres de remoto que parecen flags de git', async () => {
     const { repo, git } = await crearRepo(raiz, 'remoto-flag');
     await expect(

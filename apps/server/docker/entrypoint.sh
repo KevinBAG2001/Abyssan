@@ -5,7 +5,8 @@
 # (sigue acotado a PROJECTS_ROOT y al token LAN). No se hace chown del host.
 set -e
 
-git config --system --add safe.directory '*' >/dev/null 2>&1 || true
+raiz_git="${PROJECTS_ROOT:-/workspace/proyectos}"
+git config --system --add safe.directory "$raiz_git" >/dev/null 2>&1 || true
 
 correr_como_node() {
   if command -v su-exec >/dev/null 2>&1; then

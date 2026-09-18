@@ -14,12 +14,25 @@ export class HubWebSocket {
   registrar(ws: WebSocket): void {
     if (this.clientes.has(ws)) return;
     this.clientes.set(ws, {});
-    ws.on('close', () => this.clientes.delete(ws));
+    ws.on('close', () => this.desregistrar(ws));
+  }
+
+  desregistrar(ws: WebSocket): void {
+    this.clientes.delete(ws);
+  }
+
+  cantidadClientes(): number {
+    return this.clientes.size;
   }
 
   asociarRepo(ws: WebSocket, repo: string): void {
     const sesion = this.clientes.get(ws);
     if (sesion) sesion.repo = repo;
+  }
+
+  desasociarRepo(ws: WebSocket): void {
+    const sesion = this.clientes.get(ws);
+    if (sesion) sesion.repo = undefined;
   }
 
   emitir(mensaje: Record<string, unknown>): void {

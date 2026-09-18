@@ -104,7 +104,7 @@ No hay hall of fame formal.
 ## Buenas prácticas para quien opera Abyssan
 
 - Deja `BIND_HOST=127.0.0.1` salvo que entiendas el modelo LAN.
-- Si no es loopback: define un `ABYSSAN_API_TOKEN` fuerte y el mismo valor en `VITE_ABYSSAN_API_TOKEN`.
+- Si no es loopback: define un `ABYSSAN_API_TOKEN` fuerte. La SPA **no** embebe ese valor: abre una sesión (`POST /api/sesion`) y guarda una cookie HttpOnly.
 - `PROJECTS_ROOT` = solo las carpetas de repos necesarias.
 - No subas `.env`, `~/.abyssan/clave` ni `credenciales.enc`.
 - En Docker: define `ABYSSAN_API_TOKEN` en `.env` (Compose **no** trae un default). Publica puertos solo en `127.0.0.1`. Acota `ABYSSAN_PROJECTS_HOST`.
@@ -118,7 +118,7 @@ Ver [docs/wiki/Despliegue-con-Docker.md](docs/wiki/Despliegue-con-Docker.md). Co
 
 - Diseñado para **uso local** (un operador, localhost). No hay cuentas de usuario de Abyssan.
 - Sin `Origin`, un cliente en la misma máquina (curl, malware con el mismo usuario OS) puede llamar al API. Eso está fuera de alcance si el atacante ya es el usuario del proceso.
-- El token de Vite (`VITE_ABYSSAN_API_TOKEN`) viaja en el bundle de la SPA.
+- El token permanente no viaja en el bundle. Queda en el entorno del servidor; la SPA pide una sesión de 12 h.
 - El journal y los snapshots viven en disco local; no son un backup cifrado de grado empresarial.
 - Preview de rebase y force-push está **fuera del contrato** (`POST /api/git/preview` responde 400). Merge, reset, cherry-pick y revert sí tienen preview no mutante.
 - Compose sigue siendo desarrollo, no Fase 6 (producción multi-usuario).

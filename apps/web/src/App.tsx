@@ -10,6 +10,8 @@ import { useGitRepository } from './application/hooks/useGitRepository';
 import { useMutacionesGit } from './application/hooks/useMutacionesGit';
 import { useEfectosAppShell } from './application/hooks/useEfectosAppShell';
 import { useEstadoAppShell } from './application/hooks/useEstadoAppShell';
+import { useSesionInstancia } from './application/hooks/useSesionInstancia';
+import { ModalSesionInstancia } from './components/ModalSesionInstancia';
 import type { AccionPaleta } from './components/PaletaComandos';
 import { PanelExplicacion } from './components/PanelExplicacion';
 import { ui } from './lib/diseno';
@@ -17,7 +19,8 @@ import { cn } from './lib/utils';
 import { esCommitHead } from './lib/grafo-utils';
 
 export const App: React.FC = () => {
-  const git = useGitRepository();
+  const sesion = useSesionInstancia();
+  const git = useGitRepository(sesion.lista);
   const mut = useMutacionesGit({
     selectedRepo: git.selectedRepo,
     status: git.status,
@@ -71,11 +74,21 @@ export const App: React.FC = () => {
     undefined;
 
   return (
-    <div className={cn(ui.app, 'h-screen w-screen')}>
+    <div className={cn(ui.app, 'h-screen w-screen')} aria-busy={ocupado || sesion.cargando}>
       <OverlayContextMenu contextMenu={shell.contextMenu} onCerrar={() => shell.setContextMenu(null)} />
 
       {git.toast && (
         <ToastNotificacion mensaje={git.toast.message} tipo={git.toast.type} />
+      )}
+
+      {sesion.requiereToken && !sesion.lista && (
+        <ModalSesionInstancia error={sesion.error} cargando={sesion.cargando} onAbrir={sesion.abrir} />
+      )}
+
+      {sesion.cargando && !sesion.lista && !sesion.requiereToken && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-void/40">
+          <p className="text-code-sm text-on-surface-variant">Abriendo sesión…</p>
+        </div>
       )}
 
       {shell.explicacionActiva && (

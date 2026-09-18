@@ -1,0 +1,60 @@
+FROM node:22-alpine AS build
+
+WORKDIR /app
+
+ENV CI=true
+ENV COREPACK_DEFAULT_TO_LATEST=0
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+ENV COREPACK_HOME=/usr/local/share/corepack
+
+COPY .npmrc package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY apps/web/package.json ./apps/web/
+
+RUN mkdir -p "$COREPACK_HOME" \
+  && corepack enable \
+  && corepack prepare pnpm@11.25.0 --activate \
+  && chmod -R a+rX "$COREPACK_HOME"
+
+RUN pnpm install --filter @abyssan/web... --frozen-lockfile
+
+COPY apps/web ./apps/web
+
+ARG VITE_API_URL=http://localhost:3001
+ARG VITE_WS_URL=ws://localhost:3001
+ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_WS_URL=$VITE_WS_URL
+
+RUN pnpm --filter @abyssan/web build
+
+FROM node:22-alpine
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV CI=true
+ENV COREPACK_DEFAULT_TO_LATEST=0
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+ENV COREPACK_HOME=/usr/local/share/corepack
+
+COPY .npmrc package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY apps/web/package.json ./apps/web/
+
+RUN mkdir -p "$COREPACK_HOME" \
+  && corepack enable \
+  && corepack prepare pnpm@11.25.0 --activate \
+  && chmod -R a+rX "$COREPACK_HOME" \
+  && pnpm install --filter @abyssan/web... --frozen-lockfile \
+  && addgroup -S abyssan && adduser -S -G abyssan abyssan
+
+COPY --from=build /app/apps/web/dist ./apps/web/dist
+COPY apps/web/vite.config.ts ./apps/web/vite.config.ts
+
+RUN chown -R abyssan:abyssan /app
+
+USER abyssan
+
+WORKDIR /app/apps/web
+
+EXPOSE 5174
+
+CMD ["pnpm", "preview", "--host", "0.0.0.0", "--port", "5174"]

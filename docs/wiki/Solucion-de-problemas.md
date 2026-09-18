@@ -9,11 +9,11 @@ Escenarios respaldados por la arquitectura actual. **No** desactives `validarRut
 3. Reinicia Vite después de cambiar variables `VITE_*` (se incrustan al arrancar).
 4. En Docker, el navegador habla con `localhost` del **host**, no con el hostname interno del compose. Por eso `VITE_API_URL=http://localhost:3001` en el servicio `web`.
 
-Si `BIND_HOST` no es loopback y falta el Bearer, la SPA recibe **401**. Define `ABYSSAN_API_TOKEN` y `VITE_ABYSSAN_API_TOKEN` iguales.
+Si `BIND_HOST` no es loopback y falta sesión, la SPA recibe **401** y pide `ABYSSAN_API_TOKEN` en un modal. Ese valor no se embebe en Vite.
 
 ## El WebSocket no conecta
 
-Mismo host/puerto que HTTP. `VITE_WS_URL` default `ws://localhost:3001`. Con token LAN, el cliente envía `{ type: 'AUTH', token }` como primer mensaje (no uses `?token=`). Cierre `4401` = token ausente, inválido o `WATCH_REPO` antes de autenticar. Cierre `4403` = Origin no permitido. La UI reintenta cada 3 s (`websocket.ts`).
+Mismo host/puerto que HTTP. `VITE_WS_URL` default `ws://localhost:3001`. Con token LAN, la SPA abre sesión HTTP y el WS envía `{ type: 'AUTH', token: idSesion }` o viaja la cookie (no uses `?token=`). Cierre `4401` = autenticación ausente o `WATCH_REPO` prematuro. Cierre `4403` = Origin no permitido. La UI reintenta cada 3 s (`websocket.ts`).
 
 ## El healthcheck falla
 
@@ -64,7 +64,7 @@ docker compose up -d --build --force-recreate server
 
 Mensaje típico: `fatal: detected dubious ownership in repository at '/workspace/proyectos/...'`.
 
-Ocurre cuando el volumen montado desde el host (Windows/macOS) no tiene el mismo dueño que el usuario `node` del contenedor. La imagen del server ya declara `safe.directory *` en el Dockerfile de desarrollo. Si ves el error tras un cambio manual de imagen:
+Ocurre cuando el volumen montado desde el host (Windows/macOS) no tiene el mismo dueño que el usuario `node` del contenedor. La imagen de desarrollo marca `safe.directory` **solo** en `PROJECTS_ROOT` (sin wildcard). Si ves el error tras un cambio manual de imagen:
 
 ```bash
 docker compose up -d --build server
