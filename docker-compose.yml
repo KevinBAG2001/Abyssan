@@ -71,7 +71,6 @@ services:
       - VITE_API_URL=http://localhost:3001
       - VITE_WS_URL=ws://localhost:3001
       - CI=true
-      - VITE_ABYSSAN_API_TOKEN=${ABYSSAN_API_TOKEN:?Defina ABYSSAN_API_TOKEN en el archivo .env}
     volumes:
       - ./apps/web/src:/app/apps/web/src
       - ./apps/web/public:/app/apps/web/public

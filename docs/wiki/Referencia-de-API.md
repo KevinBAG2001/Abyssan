@@ -15,8 +15,9 @@ Rutas en `index.ts`, `GitRoutes.ts`, `AuthForjasRoutes.ts` y `ForjasRoutes.ts`. 
 ## Autenticación y códigos
 
 - `/health` público.
-- `/api/auth/callback` público (antes del Bearer).
-- Resto `/api/*`: Bearer si bind no es loopback. Falta: **401**.
+- `/api/auth/callback` y `/api/sesion` públicos (antes del Bearer).
+- Resto `/api/*`: Bearer permanente, cookie/id de sesión o loopback. Falta: **401**.
+- `POST /api/sesion` `{ token? }` → cookie HttpOnly `abyssan_sesion` (12 h). En loopback no hace falta token.
 - Rate limit no-loopback: 90/min, **429**. Loopback no se penaliza.
 - Fuera de `PROJECTS_ROOT`: **403**. Origin de mutación no permitido: **403**. Validación / falta de `confirmado`: **400**. Amend remoto sin confirmar: **409**. Forja: **503**. Otros: **500**.
 - CORS: lista `CORS_ORIGINS` (SPA en `:5174` por defecto).

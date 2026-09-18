@@ -15,7 +15,7 @@ import {
   EntradaJournal,
   ArchivoCambioModel,
 } from '../../domain/models/GitModels.js';
-import { tokenInstanciaCliente } from '../config/entornoCliente.js';
+import { guardarIdSesionCliente, obtenerIdSesionCliente } from '../config/entornoCliente.js';
 
 export type InfoAmend = {
   esNuestro: boolean;
@@ -72,7 +72,6 @@ export type SolicitudForjaCreada = {
 };
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-const TOKEN_INSTANCIA = tokenInstanciaCliente;
 
 type Envelope<T> = {
   exito: boolean;
@@ -81,11 +80,38 @@ type Envelope<T> = {
   meta?: Record<string, unknown>;
 };
 
+export type EstadoSesionCliente = {
+  activa: boolean;
+  requiereToken: boolean;
+  idSesion?: string;
+  expiraEnMs?: number | null;
+};
+
+function mensajeCliente(mensaje: string): string {
+  if (mensaje.includes('file://') || mensaje.includes('HTTPS o SSH')) {
+    return 'Ese remoto usa un protocolo no permitido. Abyssan solo acepta HTTPS o SSH.';
+  }
+  if (mensaje.includes('credenciales')) {
+    return 'No incrustes usuario o contraseña en la URL del remoto.';
+  }
+  if (mensaje.includes('Ref Git')) {
+    return 'La referencia Git no es válida. Abyssan no acepta HEAD~1 ni expresiones de reflog.';
+  }
+  if (mensaje.includes('Token de instancia')) {
+    return 'Esta instancia exige el token de operador. Introdúcelo para continuar.';
+  }
+  if (mensaje.includes('Origen no permitido')) {
+    return 'El origen de esta petición no está permitido.';
+  }
+  return mensaje;
+}
+
 export class HttpGitApi {
   private cabeceras(extra?: HeadersInit): Headers {
     const headers = new Headers(extra);
-    if (TOKEN_INSTANCIA) {
-      headers.set('Authorization', `Bearer ${TOKEN_INSTANCIA}`);
+    const idSesion = obtenerIdSesionCliente();
+    if (idSesion) {
+      headers.set('Authorization', `Bearer ${idSesion}`);
     }
     return headers;
   }
@@ -93,6 +119,7 @@ export class HttpGitApi {
   private async pedir<T>(ruta: string, init?: RequestInit): Promise<T> {
     const res = await fetch(`${API_BASE}${ruta}`, {
       ...init,
+      credentials: 'include',
       headers: this.cabeceras(init?.headers),
     });
     if (!res.ok) {
@@ -103,13 +130,27 @@ export class HttpGitApi {
       } catch {
         /* cuerpo no JSON */
       }
-      throw new Error(mensaje);
+      throw new Error(mensajeCliente(mensaje));
     }
     const cuerpo = (await res.json()) as Envelope<T>;
     if (!cuerpo.exito) {
-      throw new Error(cuerpo.mensaje || `Error HTTP ${res.status}`);
+      throw new Error(mensajeCliente(cuerpo.mensaje || `Error HTTP ${res.status}`));
     }
     return cuerpo.datos;
+  }
+
+  async obtenerEstadoSesion(): Promise<EstadoSesionCliente> {
+    return this.pedir('/api/sesion');
+  }
+
+  async abrirSesion(token?: string): Promise<EstadoSesionCliente> {
+    const datos = await this.pedir<EstadoSesionCliente>('/api/sesion', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(token ? { token } : {}),
+    });
+    guardarIdSesionCliente(datos.idSesion);
+    return datos;
   }
 
   private post(ruta: string, body: unknown): Promise<unknown> {

@@ -108,8 +108,9 @@ El servidor crea `WebSocketServer` sobre el mismo `http.Server`.
 
 | Dirección | Tipo | Contenido |
 |-----------|------|-----------|
-| Cliente → servidor | `AUTH` | `{ type, token }` en el **primer mensaje**. El token **no** viaja en la query (`?token=` se ignora) |
+| Cliente → servidor | `AUTH` | `{ type, token }` (id de sesión o token permanente). `?token=` se ignora |
 | Cliente → servidor | `WATCH_REPO` | `{ type, repoPath }` validado con `validarRutaRepositorio`. Exige sesión autenticada si el bind no es loopback |
+| Cliente → servidor | `UNWATCH` | Deja de vigilar el repo actual |
 | Servidor → cliente | `AUTH_OK` | Handshake aceptado |
 | Servidor → cliente | `REPO_CHANGED` | `repoPath`, `eventType`, `filePath` relativo, `timestamp`. **No** envía el contenido del archivo |
 | Servidor → cliente | `OPERACION_PROGRESO` | Metadatos de `GitOperacion`, solo a clientes que vigilan ese repo |
@@ -127,13 +128,13 @@ Si el token LAN es obligatorio, hay 5 s para enviar `AUTH`. Fallo o `WATCH_REPO`
 |-------|-----|
 | Proceso Node | Cola de operaciones, log de comandos, watchers, journal en memoria + disco |
 | `ABYSSAN_HOME` o `~/.abyssan` | `auditoria.jsonl`, `journal.json`, `snapshots/`, credenciales OAuth cifradas |
-| Navegador | Estado React; `localStorage` (modo pull); token Vite si se definió `VITE_ABYSSAN_API_TOKEN` |
+| Navegador | Estado React; `localStorage` (modo pull); id de sesión en memoria (no `VITE_*` de token) |
 
 Sin base de datos.
 
 ## Validación de repositorios
 
-`validarRutaRepositorio` canoniza con `realpath` y exige contención en `PROJECTS_ROOT`. `validarRutaArchivoEnRepositorio` rechaza rutas absolutas y `..`. Clone/init: `validarDestinoNuevo` + `validarUrlClone`. `git remote add` reutiliza `validarUrlClone` y `validarNombreRemoto` (mismo perímetro que clone). Mutaciones (checkout, branch, merge, reset, cherry-pick, revert, tag) pasan por `validarRefGit` / `validarHashGit` en `GitUseCases`. Fetch/pull rechazan remotos cuya URL no sea HTTPS/SSH.
+`validarRutaRepositorio` canoniza con `realpath` y exige contención en `PROJECTS_ROOT`. `validarRutaArchivoEnRepositorio` rechaza rutas absolutas y `..`. Clone/init: `validarDestinoNuevo` + `RemotePolicy`. Mutaciones (checkout, branch, merge, reset, cherry-pick, revert, tag) pasan por `validarRefGit` / `validarHashGit` en `GitUseCases`. Fetch, pull y push revalidan remotos persistidos (HTTPS/SSH). Ver [Registro-de-riesgos.md](./Registro-de-riesgos.md) y [Motor-operaciones-git.md](./Motor-operaciones-git.md).
 
 ## Restricciones
 

@@ -23,7 +23,9 @@ Un atacante en LAN contra un `BIND_HOST` expuesto es un escenario **real** si se
 
 `validarRutaArchivoEnRepositorio` exige ruta relativa, rechaza absolutas POSIX/Win32 y `..`, y vuelve a comprobar contención canónica.
 
-Clone y `git remote add`: `validarUrlClone` bloquea `file://`, rutas locales, UNC, `git://` y protocolos que no sean HTTPS/SSH. El nombre del remoto pasa por `validarNombreRemoto`.
+`RemotePolicy` (`politicaRemoto.ts`): `validarUrlRemoto`, `validarDestinoFetch`, `validarDestinoPush`, `sanitizarRemotoParaMostrar`. Fetch, pull y push revalidan URLs ya persistidas en `.git/config`. Allowlist: HTTPS y SSH. Se rechazan `file://`, rutas locales, UNC, `git://`, `ext::` y credenciales embebidas. El nombre del remoto pasa por `validarNombreRemoto`.
+
+Refs: `validarRefGit` en `politicaRefs.ts`. Contrato: se aceptan nombres, hashes, `HEAD`, `origin/main` y refs completas. **No** se aceptan `HEAD~1`, `HEAD^`, `@{`, globs ni rangos.
 
 ## Enlaces simbólicos
 
@@ -43,18 +45,19 @@ Reset hard sucio y discard generan **snapshots** bajo `ABYSSAN_HOME/snapshots` (
 
 ## WebSocket
 
-- Handshake: primer mensaje `AUTH` con el token en el cuerpo. `?token=` en la URL **no** autentica (evita fugas en logs/proxies).
-- Validación de `repoPath` en `WATCH_REPO` (mismo validador HTTP). En LAN, `WATCH_REPO` antes de `AUTH` cierra `4401`.
-- Un watcher de filesystem por repo, multiplexado entre clientes; al cerrar el último socket se deja de vigilar.
+- Handshake: cookie de sesión HttpOnly o primer mensaje `AUTH` (id de sesión o token permanente). `?token=` **no** autentica.
+- Estado: **SEC-WS-01 parcialmente mitigado** — el vector de query string está cerrado; el secreto de instancia sigue siendo de larga duración en el servidor. Ver [Registro-de-riesgos.md](./Registro-de-riesgos.md).
+- Validación de `repoPath` en `WATCH_REPO` (mismo validador HTTP). En LAN, `WATCH_REPO` antes de autenticar cierra `4401`.
+- Política de watcher: `WATCH_REPO` / `UNWATCH` / disconnect / cleanup. Un watcher por repo; el último cliente cierra chokidar.
 - `OPERACION_PROGRESO` se emite solo a clientes asociados a ese repo (`emitirARepo`).
 - Payload: metadatos de cambio y de operación, `filePath` relativo. No se envía el cuerpo del archivo.
-- Código de cierre `4401` si el token falta cuando es obligatorio; `4403` si el Origin no está permitido.
+- Código de cierre `4401` si falta autenticación; `4403` si el Origin no está permitido.
 
 ## Secretos
 
 | Secreto | Dónde |
 |---------|--------|
-| `ABYSSAN_API_TOKEN` | Entorno del servidor; opcionalmente `VITE_*` en la SPA (queda en el bundle de Vite) |
+| `ABYSSAN_API_TOKEN` | Solo entorno del servidor. La SPA abre `POST /api/sesion` y recibe cookie HttpOnly + id en memoria |
 | OAuth client secret | Solo servidor |
 | Tokens de forja | `~/.abyssan/credenciales.enc` (AES-256-GCM); clave en env o archivo `clave` |
 | Git HTTPS | Injection puntual de token en URL al clonar/push si hay cuenta OAuth (`inyectarTokenHttps`) |
@@ -75,13 +78,15 @@ No hay usuarios ni RBAC (Fase 6).
 
 ## Docker y privilegio mínimo
 
-El contenedor del API monta un volumen RW. El origen por defecto es el checkout (`.`), configurable con `ABYSSAN_PROJECTS_HOST`. El entrypoint baja a `node` cuando el volumen es escribible; si el bind mount (p. ej. Windows) no deja escribir `.git/objects`, Git corre como root **solo dentro del contenedor**. Git está instalado en la imagen del server.
+Desarrollo: el contenedor del API monta un volumen RW. `safe.directory` apunta solo a `PROJECTS_ROOT` (sin wildcard). El entrypoint baja a `node` cuando el volumen es escribible; si el bind mount Windows no deja escribir `.git/objects`, Git corre como root **solo en desarrollo y solo dentro del contenedor**.
+
+Producción: `docker-compose.prod.yml` + `Dockerfile.prod` — usuario no-root, `NODE_ENV=production`, `no-new-privileges`, sin fallback a root.
 
 ## Limitaciones
 
 - Sin `Origin`, curl en la misma máquina puede mutar (mismo usuario OS).
 - Preview de rebase/force-push **fuera del contrato** (400). Merge, reset, cherry-pick y revert tienen preview no mutante en API y en `ModalConfirmacion`.
-- Token de Vite es visible para quien carga la SPA.
+- El token permanente no se embebe en el bundle. Quien carga la SPA no lo ve; en LAN debe pegarlo una vez.
 - Diseñado para uso local; no afirmar aislamiento multi-tenant.
 
 ## Reporte

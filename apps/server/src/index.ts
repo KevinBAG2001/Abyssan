@@ -5,6 +5,7 @@ import http from 'http';
 import { gitRouter } from './interfaces/http/routes/GitRoutes.js';
 import { authRouter } from './interfaces/http/routes/AuthForjasRoutes.js';
 import { forjasRouter } from './interfaces/http/routes/ForjasRoutes.js';
+import { sesionRouter } from './interfaces/http/routes/SesionRoutes.js';
 import { authForjasController } from './interfaces/http/controllers/AuthForjasController.js';
 import { adjuntarWebSocket } from './infrastructure/ws/adjuntarWebSocket.js';
 import { middlewareTokenInstancia } from './interfaces/http/middlewareToken.js';
@@ -42,6 +43,7 @@ app.use(
       }
       callback(null, false);
     },
+    credentials: true,
   })
 );
 app.use(express.json());
@@ -58,6 +60,7 @@ app.get('/health', (_req, res) => {
 });
 
 app.get('/api/auth/callback', (req, res) => authForjasController.callback(req, res));
+app.use('/api', sesionRouter);
 app.use('/api', middlewareTokenInstancia);
 app.use('/api/auth', authRouter);
 app.use('/api/git', gitRouter);

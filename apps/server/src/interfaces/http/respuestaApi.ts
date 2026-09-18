@@ -38,7 +38,9 @@ export function codigoHttpDeError(error: unknown): number {
     mensaje.includes('file:// no está permitido') ||
     mensaje.includes('La URL debe ser HTTPS o SSH') ||
     mensaje.includes('La URL de clonado es requerida') ||
+    mensaje.includes('No incrustes credenciales') ||
     mensaje.includes('Nombre de remoto no válido') ||
+    mensaje.includes('Refspec de fetch no válido') ||
     mensaje.includes('Operación de preview no soportada')
   ) {
     return 400;

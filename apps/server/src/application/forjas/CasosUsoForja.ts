@@ -7,21 +7,25 @@ import {
   parsearOriginForja,
   type OriginForja,
 } from '../../infrastructure/forjas/parsearOriginForja.js';
+import {
+  validarDestinoFetch,
+  validarNombreRemoto,
+  validarRefGit,
+  validarRefspecFetch,
+} from '../../infrastructure/seguridad/validarRutaRepositorio.js';
 import type { SolicitudCreada, SolicitudForja } from '../../domain/entities/ForjaEntities.js';
 import { ErrorForja } from './ErrorForja.js';
-
-const NOMBRE_RAMA = /^(?!.*\.\.)[A-Za-z0-9._\-/]+$/;
 
 export type LectorCredencialesForja = {
   obtener(proveedor: ProveedorForja): { token: string } | undefined;
 };
 
 function exigirRama(nombre: string): string {
-  const recortada = nombre.trim();
-  if (!recortada || recortada.startsWith('-') || !NOMBRE_RAMA.test(recortada)) {
+  try {
+    return validarRefGit(nombre);
+  } catch {
     throw new ErrorForja('Nombre de rama no válido.', 400);
   }
-  return recortada;
 }
 
 export class CasosUsoForja {
@@ -65,8 +69,8 @@ export class CasosUsoForja {
         : `+merge-requests/${numero}/head:${ramaLocal}`
       : origen;
 
-    await this.git.fetchRefspec(repoPath, remoto, refspec);
-    await this.git.checkout(repoPath, ramaLocal);
+    await this.git.fetchRefspec(repoPath, validarNombreRemoto(remoto), validarRefspecFetch(refspec));
+    await this.git.checkout(repoPath, validarRefGit(ramaLocal));
     return ramaLocal;
   }
 
@@ -91,6 +95,11 @@ export class CasosUsoForja {
     const url = elegirUrlOrigin(remotes);
     if (!url) {
       throw new ErrorForja('Este repositorio no tiene remoto origin. El Git local sigue disponible.', 400);
+    }
+    try {
+      validarDestinoFetch(url);
+    } catch {
+      throw new ErrorForja('El remoto origin usa un protocolo no permitido.', 400);
     }
     const origin = parsearOriginForja(url);
     if (!origin) {

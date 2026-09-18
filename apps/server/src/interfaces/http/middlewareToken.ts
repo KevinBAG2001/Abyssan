@@ -4,6 +4,7 @@ import {
   tokenEsValido,
   tokenLanEsObligatorio,
 } from '../../infrastructure/seguridad/tokenInstancia.js';
+import { extraerCookieSesion, sesionEsValida } from '../../infrastructure/seguridad/sesionInstancia.js';
 import { responderFallo } from './respuestaApi.js';
 
 export function middlewareTokenInstancia(req: Request, res: Response, next: NextFunction): void {
@@ -11,10 +12,10 @@ export function middlewareTokenInstancia(req: Request, res: Response, next: Next
     next();
     return;
   }
-  const token = extraerTokenBearer(req.headers.authorization);
-  if (!tokenEsValido(token)) {
-    responderFallo(res, 'Token de instancia requerido', 401);
+  const bearer = extraerTokenBearer(req.headers.authorization);
+  if (tokenEsValido(bearer) || sesionEsValida(bearer) || sesionEsValida(extraerCookieSesion(req.headers.cookie))) {
+    next();
     return;
   }
-  next();
+  responderFallo(res, 'Token de instancia requerido', 401, { requiereToken: true });
 }

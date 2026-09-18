@@ -7,13 +7,17 @@ export type AccionSesionWs =
   | { tipo: 'cerrar'; codigo: number; razon: string }
   | { tipo: 'error'; message: string }
   | { tipo: 'vigilar'; repoPath: string }
+  | { tipo: 'dejar_de_vigilar' }
   | { tipo: 'ignorar' };
 
 export class MaquinaSesionWs {
   autenticado: boolean;
 
-  constructor(private readonly tokenObligatorio: boolean) {
-    this.autenticado = !tokenObligatorio;
+  constructor(
+    private readonly tokenObligatorio: boolean,
+    yaAutenticado = false
+  ) {
+    this.autenticado = !tokenObligatorio || yaAutenticado;
   }
 
   procesar(data: unknown, tokenEsValido: (token?: string | null) => boolean): AccionSesionWs {
@@ -43,6 +47,13 @@ export class MaquinaSesionWs {
         return { tipo: 'error', message: 'Ruta de repositorio no autorizada' };
       }
       return { tipo: 'vigilar', repoPath: mensaje.repoPath };
+    }
+
+    if (mensaje.type === 'UNWATCH') {
+      if (!this.autenticado) {
+        return { tipo: 'cerrar', codigo: 4401, razon: 'Token de instancia requerido' };
+      }
+      return { tipo: 'dejar_de_vigilar' };
     }
 
     return { tipo: 'ignorar' };

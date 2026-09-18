@@ -8,6 +8,7 @@ import { adjuntarWebSocket } from '../adjuntarWebSocket.js';
 import { HubWebSocket } from '../HubWebSocket.js';
 import { ChokidarWatcherAdapter } from '../../watcher/ChokidarWatcherAdapter.js';
 import { validarRutaRepositorio } from '../../seguridad/validarRutaRepositorio.js';
+import { crearSesion, NOMBRE_COOKIE_SESION, vaciarSesiones } from '../../seguridad/sesionInstancia.js';
 
 function esperarApertura(ws: WebSocket): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -90,6 +91,7 @@ describe('adjuntarWebSocket', () => {
     else delete process.env.ABYSSAN_API_TOKEN;
     if (raizOriginal !== undefined) process.env.PROJECTS_ROOT = raizOriginal;
     else delete process.env.PROJECTS_ROOT;
+    vaciarSesiones();
   });
 
   it('en loopback ignora ?token= y acepta WATCH_REPO sin AUTH', async () => {
@@ -114,6 +116,19 @@ describe('adjuntarWebSocket', () => {
     ws.send(JSON.stringify({ type: 'WATCH_REPO', repoPath: path.join(raiz, 'demo') }));
     const resultado = await cierre;
     expect(resultado.codigo).toBe(4401);
+  });
+
+  it('en LAN una cookie de sesión autentica sin AUTH', async () => {
+    process.env.BIND_HOST = '0.0.0.0';
+    process.env.ABYSSAN_API_TOKEN = 'secreto-lan';
+    const repo = path.join(raiz, 'cookie');
+    fs.mkdirSync(repo, { recursive: true });
+    const ruta = validarRutaRepositorio(repo);
+    const sesion = crearSesion();
+
+    const ws = await conectar('', { Cookie: `${NOMBRE_COOKIE_SESION}=${sesion.id}` });
+    ws.send(JSON.stringify({ type: 'WATCH_REPO', repoPath: repo }));
+    await expect.poll(() => watcher.cantidadOyentes(ruta)).toBe(1);
   });
 
   it('en LAN AUTH válido responde AUTH_OK y permite vigilar', async () => {
@@ -184,6 +199,66 @@ describe('adjuntarWebSocket', () => {
     expect(await progreso).toMatchObject({ type: 'OPERACION_PROGRESO', datos: { id: 'op-ws' } });
     await new Promise((r) => setTimeout(r, 40));
     expect(filtrado).toBe(false);
+  });
+
+  it('AUTH inválido cierra 4401 y JSON malformado no tumba el hub', async () => {
+    process.env.BIND_HOST = '0.0.0.0';
+    process.env.ABYSSAN_API_TOKEN = 'secreto-lan';
+    const ws = await conectar();
+    const cierre = esperarCierre(ws);
+    ws.send(JSON.stringify({ type: 'AUTH', token: 'no-vale' }));
+    expect((await cierre).codigo).toBe(4401);
+
+    const otro = await conectar();
+    otro.send('esto-no-es-json');
+    await new Promise((r) => setTimeout(r, 30));
+    expect(otro.readyState).toBe(WebSocket.OPEN);
+    otro.close();
+  });
+
+  it('UNWATCH deja el repo sin oyentes y repos distintos no mezclan watchers', async () => {
+    const uno = path.join(raiz, 'repo-a');
+    const dos = path.join(raiz, 'repo-b');
+    fs.mkdirSync(uno, { recursive: true });
+    fs.mkdirSync(dos, { recursive: true });
+    const rutaUno = validarRutaRepositorio(uno);
+    const rutaDos = validarRutaRepositorio(dos);
+
+    const a = await conectar();
+    const b = await conectar();
+    a.send(JSON.stringify({ type: 'WATCH_REPO', repoPath: uno }));
+    b.send(JSON.stringify({ type: 'WATCH_REPO', repoPath: dos }));
+    await expect.poll(() => watcher.cantidadOyentes(rutaUno)).toBe(1);
+    await expect.poll(() => watcher.cantidadOyentes(rutaDos)).toBe(1);
+    expect(watcher.cantidadWatchers()).toBe(2);
+
+    a.send(JSON.stringify({ type: 'UNWATCH' }));
+    await expect.poll(() => watcher.cantidadOyentes(rutaUno)).toBe(0);
+    expect(watcher.cantidadOyentes(rutaDos)).toBe(1);
+
+    a.send(JSON.stringify({ type: 'WATCH_REPO', repoPath: uno }));
+    await expect.poll(() => watcher.cantidadOyentes(rutaUno)).toBe(1);
+    a.close();
+    await expect.poll(() => watcher.cantidadOyentes(rutaUno)).toBe(0);
+    expect(watcher.cantidadOyentes(rutaDos)).toBe(1);
+    expect(hub.cantidadClientes()).toBeGreaterThanOrEqual(0);
+  });
+
+  it('reconecta el mismo cliente al mismo repo sin duplicar watchers', async () => {
+    const repo = path.join(raiz, 'reconn');
+    fs.mkdirSync(repo, { recursive: true });
+    const ruta = validarRutaRepositorio(repo);
+
+    const a = await conectar();
+    a.send(JSON.stringify({ type: 'WATCH_REPO', repoPath: repo }));
+    await expect.poll(() => watcher.cantidadOyentes(ruta)).toBe(1);
+    a.close();
+    await expect.poll(() => watcher.cantidadWatchers()).toBe(0);
+
+    const b = await conectar();
+    b.send(JSON.stringify({ type: 'WATCH_REPO', repoPath: repo }));
+    await expect.poll(() => watcher.cantidadOyentes(ruta)).toBe(1);
+    expect(watcher.cantidadWatchers()).toBe(1);
   });
 
   it('Origin no permitido cierra 4403', async () => {

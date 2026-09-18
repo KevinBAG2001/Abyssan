@@ -45,7 +45,7 @@ El plan las marca **cerradas**. En código sí existen clone/init, discard, conf
 
 | Ítem | Estado |
 |------|--------|
-| `docker-compose.prod.yml`, `DESPLIEGUE.md` | Planificado (hoy hay compose de desarrollo) |
+| `docker-compose.prod.yml` | Disponible (ciclo 2; sin usuarios/roles) |
 | Usuarios/roles (Admin, Developer, Read-only) | Planificado, solo si hay LAN compartida real |
 | Tauri | Opcional / planificado |
 | Plugins sandbox | Último de Fase 6 |

@@ -48,6 +48,23 @@ describe('ChokidarWatcherAdapter', () => {
     expect(adapter.cantidadWatchers()).toBe(0);
   });
 
+  it('repos distintos tienen watchers distintos; el último de cada uno limpia', () => {
+    const a = path.join(raiz, 'alpha');
+    const b = path.join(raiz, 'beta');
+    fs.mkdirSync(a, { recursive: true });
+    fs.mkdirSync(b, { recursive: true });
+    const ca: ChangeCallback = () => undefined;
+    const cb: ChangeCallback = () => undefined;
+    adapter.watchRepo(a, ca);
+    adapter.watchRepo(b, cb);
+    expect(adapter.cantidadWatchers()).toBe(2);
+    adapter.dejarDeEscuchar(ca);
+    expect(adapter.cantidadWatchers()).toBe(1);
+    expect(adapter.cantidadOyentes(b)).toBe(1);
+    adapter.dejarDeEscuchar(cb);
+    expect(adapter.cantidadWatchers()).toBe(0);
+  });
+
   it('closeAll vacía oyentes y watchers', async () => {
     const repo = path.join(raiz, 'tres');
     fs.mkdirSync(repo, { recursive: true });
