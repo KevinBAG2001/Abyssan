@@ -4,6 +4,12 @@ Clasificación de operaciones **encontradas en** `GitUseCases`, `SimpleGitAdapte
 
 Leyenda: **Disponible** (ruta + caso de uso), **Parcial**, **Planificado / no localizado**.
 
+## Contrato de refs (SEC-REF-01)
+
+Abyssan acepta nombres de rama/tag, SHA, `HEAD`, `origin/main` y refs completas (`refs/heads/…`). **No** acepta `HEAD~1`, `HEAD^`, `main^{}`, `HEAD@{1}` ni globs. Esas expresiones se rechazan en `validarRefGit` (400). Fetch/pull/push revalidan URLs de remotos persistidos (`RemotePolicy`).
+
+Ver [Recuperacion-operaciones.md](./Recuperacion-operaciones.md) y [Motor-operaciones-git.md](./Motor-operaciones-git.md).
+
 ## Consulta de estado
 
 Solo lectura. `GET /api/git/status`. Disponible.
@@ -99,4 +105,5 @@ Blame; stage hunk/línea; rebase visual interactivo; preview rebase/force-push; 
 
 - [Referencia de API](./Referencia-de-API.md)
 - [Seguridad técnica](./Seguridad.md)
+- [Registro de riesgos](./Registro-de-riesgos.md)
 - [Home](./Home.md)

@@ -56,6 +56,16 @@ describe('HubWebSocket', () => {
     expect(a.enviados).toHaveLength(0);
   });
 
+  it('desasociarRepo deja de recibir eventos de ese repo', () => {
+    const hub = new HubWebSocket();
+    const a = crearSocket();
+    hub.registrar(a as unknown as WebSocket);
+    hub.asociarRepo(a as unknown as WebSocket, '/repos/uno');
+    hub.desasociarRepo(a as unknown as WebSocket);
+    hub.emitirARepo('/repos/uno', { type: 'OPERACION_PROGRESO' });
+    expect(a.enviados).toHaveLength(0);
+  });
+
   it('registrar es idempotente y no duplica el handler de close', () => {
     const hub = new HubWebSocket();
     const a = crearSocket();

@@ -51,6 +51,26 @@ describe('MaquinaSesionWs', () => {
     });
   });
 
+  it('acepta UNWATCH solo si ya está autenticado', () => {
+    const sesion = new MaquinaSesionWs(true);
+    expect(sesion.procesar({ type: 'UNWATCH' }, tokenOk)).toEqual({
+      tipo: 'cerrar',
+      codigo: 4401,
+      razon: 'Token de instancia requerido',
+    });
+    sesion.procesar({ type: 'AUTH', token: 'secreto-lan' }, tokenOk);
+    expect(sesion.procesar({ type: 'UNWATCH' }, tokenOk)).toEqual({ tipo: 'dejar_de_vigilar' });
+  });
+
+  it('puede nacer autenticado por cookie de sesión', () => {
+    const sesion = new MaquinaSesionWs(true, true);
+    expect(sesion.autenticado).toBe(true);
+    expect(sesion.procesar({ type: 'WATCH_REPO', repoPath: '/repos/uno' }, tokenOk)).toEqual({
+      tipo: 'vigilar',
+      repoPath: '/repos/uno',
+    });
+  });
+
   it('ignora mensajes que no son AUTH ni WATCH_REPO', () => {
     const sesion = new MaquinaSesionWs(true);
     expect(sesion.procesar({ type: 'PING' }, tokenOk)).toEqual({ tipo: 'ignorar' });

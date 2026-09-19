@@ -20,7 +20,7 @@ function dePromesa<T>(r: PromiseSettledResult<T>, fallback: T): T {
   return r.status === 'fulfilled' ? r.value : fallback;
 }
 
-export function useGitRepository() {
+export function useGitRepository(sesionLista = true) {
   const [repos, setRepos] = useState<RepositorySummaryModel[]>([]);
   const [selectedRepo, setSelectedRepo] = useState<string | null>(null);
   const [status, setStatus] = useState<RepositoryStatusModel | null>(null);
@@ -138,6 +138,7 @@ export function useGitRepository() {
   }, [showToast]);
 
   useEffect(() => {
+    if (!sesionLista) return;
     let vivo = true;
     void (async () => {
       setCargandoRepos(true);
@@ -164,7 +165,7 @@ export function useGitRepository() {
     return () => {
       vivo = false;
     };
-  }, [showToast]);
+  }, [showToast, sesionLista]);
 
   useEffect(() => {
     let t: ReturnType<typeof setTimeout> | undefined;

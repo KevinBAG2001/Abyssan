@@ -1,7 +1,6 @@
-import { tokenInstanciaCliente } from '../infrastructure/config/entornoCliente';
+import { obtenerIdSesionCliente } from '../infrastructure/config/entornoCliente';
 
 const WS_BASE = import.meta.env.VITE_WS_URL || 'ws://localhost:3001';
-const TOKEN_INSTANCIA = tokenInstanciaCliente;
 
 type RepoChangeCallback = (data: { repoPath: string; eventType: string; filePath: string }) => void;
 type OperacionCallback = (data: unknown) => void;
@@ -19,12 +18,12 @@ export class WebSocketClient {
     }
 
     try {
-      // El token LAN va en el primer mensaje AUTH, nunca en la query.
       this.socket = new WebSocket(WS_BASE);
 
       this.socket.onopen = () => {
-        if (TOKEN_INSTANCIA) {
-          this.socket?.send(JSON.stringify({ type: 'AUTH', token: TOKEN_INSTANCIA }));
+        const idSesion = obtenerIdSesionCliente();
+        if (idSesion) {
+          this.socket?.send(JSON.stringify({ type: 'AUTH', token: idSesion }));
         }
         if (this.currentRepoPath) {
           this.watchRepo(this.currentRepoPath);
@@ -68,6 +67,13 @@ export class WebSocketClient {
     this.currentRepoPath = repoPath;
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
       this.socket.send(JSON.stringify({ type: 'WATCH_REPO', repoPath }));
+    }
+  }
+
+  unwatchRepo() {
+    this.currentRepoPath = null;
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      this.socket.send(JSON.stringify({ type: 'UNWATCH' }));
     }
   }
 

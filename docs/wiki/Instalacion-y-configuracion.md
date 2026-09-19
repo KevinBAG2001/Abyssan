@@ -41,9 +41,7 @@ El lockfile es `pnpm-lock.yaml`. CI usa `pnpm install --frozen-lockfile`.
 | `ABYSSAN_GITCONFIG_HOST` | Compose: ruta del `~/.gitconfig` del host montada en `/host-gitconfig` (ro) | Placeholder sin identidad |
 | `VITE_API_URL` | Origen REST de la SPA | `http://localhost:3001` |
 | `VITE_WS_URL` | Origen WebSocket de la SPA | `ws://localhost:3001` |
-| `VITE_ABYSSAN_API_TOKEN` | Mismo token, embebido por Vite para la SPA | Comentado en el ejemplo |
-
-**Token de instancia:** no se descarga de ningún sitio. Genera una cadena aleatoria (p. ej. `openssl rand -base64 32` o el comando PowerShell del `.env.example`) y asígnala **igual** a `ABYSSAN_API_TOKEN` y `VITE_ABYSSAN_API_TOKEN`. Obligatorio con Docker; en desarrollo local con `BIND_HOST=127.0.0.1` suele omitirse.
+**Token de instancia:** no se descarga de ningún sitio. Genera una cadena aleatoria (p. ej. `openssl rand -base64 32`) y asígnala **solo** a `ABYSSAN_API_TOKEN`. La SPA abre `POST /api/sesion` (cookie HttpOnly). No uses `VITE_ABYSSAN_API_TOKEN`. Obligatorio con Docker; en localhost suele omitirse.
 
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | OAuth GitHub (forjas) | Opcional |
 | `GITLAB_CLIENT_ID` / `GITLAB_CLIENT_SECRET` | OAuth GitLab (forjas) | Opcional |
@@ -83,9 +81,9 @@ Toda operación con `repoPath` pasa por `validarRutaRepositorio`: resolución + 
 | API + WebSocket | `pnpm dev:server` | `http://127.0.0.1:3001` y `ws://127.0.0.1:3001` |
 | SPA Vite | `pnpm dev:web` | `http://127.0.0.1:5174` (`vite.config.ts`: puerto **5174**, `host: '127.0.0.1'`) |
 
-El orden importa: el API debe estar vivo antes de usar la UI. El cliente HTTP único es `HttpGitApi` (`VITE_API_URL`). El WebSocket abre sin query; si hay `VITE_ABYSSAN_API_TOKEN`, el primer mensaje es `AUTH` y después `WATCH_REPO`.
+El orden importa: el API debe estar vivo antes de usar la UI. El cliente HTTP único es `HttpGitApi` (`VITE_API_URL`, `credentials: 'include'`). El WebSocket abre sin query; si hay sesión, el primer mensaje es `AUTH` con el id de sesión y después `WATCH_REPO`.
 
-Si `BIND_HOST` no es `127.0.0.1` / `localhost` / `::1`, el arranque **falla** sin `ABYSSAN_API_TOKEN`. El middleware Bearer cubre `/api/*` salvo el callback OAuth, que se registra antes. `/health` es público.
+Si `BIND_HOST` no es `127.0.0.1` / `localhost` / `::1`, el arranque **falla** sin `ABYSSAN_API_TOKEN`. El middleware acepta Bearer permanente o cookie/id de sesión. `/api/sesion` y el callback OAuth se registran antes. `/health` es público.
 
 ## Ejecución en desarrollo
 

@@ -42,6 +42,9 @@ import {
   validarNombreRemoto,
   validarIndiceStash,
   validarTipoReset,
+  validarDestinoFetch,
+  validarDestinoPush,
+  sanitizarRemotoParaMostrar,
 } from '../../infrastructure/seguridad/validarRutaRepositorio.js';
 import type { EscuchaProgresoGit, GitOperacion, TipoGitOperacion } from '../../domain/entities/GitOperacion.js';
 
@@ -81,8 +84,8 @@ export class GitUseCases {
 
   private asegurarUrlsDeRemotos(remotos: RemoteEntity[]): void {
     for (const remoto of remotos) {
-      if (remoto.fetchUrl) validarUrlClone(remoto.fetchUrl);
-      if (remoto.pushUrl) validarUrlClone(remoto.pushUrl);
+      if (remoto.fetchUrl) validarDestinoFetch(remoto.fetchUrl);
+      if (remoto.pushUrl) validarDestinoPush(remoto.pushUrl);
     }
   }
 
@@ -220,6 +223,7 @@ export class GitUseCases {
   }
 
   async push(repoPath: string): Promise<void> {
+    this.asegurarUrlsDeRemotos(await this.gitRepository.getRemotes(repoPath));
     return this.ejecutarExclusiva(repoPath, 'push', async (onProgreso) => {
       await this.gitRepository.push(repoPath, onProgreso);
       this.journal.marcarNoDeshacer('Un push ya está en el remoto; no se deshace desde Abyssan.');
@@ -426,7 +430,12 @@ export class GitUseCases {
 
   // Remotos
   async getRemotes(repoPath: string): Promise<RemoteEntity[]> {
-    return await this.gitRepository.getRemotes(repoPath);
+    const remotos = await this.gitRepository.getRemotes(repoPath);
+    return remotos.map((remoto) => ({
+      ...remoto,
+      fetchUrl: sanitizarRemotoParaMostrar(remoto.fetchUrl),
+      pushUrl: sanitizarRemotoParaMostrar(remoto.pushUrl),
+    }));
   }
 
   async addRemote(repoPath: string, name: string, url: string): Promise<void> {

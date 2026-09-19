@@ -1,6 +1,11 @@
 # Despliegue con Docker
 
-Describe **únicamente** lo que está en `docker-compose.yml` y los Dockerfiles. No es un compose de producción (eso es Fase 6 del plan).
+Hay dos composiciones:
+
+- **Desarrollo:** `docker-compose.yml` + `apps/*/Dockerfile`. Puede hacer fallback a root si el bind mount de Windows no es escribible por `node`.
+- **Producción:** `docker-compose.prod.yml` + `Dockerfile.prod`. Usuario no-root, `NODE_ENV=production`, `no-new-privileges`, sin fallback a root y `safe.directory` solo en `PROJECTS_ROOT`.
+
+Este archivo cubre ambos. La Fase 6 (usuarios/roles, distro) sigue pendiente.
 
 ## Servicios
 
@@ -37,17 +42,15 @@ Ambas: `FROM node:22-alpine`. pnpm vía Corepack **11.25.0**. El server instala 
 
 - `VITE_API_URL=http://localhost:3001`
 - `VITE_WS_URL=ws://localhost:3001`
-- `VITE_ABYSSAN_API_TOKEN` = el mismo token
 
-Define `ABYSSAN_API_TOKEN` en el `.env` del host. Compose no arranca sin ese valor.
+Define `ABYSSAN_API_TOKEN` en el `.env` del host. Compose no arranca sin ese valor. La SPA **no** recibe el token por `VITE_*`: el operador lo pega una vez en el modal de sesión.
 
 ### Cómo generar el token
 
-No hay registro ni portal: es un secreto que **tú creas** y repites en ambas variables del `.env`:
+No hay registro ni portal: es un secreto que **tú creas** en el `.env`:
 
 ```env
 ABYSSAN_API_TOKEN=pega-aqui-tu-secreto
-VITE_ABYSSAN_API_TOKEN=pega-aqui-tu-secreto
 ```
 
 Generar uno aleatorio:
@@ -61,7 +64,7 @@ Generar uno aleatorio:
 openssl rand -base64 32
 ```
 
-Tras cambiar `VITE_ABYSSAN_API_TOKEN`, reconstruye o reinicia el contenedor `web` para que Vite lo incorpore.
+Tras cambiar `ABYSSAN_API_TOKEN`, reinicia el `server`. La SPA pedirá el nuevo valor al abrir sesión; no hace falta rebuild del web por el token.
 
 ## Volúmenes
 

@@ -249,10 +249,9 @@ VITE_WS_URL=ws://localhost:3001
 | `PROJECTS_ROOT` | Única raíz permitida para listar y mutar repos |
 | `PORT` | HTTP y WebSocket del servidor (3001) |
 | `BIND_HOST` | Default `127.0.0.1`. Si no es loopback, hay que definir token |
-| `ABYSSAN_API_TOKEN` | Token de instancia (obligatorio fuera de localhost) |
+| `ABYSSAN_API_TOKEN` | Token de instancia (obligatorio fuera de localhost). No se embebe en Vite |
 | `VITE_API_URL` | Origen REST del frontend |
 | `VITE_WS_URL` | Origen WebSocket del frontend |
-| `VITE_ABYSSAN_API_TOKEN` | Mismo token, para que la SPA lo envíe |
 
 
 En Linux o dentro de Docker: `PROJECTS_ROOT=/workspace/proyectos`.
@@ -281,8 +280,10 @@ Abre **[http://localhost:5174](http://localhost:5174)**, elige un repositorio ba
 | `pnpm dev:server` | Solo API + WebSocket (`tsx watch`)      |
 | `pnpm dev:web`    | Solo Vite HMR                             |
 | `pnpm build`      | Compila server y web                      |
+| `pnpm typecheck`  | `tsc --noEmit` en server y web            |
 | `pnpm lint`       | oxlint                                    |
 | `pnpm test`       | Vitest                                    |
+| `pnpm test:seguridad` | Subconjunto de perímetro de seguridad |
 
 
 ### Atajos (Daily Driver)
@@ -304,12 +305,11 @@ Deshacer está en el header (hoy: última operación). El horizonte Identidad es
 
 No se obtiene de un servicio externo: **lo inventas tú** (una contraseña larga y aleatoria). El servidor la exige cuando no escucha solo en localhost; **Docker siempre la exige** porque dentro del contenedor `BIND_HOST=0.0.0.0`.
 
-Define **el mismo valor** en tu `.env` de la raíz del monorepo:
+Define el token **solo en el servidor**. La SPA abre una sesión (`POST /api/sesion`) y no embebe el secreto:
 
 | Variable | Quién la usa |
 |----------|----------------|
-| `ABYSSAN_API_TOKEN` | Servidor (valida `Authorization: Bearer …` en `/api/*`) |
-| `VITE_ABYSSAN_API_TOKEN` | Frontend (lo envía en cada petición; Vite lo embebe en el build) |
+| `ABYSSAN_API_TOKEN` | Servidor (valida Bearer permanente, o emite una sesión de 12 h) |
 
 Generar un secreto (ejemplo):
 
@@ -323,12 +323,13 @@ Generar un secreto (ejemplo):
 openssl rand -base64 32
 ```
 
-Pégalo en `.env` (mismo texto en las dos líneas):
+Pégalo en `.env`:
 
 ```env
 ABYSSAN_API_TOKEN=pega-aqui-el-secreto-generado
-VITE_ABYSSAN_API_TOKEN=pega-aqui-el-secreto-generado
 ```
+
+En Docker/LAN la UI pedirá ese valor una vez. No uses `VITE_ABYSSAN_API_TOKEN`: todo `VITE_*` termina en el bundle.
 
 Con `pnpm dev` en tu máquina (`BIND_HOST=127.0.0.1`) **no suele hacer falta** el token. Con `docker compose up` **sí**.
 
