@@ -5,6 +5,8 @@ on:
     branches: [main, qa, dev]
   pull_request:
 
+# Mínimo privilegio para todo el workflow. Trivy falla el job (exit-code 1)
+# y no publica SARIF, así que no hace falta security-events: write.
 permissions:
   contents: read
 
@@ -12,11 +14,11 @@ jobs:
   verificar:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
         with:
           version: 11.25.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: pnpm
@@ -30,27 +32,58 @@ jobs:
         run: pnpm test
       - name: Tests de seguridad
         run: pnpm test:seguridad
-      - name: Auditoría de dependencias (prod)
+      # Política: este paso bloquea solo high/critical del árbol de producción.
+      # Los moderate de producción se informan abajo y no bloquean el job:
+      # subir el umbral exige impacto demostrado en el runtime de Abyssan.
+      # vitest queda fuera de --prod (devDependency de la raíz).
+      - name: Auditoría de dependencias (prod, high/critical)
         run: pnpm audit --prod --audit-level high
+      - name: Informe de advisories moderados de producción
+        run: pnpm audit --prod --audit-level moderate
+        continue-on-error: true
       - name: Build
         run: pnpm build
 
+  trivy-fs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Trivy filesystem del repositorio
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          ignore-unfixed: true
+
   imagenes:
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: server-dev
+            dockerfile: apps/server/Dockerfile
+            image: abyssan-server:dev
+          - id: server-prod
+            dockerfile: apps/server/Dockerfile.prod
+            image: abyssan-server:prod
+          - id: web-dev
+            dockerfile: apps/web/Dockerfile
+            image: abyssan-web:dev
+          - id: web-prod
+            dockerfile: apps/web/Dockerfile.prod
+            image: abyssan-web:prod
     steps:
-      - uses: actions/checkout@v4
-      - name: Build imagen de desarrollo (server)
-        run: docker build -f apps/server/Dockerfile .
-      - name: Build imagen de producción (server)
-        run: docker build -f apps/server/Dockerfile.prod .
-      - name: Build imagen de producción (web)
-        run: docker build -f apps/web/Dockerfile.prod .
-      - name: Escaneo Trivy del Dockerfile de producción del server
-        uses: aquasecurity/trivy-action@v0.36.0
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Build ${{ matrix.id }}
+        run: docker build -t ${{ matrix.image }} -f ${{ matrix.dockerfile }} .
+      - name: Trivy imagen ${{ matrix.id }}
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          severity: 'CRITICAL,HIGH'
+          scan-type: image
+          image-ref: ${{ matrix.image }}
+          severity: CRITICAL,HIGH
           exit-code: '1'
           ignore-unfixed: true

@@ -4,3 +4,7 @@ allowBuilds:
   esbuild: true
 overrides:
   simple-git: ^3.36.0
+  # Fuerza qs a la versión parcheada. Express 4.22.x fija transitivamente qs en
+  # el rango vulnerable 6.15.x (GHSA-x5fp-wj9c-mxmx y GHSA-4mjr-xmp4-gh2g).
+  # qs 6.16.0 corrige ambos advisories y es API-compatible dentro de la línea 6.x.
+  qs: '>=6.16.0'

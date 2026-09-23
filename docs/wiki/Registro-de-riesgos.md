@@ -29,12 +29,13 @@ Ninguno abierto en este ciclo.
 | SEC-WS-03 | Mitigado | `emitirARepo`; progreso no es broadcast global | — |
 | SEC-VITE-01 | Mitigado | La SPA ya no lee `VITE_ABYSSAN_API_TOKEN`. Sesión HttpOnly + id en memoria | El operador sigue pegando el token permanente una vez en LAN/Docker |
 | SEC-DKR-01 | Parcialmente mitigado | Prod: no-root, `safe.directory` explícito, sin wildcard. Dev: fallback root **solo** si el volumen Windows no es escribible | El compose de desarrollo puede seguir corriendo Git como root dentro del contenedor |
-| CI-01 | Mitigado | typecheck, lint, test, test:seguridad, `pnpm audit --prod`, build; Docker+Trivy en PR | Dependabot no se auto-mergea; cada PR debe pasar CI |
+| CI-01 | Mitigado | typecheck, lint, test, test:seguridad, `pnpm audit --prod --audit-level high`, build; Trivy fs y Trivy image de las cuatro imágenes Compose, en push y PR; actions por SHA; `permissions: contents: read` | Dependabot no se auto-mergea; cada PR debe pasar CI. No hay CodeQL ni secret scanning en el repo |
 | TEST-01 | Mitigado | Tests reales de WS (auth, Origin, cleanup, broadcast, reconnect) | — |
 | OPS-01 | Parcialmente mitigado | Contrato + tests de `RepositoryOperationLock`. La cola in-process ya serializa por repo | El motor async/cancelación no está implementado |
 | OPS-02 | Parcialmente mitigado | Contrato de recuperación documentado | No hay RecoveryManager |
 | REC-01 | Parcialmente mitigado | Journal + snapshots en discard/reset hard | Pull/push/merge no tienen undo seguro |
-| DEP-QS-01 | Abierto (residual) | — | `qs` moderate transitivo de Express 4 (`pnpm audit --prod`). No se confirma explotable en el API JSON de Abyssan. Gate CI: `--audit-level high` |
+| DEP-QS-01 | Mitigado | Express `^4.22.3` (resuelve 4.22.3) y override `qs: '>=6.16.0'`. `pnpm why` muestra una sola `qs@6.16.0` vía `express` y `body-parser`. `pnpm audit` ya no lista GHSA-x5fp-wj9c-mxmx ni GHSA-4mjr-xmp4-gh2g | — |
+| DEP-VITEST-01 | Abierto (residual) | — | `vitest@3.2.7` y `@vitest/mocker`, GHSA-82fw-gwwq-j7x9 (moderate, solo dev). Parche publicado `>=4.1.11`. No está en el árbol `--prod` ni en la imagen de producción del server. El gate high de producción no lo ve a propósito |
 
 ## Contradicción resuelta: SEC-WS-01
 
