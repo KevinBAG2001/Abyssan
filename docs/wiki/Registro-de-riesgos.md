@@ -29,12 +29,15 @@ Ninguno abierto en este ciclo.
 | SEC-WS-03 | Mitigado | `emitirARepo`; progreso no es broadcast global | — |
 | SEC-VITE-01 | Mitigado | La SPA ya no lee `VITE_ABYSSAN_API_TOKEN`. Sesión HttpOnly + id en memoria | El operador sigue pegando el token permanente una vez en LAN/Docker |
 | SEC-DKR-01 | Parcialmente mitigado | Prod: no-root, `safe.directory` explícito, sin wildcard. Dev: fallback root **solo** si el volumen Windows no es escribible | El compose de desarrollo puede seguir corriendo Git como root dentro del contenedor |
-| CI-01 | Mitigado | typecheck, lint, test, test:seguridad, `pnpm audit --prod`, build; Docker+Trivy en PR | Dependabot no se auto-mergea; cada PR debe pasar CI |
+| CI-01 | Mitigado | typecheck, lint, test, test:seguridad, `pnpm audit --prod --audit-level high`, build; Trivy fs y Trivy image de las cuatro imágenes Compose, en push y PR; actions por SHA; `permissions: contents: read` | Dependabot no se auto-mergea. El scan de imagen omite el npm CLI de `node:22-alpine` y el binario de esbuild 0.25.12 (ver IMG-NPM-01, IMG-ESBUILD-01) |
 | TEST-01 | Mitigado | Tests reales de WS (auth, Origin, cleanup, broadcast, reconnect) | — |
 | OPS-01 | Parcialmente mitigado | Contrato + tests de `RepositoryOperationLock`. La cola in-process ya serializa por repo | El motor async/cancelación no está implementado |
 | OPS-02 | Parcialmente mitigado | Contrato de recuperación documentado | No hay RecoveryManager |
 | REC-01 | Parcialmente mitigado | Journal + snapshots en discard/reset hard | Pull/push/merge no tienen undo seguro |
-| DEP-QS-01 | Abierto (residual) | — | `qs` moderate transitivo de Express 4 (`pnpm audit --prod`). No se confirma explotable en el API JSON de Abyssan. Gate CI: `--audit-level high` |
+| DEP-QS-01 | Mitigado | Express `^4.22.3` (resuelve 4.22.3) y override `qs: '>=6.16.0'`. `pnpm why` muestra una sola `qs@6.16.0` vía `express` y `body-parser`. `pnpm audit` ya no lista GHSA-x5fp-wj9c-mxmx ni GHSA-4mjr-xmp4-gh2g | — |
+| DEP-VITEST-01 | Abierto (residual) | — | `vitest@3.2.7` y `@vitest/mocker`, GHSA-82fw-gwwq-j7x9 (moderate, solo dev). Parche publicado `>=4.1.11`. No está en el árbol `--prod` ni en la imagen de producción del server. El gate high de producción no lo ve a propósito |
+| IMG-NPM-01 | Aceptado | — | Trivy image, run 35800627552: 11 HIGH/CRITICAL en `/usr/local/lib/node_modules/npm` (tar 7.5.11, brace-expansion 2.0.2, picomatch, pacote, sigstore, ip-address). Es el CLI de npm que trae `node:22-alpine`, no el `node_modules` de Abyssan. El server de producción ejecuta `node dist/index.js`. El workflow no escanea ese directorio |
+| IMG-ESBUILD-01 | Aceptado | — | Trivy image: el binario `esbuild@0.25.12` (dependencia de Vite 6.4.3, Go 1.23.12) arrastra CVE de la stdlib de Go, entre ellos CVE-2025-68121. `esbuild@0.28.2` (tsx) no salió en ese informe. El API no ejecuta ese binario. El workflow no escanea esas dos rutas de pnpm hasta que Vite traiga un esbuild compilado con Go parcheado |
 
 ## Contradicción resuelta: SEC-WS-01
 
