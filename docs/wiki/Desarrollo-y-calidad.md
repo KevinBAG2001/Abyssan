@@ -22,9 +22,23 @@ No introduzcas `package-lock.json` ni `yarn.lock`.
 | `pnpm test:seguridad` | perímetro de refs, remotes, WS y validadores |
 | `pnpm test:watch` | vitest |
 
-CI (`.github/workflows/ci.yml`): typecheck → lint → test → test:seguridad → `pnpm audit --prod --audit-level high` → build. En PR: build de imágenes Docker + Trivy (fs, CRITICAL/HIGH). Dependabot abre PRs; **no** se auto-aceptan: cada uno debe pasar CI.
+CI (`.github/workflows/ci.yml`), en push a `main`/`qa`/`dev` y en pull request. Permiso del workflow: `contents: read`. Actions externas fijadas por SHA (`checkout` v4.4.0, `setup-node` v4.4.0, `pnpm/action-setup` v4.3.0, `trivy-action` v0.36.0).
 
-`pnpm audit --prod` (sin umbral) hoy reporta 2 *moderate* en `qs` transitivo de Express 4. No se sube Express en este ciclo. El gate de CI usa `--audit-level high` (flag oficial de pnpm) para no bloquear por avisos moderate no explotados en el modelo JSON de Abyssan.
+1. `verificar`: typecheck → lint → test → test:seguridad → audit → build.
+2. `trivy-fs`: Trivy `scan-type: fs` sobre el checkout (CRITICAL/HIGH, `ignore-unfixed`).
+3. `imagenes`: build etiquetado de las cuatro imágenes que ejecutan Compose (`abyssan-server:dev|prod`, `abyssan-web:dev|prod`) y Trivy `scan-type: image` sobre cada tag. `fail-fast: false`.
+
+Dependabot (npm y github-actions, semanal) abre PRs; **no** se auto-aceptan: cada uno debe pasar CI. No hay CodeQL, dependency-review ni secret scanning en el workflow.
+
+### Política de `pnpm audit`
+
+- Bloquea el job: `pnpm audit --prod --audit-level high` (high/critical del árbol de producción).
+- No bloquea: `pnpm audit --prod --audit-level moderate` (`continue-on-error`). Así un moderate de producción queda en el log y no pasa en silencio, pero no tumba CI sin un impacto demostrado en el runtime de Abyssan.
+- Fuera de `--prod`: `vitest` / `@vitest/mocker` ([GHSA-82fw-gwwq-j7x9](https://github.com/advisories/GHSA-82fw-gwwq-j7x9)), devDependency de la raíz. El fix publicado es `>=4.1.11` (salto mayor desde Vitest 3). No entra en las imágenes de producción del server (`pnpm install --prod`). Ver `DEP-VITEST-01`.
+
+`qs` 6.15.3 ya no está en el árbol: Express `^4.22.3` resuelve 4.22.3 y el override `qs: '>=6.16.0'` fija la transitiva de `express` y `body-parser` en 6.16.0.
+
+El scan de imagen sigue en `CRITICAL,HIGH` con `exit-code: 1`. No recorre dos rutas que no son el proceso de Abyssan: `/usr/local/lib/node_modules/npm` (npm del base image) y el binario de `esbuild@0.25.12` que instala Vite. El `node_modules` de la aplicación y los paquetes de Alpine sí bloquean el job. Ver `IMG-NPM-01` e `IMG-ESBUILD-01`.
 
 ## Arquitectura
 
