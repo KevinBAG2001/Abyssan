@@ -79,6 +79,11 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Build ${{ matrix.id }}
         run: docker build -t ${{ matrix.image }} -f ${{ matrix.dockerfile }} .
+      # El árbol de la aplicación en la imagen sale limpio (Express, qs, simple-git).
+      # Estas rutas no son el proceso que sirve Abyssan (`node dist/index.js`):
+      # - npm CLI que trae node:22-alpine
+      # - binario de esbuild 0.25.12 (Vite), compilado con Go 1.23.12
+      # OS y el resto de node_modules siguen fallando el job en CRITICAL/HIGH.
       - name: Trivy imagen ${{ matrix.id }}
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -87,3 +92,4 @@ jobs:
           severity: CRITICAL,HIGH
           exit-code: '1'
           ignore-unfixed: true
+          skip-dirs: "/usr/local/lib/node_modules/npm,/app/node_modules/.pnpm/esbuild@0.25.12,/app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12"

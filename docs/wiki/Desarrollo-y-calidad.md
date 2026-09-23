@@ -38,6 +38,8 @@ Dependabot (npm y github-actions, semanal) abre PRs; **no** se auto-aceptan: cad
 
 `qs` 6.15.3 ya no está en el árbol: Express `^4.22.3` resuelve 4.22.3 y el override `qs: '>=6.16.0'` fija la transitiva de `express` y `body-parser` en 6.16.0.
 
+El scan de imagen sigue en `CRITICAL,HIGH` con `exit-code: 1`. No recorre dos rutas que no son el proceso de Abyssan: `/usr/local/lib/node_modules/npm` (npm del base image) y el binario de `esbuild@0.25.12` que instala Vite. El `node_modules` de la aplicación y los paquetes de Alpine sí bloquean el job. Ver `IMG-NPM-01` e `IMG-ESBUILD-01`.
+
 ## Arquitectura
 
 Un camino Git. Un `HttpGitApi`. Envelope `{ exito, mensaje, datos, meta }` en `/api` (salvo `/health`). Nombres de negocio nuevos en español; términos Git en inglés cuando son estándar.
