@@ -21,9 +21,16 @@ export type TipoOperacionLock =
   | 'pull'
   | 'push'
   | 'clone'
+  | 'init'
   | 'merge'
   | 'rebase'
   | 'reset'
+  | 'checkout'
+  | 'discard'
+  | 'stash'
+  | 'amend'
+  | 'deshacer'
+  | 'borrarRama'
   | 'cherry-pick'
   | 'revert';
 
@@ -38,12 +45,50 @@ const CLASIFICACION: Record<TipoOperacionLock, ClasificacionOperacion> = {
   pull: 'mutacion_pesada',
   push: 'mutacion_pesada',
   clone: 'mutacion_pesada',
+  init: 'mutacion_pesada',
   merge: 'mutacion_pesada',
   rebase: 'mutacion_pesada',
   reset: 'mutacion_pesada',
+  checkout: 'mutacion_pesada',
+  discard: 'mutacion_pesada',
+  stash: 'mutacion_pesada',
+  amend: 'mutacion_pesada',
+  deshacer: 'mutacion_pesada',
+  borrarRama: 'mutacion_pesada',
   'cherry-pick': 'mutacion_pesada',
   revert: 'mutacion_pesada',
 };
+
+/** Mutaciones incompatibles: un repositorio no ejecuta dos a la vez. */
+export const OPERACIONES_EXCLUSIVAS: ReadonlySet<TipoOperacionLock> = new Set([
+  'fetch',
+  'pull',
+  'push',
+  'clone',
+  'init',
+  'merge',
+  'rebase',
+  'reset',
+  'checkout',
+  'discard',
+  'stash',
+  'amend',
+  'deshacer',
+  'borrarRama',
+  'cherry-pick',
+  'revert',
+]);
+
+/** Lecturas: no adquieren lock. */
+export const OPERACIONES_LECTURA: ReadonlySet<TipoOperacionLock> = new Set([
+  'status',
+  'log',
+  'diff',
+]);
+
+export function requiereExclusividad(tipo: TipoOperacionLock): boolean {
+  return clasificarOperacion(tipo) !== 'lectura';
+}
 
 export function clasificarOperacion(tipo: TipoOperacionLock): ClasificacionOperacion {
   return CLASIFICACION[tipo];
