@@ -18,9 +18,9 @@ export class RegistroOperaciones {
     );
   }
 
-  crear(tipo: TipoGitOperacion, repo: string): GitOperacion {
+  crear(tipo: TipoGitOperacion, repo: string, id?: string): GitOperacion {
     const op: GitOperacion = {
-      id: randomBytes(6).toString('hex'),
+      id: id ?? randomBytes(6).toString('hex'),
       tipo,
       repo,
       estado: 'en_cola',

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { clasificarOperacion, RepositoryOperationLock } from '../RepositoryOperationLock.js';
+import {
+  clasificarOperacion,
+  OPERACIONES_EXCLUSIVAS,
+  OPERACIONES_LECTURA,
+  RepositoryOperationLock,
+  requiereExclusividad,
+} from '../RepositoryOperationLock.js';
 
 describe('RepositoryOperationLock', () => {
   it('clasifica lecturas y mutaciones pesadas', () => {
@@ -8,6 +14,11 @@ describe('RepositoryOperationLock', () => {
     expect(clasificarOperacion('commit')).toBe('mutacion_ligera');
     expect(clasificarOperacion('pull')).toBe('mutacion_pesada');
     expect(clasificarOperacion('rebase')).toBe('mutacion_pesada');
+    expect(clasificarOperacion('merge')).toBe('mutacion_pesada');
+    expect(requiereExclusividad('merge')).toBe(true);
+    expect(requiereExclusividad('status')).toBe(false);
+    expect(OPERACIONES_EXCLUSIVAS.has('merge')).toBe(true);
+    expect(OPERACIONES_LECTURA.has('diff')).toBe(true);
   });
 
   it('permite lecturas sin lock y serializa mutaciones del mismo repo', async () => {
