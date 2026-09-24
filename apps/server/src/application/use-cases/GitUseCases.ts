@@ -25,10 +25,13 @@ import {
   journalOperaciones,
 } from '../deshacer/JournalOperaciones.js';
 import type { EntradaJournalPublica, UltimaOperacion } from '../deshacer/tiposJournal.js';
-import { colaOperaciones } from '../operaciones/ColaOperaciones.js';
 import { registroOperaciones } from '../operaciones/RegistroOperaciones.js';
-import { sanitizarTextoAuditoria } from '../../infrastructure/auditoria/AuditoriaJsonlAdapter.js';
-import { mensajeErrorGit } from '../git/mensajeErrorGit.js';
+import {
+  gestorOperaciones,
+  mapearTipoLock,
+  OperationManager,
+  type RegistroOperacion,
+} from '../operaciones/OperationManager.js';
 import {
   borrarSnapshot,
   crearSnapshotArchivos,
@@ -52,7 +55,8 @@ export class GitUseCases {
   constructor(
     private gitRepository: IGitRepository,
     private logRepository: ICommandLogRepository,
-    private journal: JournalOperaciones = journalOperaciones
+    private journal: JournalOperaciones = journalOperaciones,
+    private gestor: OperationManager = gestorOperaciones
   ) {}
 
   private async ejecutarExclusiva<T>(
@@ -60,22 +64,12 @@ export class GitUseCases {
     tipo: TipoGitOperacion,
     trabajo: (onProgreso: EscuchaProgresoGit) => Promise<T>
   ): Promise<T> {
-    const op = registroOperaciones.crear(tipo, repoPath);
-    return colaOperaciones.encolar(repoPath, async () => {
-      registroOperaciones.marcarCorriendo(op.id);
-      const onProgreso: EscuchaProgresoGit = (informe) => {
-        registroOperaciones.actualizarProgreso(op.id, informe.porcentaje, informe.etapa);
-      };
-      try {
-        const resultado = await trabajo(onProgreso);
-        registroOperaciones.completar(op.id, 'exito');
-        return resultado;
-      } catch (error) {
-        const mensaje = sanitizarTextoAuditoria(mensajeErrorGit(error));
-        registroOperaciones.completar(op.id, 'fallo', mensaje);
-        throw error;
-      }
+    const { resultado } = await this.gestor.ejecutar({
+      repository: repoPath,
+      type: mapearTipoLock(tipo),
+      trabajo,
     });
+    return resultado;
   }
 
   listarOperaciones(): GitOperacion[] {
@@ -463,19 +457,25 @@ export class GitUseCases {
     );
   }
 
-  async merge(repoPath: string, sourceBranch: string, noFf = false): Promise<void> {
+  async merge(repoPath: string, sourceBranch: string, noFf = false): Promise<RegistroOperacion> {
     const origen = validarRefGit(sourceBranch);
-    return this.ejecutarExclusiva(repoPath, 'merge', async () => {
-      await this.gitRepository.mergeBranch(repoPath, origen, noFf);
-      this.journal.registrar({
-        tipo: 'merge',
-        repoPath,
-        descripcion: `Merge de ${origen}`,
-        puedeDeshacer: false,
-        motivoBloqueo: 'Un merge se aborta con “Abortar merge”, no con Deshacer.',
-        payload: { sourceBranch: origen },
-      });
+    const { operacion } = await this.gestor.ejecutar({
+      repository: repoPath,
+      type: 'merge',
+      metadata: { sourceBranch: origen, noFf },
+      trabajo: async () => {
+        await this.gitRepository.mergeBranch(repoPath, origen, noFf);
+        this.journal.registrar({
+          tipo: 'merge',
+          repoPath,
+          descripcion: `Merge de ${origen}`,
+          puedeDeshacer: false,
+          motivoBloqueo: 'Un merge se aborta con “Abortar merge”, no con Deshacer.',
+          payload: { sourceBranch: origen },
+        });
+      },
     });
+    return operacion;
   }
 
   async getStashes(repoPath: string): Promise<StashEntity[]> {

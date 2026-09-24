@@ -31,7 +31,7 @@ Ninguno abierto en este ciclo.
 | SEC-DKR-01 | Parcialmente mitigado | Prod: no-root, `safe.directory` explícito, sin wildcard. Dev: fallback root **solo** si el volumen Windows no es escribible | El compose de desarrollo puede seguir corriendo Git como root dentro del contenedor |
 | CI-01 | Mitigado | typecheck, lint, test, test:seguridad, `pnpm audit --prod --audit-level high`, build; Trivy fs y Trivy image de las cuatro imágenes Compose, en push y PR; actions por SHA; `permissions: contents: read` | Dependabot no se auto-mergea. El scan de imagen omite el npm CLI de `node:22-alpine` y el binario de esbuild 0.25.12 (ver IMG-NPM-01, IMG-ESBUILD-01) |
 | TEST-01 | Mitigado | Tests reales de WS (auth, Origin, cleanup, broadcast, reconnect) | — |
-| OPS-01 | Parcialmente mitigado | Contrato + tests de `RepositoryOperationLock`. La cola in-process ya serializa por repo | El motor async/cancelación no está implementado |
+| OPS-01 | Parcialmente mitigado | `OperationManager` + `RepositoryOperationLock` cableados en `ejecutarExclusiva` y en el piloto merge. Tests reales de éxito, conflicto, concurrencia y liberación del lock | Cancelación cooperativa de simple-git y persistencia de cola no están implementadas. Mutaciones ligeras y checkout de forjas aún no pasan por el motor |
 | OPS-02 | Parcialmente mitigado | Contrato de recuperación documentado | No hay RecoveryManager |
 | REC-01 | Parcialmente mitigado | Journal + snapshots en discard/reset hard | Pull/push/merge no tienen undo seguro |
 | DEP-QS-01 | Mitigado | Express `^4.22.3` (resuelve 4.22.3) y override `qs: '>=6.16.0'`. `pnpm why` muestra una sola `qs@6.16.0` vía `express` y `body-parser`. `pnpm audit` ya no lista GHSA-x5fp-wj9c-mxmx ni GHSA-4mjr-xmp4-gh2g | — |
