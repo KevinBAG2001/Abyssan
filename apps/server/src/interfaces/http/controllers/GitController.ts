@@ -104,8 +104,8 @@ export class GitController {
         return this.falta(res, 'repoPath y sourceBranch son requeridos');
       }
       const origen = validarRefGit(sourceBranch);
-      await this.gitUseCases.merge(this.validarRepo(repoPath), origen, noFf);
-      responderExito(res, {}, `Merge de ${origen} completado`);
+      const operacion = await this.gitUseCases.merge(this.validarRepo(repoPath), origen, noFf);
+      responderExito(res, { operacion }, `Merge de ${origen} completado`);
     } catch (error: unknown) {
       this.responderError(res, error);
     }

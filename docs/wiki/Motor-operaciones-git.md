@@ -1,29 +1,49 @@
-# Motor de operaciones Git — diseño (ciclo 2)
+# Motor de operaciones Git — Bloque C
 
 Este documento es **análisis y contrato**. No introduce Redis, BullMQ, Kafka ni workers externos.
 
 ## Qué hay hoy
 
-`ColaOperaciones` serializa mutaciones **por repositorio** en el proceso Node. `RegistroOperaciones` emite progreso WS acotado al repo. `GitUseCases.ejecutarExclusiva` usa esa cola.
+`OperationManager` es el motor in-process: crea un `operationId`, transiciona estados y mide duración. `RepositoryOperationLock` serializa mutaciones incompatibles **por repositorio**. `RegistroOperaciones` sigue emitiendo progreso WS con estados en español para la UI.
 
-`RepositoryOperationLock` es el contrato explícito (con tests) para la siguiente iteración. Todavía no sustituye la cola en el camino caliente: no se reescribe el engine en este ciclo.
+Camino del piloto (merge):
 
-## Clasificación
+```text
+UI → HttpGitApi.merge
+  → POST /api/git/merge
+  → GitController.merge
+  → GitUseCases.merge
+  → OperationManager.ejecutar
+  → RepositoryOperationLock.adquirir
+  → SimpleGitAdapter.mergeBranch
+  → simple-git → filesystem
+```
 
-| Clase | Ejemplos | Lock | Async / progreso | Cancelación |
-|-------|----------|------|------------------|-------------|
-| Lectura | status, log, diff, branches, tags | No | No | No aplica |
-| Mutación ligera | stage, unstage, commit, crear/renombrar rama, tag | Esperar si hay pesada en el mismo repo | No obligatorio | No |
-| Mutación pesada | fetch, pull, push, clone, merge, rebase, reset, cherry-pick, revert | Exclusiva por repo (WAIT) | Sí (progreso WS) | Diferido al próximo ciclo |
+`GitUseCases.ejecutarExclusiva` (pull, push, fetch, checkout, reset, etc.) también pasa por `OperationManager` + lock para no competir con el piloto. `ColaOperaciones` se conserva como primitiva; ya no es el único mecanismo del camino caliente.
 
-Repo A en `pull` + repo A `rebase` → **WAIT** (no REJECT en v1).  
-Repo A en `pull` + repo B `pull` → **continúa**.
+## Estados del motor
+
+| OperationManager | RegistroOperaciones / UI |
+|------------------|--------------------------|
+| queued | en_cola |
+| running | corriendo |
+| completed | exito |
+| failed | fallo |
+| cancelled | fallo (reservado; sin API de cancelación todavía) |
+
+## Clasificación y exclusividad
+
+| Clase | Ejemplos | Lock |
+|-------|----------|------|
+| Lectura | status, log, diff, branches, tags, preview | No |
+| Mutación ligera | stage, unstage, commit, crear/renombrar rama, tag | Aún no migradas al motor |
+| Mutación exclusiva | fetch, pull, push, clone, init, merge, rebase, reset, checkout, discard, stash pop, cherry-pick, revert, amend, borrarRama, deshacer | Exclusiva por repo (WAIT) |
+
+Repo A en `merge` + repo A `pull` → **WAIT**.  
+Repo A en `merge` + repo B `merge` → **continúa**.  
+Repo A en `merge` + repo A `status` → **continúa** (lectura).
 
 No hay lock global.
-
-## Qué requiere cola + progreso ya
-
-clone, fetch, pull, push, rebase-via-pull. La UI de Operaciones ya muestra en cola / corriendo / éxito / fallo.
 
 ## Qué no se implementa ahora
 
@@ -31,7 +51,8 @@ clone, fetch, pull, push, rebase-via-pull. La UI de Operaciones ya muestra en co
 - Cancelación cooperativa de `simple-git`
 - Workers en otro proceso
 - Prioridades, dead-letter, retries distribuidos
+- Migrar stage/commit/tag y el checkout de forjas al motor (deuda: forjas sigue sin cola)
 
-## Siguiente paso (no este ciclo)
+## Siguiente paso
 
-Cablear `RepositoryOperationLock` detrás de `ejecutarExclusiva` y añadir REJECT solo si un preview lo exige (por ejemplo reset hard mientras corre un merge).
+Migrar el resto de mutaciones ligeras y abort/continue merge cuando el piloto siga estable. Añadir REJECT solo si un preview lo exige (por ejemplo reset hard mientras corre un merge).

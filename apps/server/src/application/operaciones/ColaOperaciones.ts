@@ -1,6 +1,10 @@
 /**
  * Cola in-process: serializa mutaciones por repositorio.
  * Distintos repos pueden correr en paralelo.
+ *
+ * El camino caliente de mutaciones exclusivas es OperationManager +
+ * RepositoryOperationLock. Esta cola se conserva como primitiva de
+ * serialización; ya no es el único lock del servidor.
  */
 export class ColaOperaciones {
   private colas = new Map<string, Promise<unknown>>();
