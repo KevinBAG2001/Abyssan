@@ -5,8 +5,9 @@ function claveRepo(repo: string): string {
 }
 
 /**
- * Difusión de eventos WS (progreso de operaciones). No envía contenido de archivos.
- * El fan-out de operaciones se acota al repo que cada cliente vigila.
+ * Difusión de eventos WS. No envía contenido de archivos.
+ * Los eventos de un repositorio van por `emitirARepo`.
+ * `emitirGlobal` es la excepción: llega a toda sesión autenticada.
  */
 export class HubWebSocket {
   private clientes = new Map<WebSocket, { repo?: string }>();
@@ -35,7 +36,14 @@ export class HubWebSocket {
     if (sesion) sesion.repo = undefined;
   }
 
-  emitir(mensaje: Record<string, unknown>): void {
+  /**
+   * Broadcast a toda sesión abierta, vigile o no un repositorio.
+   * Exige un motivo para que el alcance global sea deliberado.
+   */
+  emitirGlobal(mensaje: Record<string, unknown>, motivo: string): void {
+    if (!motivo.trim()) {
+      throw new Error('Un broadcast global exige un motivo explícito');
+    }
     const cuerpo = JSON.stringify(mensaje);
     for (const [ws] of this.clientes) {
       if (ws.readyState === 1) {

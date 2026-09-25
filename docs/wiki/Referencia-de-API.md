@@ -48,7 +48,8 @@ Rutas en `index.ts`, `GitRoutes.ts`, `AuthForjasRoutes.ts` y `ForjasRoutes.ts`. 
 | GET | `/api/git/journal` | `path` | No |
 | GET | `/api/git/identity` | `path` | No |
 | GET | `/api/git/logs` | — | No |
-| GET | `/api/git/operaciones` | — | No |
+| GET | `/api/git/operaciones` | — | No. Historial UI en español |
+| GET | `/api/git/operaciones/:id` | — | No. Estado del motor. 400 si el id no es 12 hex; 404 si no está |
 
 ## Git mutación
 
@@ -66,9 +67,9 @@ JSON body. Confirmación de UI, no de API (excepto `confirmarRemoto`).
 | POST | `/api/git/merge` | `repoPath`, `sourceBranch`, `noFf?` | Merge |
 | POST | `/api/git/merge/abort` | `repoPath` | Abort |
 | POST | `/api/git/merge/continue` | `repoPath` | Continue |
-| POST | `/api/git/pull` | `repoPath`, `modo?` | Integra remoto |
-| POST | `/api/git/push` | `repoPath` | Push |
-| POST | `/api/git/fetch` | `repoPath`, `prune?` default true | Refs remotas |
+| POST | `/api/git/pull` | `repoPath`, `modo?` | **202.** Integra remoto en segundo plano. `modo: rebase` es la operación `rebase` |
+| POST | `/api/git/push` | `repoPath` | **202.** Push en segundo plano |
+| POST | `/api/git/fetch` | `repoPath`, `prune?` default true | **202.** Refs remotas en segundo plano |
 | POST | `/api/git/remote/add` | `repoPath`, `name`, `url` | Remote |
 | POST | `/api/git/remote/remove` | `repoPath`, `name` | Remote |
 | POST | `/api/git/stash/save` | `repoPath`, `message?` | Stash |
@@ -80,7 +81,7 @@ JSON body. Confirmación de UI, no de API (excepto `confirmarRemoto`).
 | POST | `/api/git/reset` | `repoPath`, `type`, `target` | Reset |
 | POST | `/api/git/discard` | `repoPath`, `file` | WT |
 | POST | `/api/git/conflict/resolve` | `repoPath`, `file`, `resolvedContent` | Archivo+stage |
-| POST | `/api/git/clone` | `url`, `nombreCarpeta` | `datos.path` |
+| POST | `/api/git/clone` | `url`, `nombreCarpeta` | **202.** `datos.path` y `datos.operacion`; el clon sigue en el motor |
 | POST | `/api/git/init` | `nombreCarpeta` | `datos.path` |
 | POST | `/api/git/amend` | `repoPath`, `message`, `confirmarRemoto?` | Amend |
 | POST | `/api/git/identity` | `repoPath`, `nombre`, `correo`, `global?` | Config |

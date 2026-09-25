@@ -16,6 +16,7 @@ import type { TipoOperacionPreview } from '../../../domain/entities/GitEntities.
 import { codigoHttpDeError, responderExito, responderFallo } from '../respuestaApi.js';
 import { mensajeErrorGit } from '../../../application/git/mensajeErrorGit.js';
 import { exigirConfirmacion } from '../../../infrastructure/seguridad/confirmacionDestructiva.js';
+import { PATRON_ID_OPERACION } from '../../../application/operaciones/operacionesAsincronas.js';
 
 export class GitController {
   constructor(private gitUseCases: GitUseCases) {}
@@ -228,8 +229,8 @@ export class GitController {
       const { repoPath, modo } = req.body as { repoPath?: string; modo?: 'merge' | 'rebase' };
       if (!repoPath) return this.falta(res, 'repoPath es requerido');
       const modoPull = modo === 'rebase' ? 'rebase' : 'merge';
-      await this.gitUseCases.pull(this.validarRepo(repoPath), modoPull);
-      responderExito(res, {}, `Pull (${modoPull}) completado con éxito`);
+      const operacion = await this.gitUseCases.programarPull(this.validarRepo(repoPath), modoPull);
+      responderExito(res, { operacion }, `Pull (${modoPull}) en curso`, 202);
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -239,8 +240,8 @@ export class GitController {
     try {
       const { repoPath } = req.body;
       if (!repoPath) return this.falta(res, 'repoPath es requerido');
-      await this.gitUseCases.push(this.validarRepo(repoPath));
-      responderExito(res, {}, 'Push completado con éxito');
+      const operacion = await this.gitUseCases.programarPush(this.validarRepo(repoPath));
+      responderExito(res, { operacion }, 'Push en curso', 202);
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -290,8 +291,8 @@ export class GitController {
     try {
       const { repoPath, prune } = req.body;
       if (!repoPath) return this.falta(res, 'repoPath es requerido');
-      await this.gitUseCases.fetchAll(this.validarRepo(repoPath), prune !== false);
-      responderExito(res, {}, 'Fetch completado');
+      const operacion = await this.gitUseCases.programarFetch(this.validarRepo(repoPath), prune !== false);
+      responderExito(res, { operacion }, 'Fetch en curso', 202);
     } catch (error: unknown) {
       this.responderError(res, error);
     }
@@ -441,6 +442,18 @@ export class GitController {
     responderExito(res, this.gitUseCases.listarOperaciones(), 'Operaciones Git');
   }
 
+  obtenerOperacion(req: Request, res: Response) {
+    const id = typeof req.params.id === 'string' ? req.params.id : '';
+    if (!PATRON_ID_OPERACION.test(id)) {
+      return this.falta(res, 'Identificador de operación no válido');
+    }
+    const operacion = this.gitUseCases.obtenerOperacion(id);
+    if (!operacion) {
+      return responderFallo(res, 'Operación no encontrada', 404);
+    }
+    responderExito(res, operacion, 'Operación');
+  }
+
   async discardArchivo(req: Request, res: Response) {
     try {
       const { repoPath, file, confirmado } = req.body;
@@ -484,8 +497,8 @@ export class GitController {
       if (!url || !nombreCarpeta) return this.falta(res, 'url y nombreCarpeta son requeridos');
       const urlValida = validarUrlClone(url);
       const destino = validarDestinoNuevo(nombreCarpeta);
-      await this.gitUseCases.clonarRepositorio(urlValida, destino);
-      responderExito(res, { path: destino }, `Repositorio clonado en ${nombreCarpeta}`);
+      const operacion = await this.gitUseCases.programarClon(urlValida, destino);
+      responderExito(res, { path: destino, operacion }, `Clon de ${nombreCarpeta} en curso`, 202);
     } catch (error: unknown) {
       this.responderError(res, error);
     }

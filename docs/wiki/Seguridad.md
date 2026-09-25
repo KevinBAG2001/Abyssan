@@ -49,8 +49,10 @@ Reset hard sucio y discard generan **snapshots** bajo `ABYSSAN_HOME/snapshots` (
 - Estado: **SEC-WS-01 parcialmente mitigado** — el vector de query string está cerrado; el secreto de instancia sigue siendo de larga duración en el servidor. Ver [Registro-de-riesgos.md](./Registro-de-riesgos.md).
 - Validación de `repoPath` en `WATCH_REPO` (mismo validador HTTP). En LAN, `WATCH_REPO` antes de autenticar cierra `4401`.
 - Política de watcher: `WATCH_REPO` / `UNWATCH` / disconnect / cleanup. Un watcher por repo; el último cliente cierra chokidar.
-- `OPERACION_PROGRESO` se emite solo a clientes asociados a ese repo (`emitirARepo`).
-- Payload: metadatos de cambio y de operación, `filePath` relativo. No se envía el cuerpo del archivo.
+- `OPERACION_PROGRESO` y `operation.started|progress|completed|failed|cancelled` se emiten solo a clientes asociados a ese repo (`emitirARepo`).
+- `emitirGlobal` existe para un aviso de instancia y exige un motivo. Las operaciones no lo usan.
+- Payload de operación: `operationId`, `repository`, `operationType`, `timestamp`, `state`, `progress`. El fallo puede incluir `error` ya sanitizado. No se envía metadata, URL ni cuerpo de archivo.
+- `REPO_CHANGED`: metadatos de cambio y `filePath` relativo. No se envía el cuerpo del archivo.
 - Código de cierre `4401` si falta autenticación; `4403` si el Origin no está permitido.
 
 ## Secretos

@@ -119,6 +119,7 @@ describe('Perímetro de refs Git (SEC-REF-01)', { timeout: 20_000 }, () => {
       const url = `file://${fuera.replace(/\\/g, '/')}`;
       await git.addRemote('escape', url);
       await expect(casos.fetchAll(repo)).rejects.toThrow('file://');
+      await expect(casos.programarFetch(repo)).rejects.toThrow('file://');
     } finally {
       fs.rmSync(fuera, { recursive: true, force: true });
     }
