@@ -1,5 +1,5 @@
 /**
- * Motor in-process de operaciones Git (Bloque C).
+ * Motor in-process de operaciones Git.
  * No es cola distribuida: vive en el proceso actual, en memoria.
  *
  * Camino: OperationManager → RepositoryOperationLock → trabajo (use case / adapter).
@@ -20,6 +20,31 @@ import {
   clasificarOperacion,
 } from './RepositoryOperationLock.js';
 import { RegistroOperaciones, registroOperaciones } from './RegistroOperaciones.js';
+import { hubWebSocket } from '../../infrastructure/ws/HubWebSocket.js';
+
+export type TipoEventoOperacion =
+  | 'operation.started'
+  | 'operation.progress'
+  | 'operation.completed'
+  | 'operation.failed'
+  | 'operation.cancelled';
+
+export type DifusorOperacion = (repository: string, mensaje: Record<string, unknown>) => void;
+
+const CLAVES_EVENTO = [
+  'type',
+  'operationId',
+  'repository',
+  'operationType',
+  'timestamp',
+  'state',
+  'progress',
+  'error',
+] as const;
+
+function difundirPorDefecto(repository: string, mensaje: Record<string, unknown>): void {
+  hubWebSocket.emitirARepo(repository, mensaje);
+}
 
 export type EstadoOperacion = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
 
@@ -66,12 +91,16 @@ function estadoParaRegistro(state: EstadoOperacion): Extract<EstadoGitOperacion,
   return state === 'completed' ? 'exito' : 'fallo';
 }
 
+type TrabajoOperacion<T> = (onProgreso: EscuchaProgresoGit) => Promise<T>;
+
 export class OperationManager {
   private operaciones = new Map<string, RegistroOperacion>();
+  private pendientes = new Map<string, Promise<void>>();
 
   constructor(
     private readonly lock: RepositoryOperationLock,
-    private readonly registro: RegistroOperaciones = registroOperaciones
+    private readonly registro: RegistroOperaciones = registroOperaciones,
+    private readonly difundir: DifusorOperacion = difundirPorDefecto
   ) {}
 
   listar(): RegistroOperacion[] {
@@ -89,13 +118,66 @@ export class OperationManager {
     return this.lock.hayTrabajo(repository);
   }
 
+  /**
+   * Arranca el trabajo y devuelve el registro sin esperar a git.
+   * El fallo queda en el estado; no rechaza al llamador HTTP.
+   */
+  iniciar<T>(params: {
+    repository: string;
+    type: TipoOperacionLock;
+    metadata?: Record<string, unknown>;
+    trabajo: TrabajoOperacion<T>;
+  }): RegistroOperacion {
+    const op = this.crear(params.repository, params.type, params.metadata);
+    const tarea = this.correr(op.operationId, params).then(
+      () => undefined,
+      () => undefined
+    );
+    this.pendientes.set(op.operationId, tarea);
+    void tarea.finally(() => {
+      this.pendientes.delete(op.operationId);
+    });
+    return this.obtener(op.operationId)!;
+  }
+
+  async esperar(operationId: string): Promise<RegistroOperacion | undefined> {
+    const pendiente = this.pendientes.get(operationId);
+    if (pendiente) await pendiente;
+    return this.obtener(operationId);
+  }
+
+  /** Solo en cola. Un git ya en marcha no se puede abortar desde aquí. */
+  cancelar(operationId: string): boolean {
+    const op = this.operaciones.get(operationId);
+    if (!op || op.state !== 'queued') return false;
+    this.finalizar(operationId, 'cancelled', 'Operación cancelada');
+    return true;
+  }
+
   async ejecutar<T>(params: {
     repository: string;
     type: TipoOperacionLock;
     metadata?: Record<string, unknown>;
-    trabajo: (onProgreso: EscuchaProgresoGit) => Promise<T>;
+    trabajo: TrabajoOperacion<T>;
   }): Promise<{ resultado: T; operacion: RegistroOperacion }> {
     const op = this.crear(params.repository, params.type, params.metadata);
+    const resultado = await this.correr(op.operationId, params);
+    const operacion = this.obtener(op.operationId)!;
+    if (operacion.state !== 'completed') {
+      throw new Error(operacion.error || 'La operación no se completó');
+    }
+    return { resultado: resultado as T, operacion };
+  }
+
+  private async correr<T>(
+    operationId: string,
+    params: {
+      repository: string;
+      type: TipoOperacionLock;
+      trabajo: TrabajoOperacion<T>;
+    }
+  ): Promise<T | undefined> {
+    if (this.esTerminal(operationId)) return undefined;
     const exclusiva = clasificarOperacion(params.type) !== 'lectura';
     let liberar: (() => void) | undefined;
 
@@ -103,20 +185,28 @@ export class OperationManager {
       if (exclusiva) {
         liberar = await this.lock.adquirir(params.repository, params.type);
       }
-      this.marcarRunning(op.operationId);
+      if (this.esTerminal(operationId)) return undefined;
+      this.marcarRunning(operationId);
       const onProgreso: EscuchaProgresoGit = (informe) => {
-        this.actualizarProgreso(op.operationId, informe.porcentaje, informe.etapa);
+        this.actualizarProgreso(operationId, informe.porcentaje, informe.etapa);
       };
       const resultado = await params.trabajo(onProgreso);
-      this.finalizar(op.operationId, 'completed');
-      return { resultado, operacion: this.obtener(op.operationId)! };
+      this.finalizar(operationId, 'completed');
+      return resultado;
     } catch (error) {
-      const mensaje = sanitizarTextoAuditoria(mensajeErrorGit(error));
-      this.finalizar(op.operationId, 'failed', mensaje);
+      if (!this.esTerminal(operationId)) {
+        const mensaje = sanitizarTextoAuditoria(mensajeErrorGit(error));
+        this.finalizar(operationId, 'failed', mensaje);
+      }
       throw error;
     } finally {
       liberar?.();
     }
+  }
+
+  private esTerminal(operationId: string): boolean {
+    const op = this.operaciones.get(operationId);
+    return !op || op.state === 'completed' || op.state === 'failed' || op.state === 'cancelled';
   }
 
   private crear(
@@ -148,6 +238,7 @@ export class OperationManager {
     op.state = 'running';
     op.startedAt = new Date().toISOString();
     this.registro.marcarCorriendo(operationId);
+    this.publicar(operationId, 'operation.started');
   }
 
   private actualizarProgreso(operationId: string, porcentaje: number, etapa?: string): void {
@@ -160,11 +251,12 @@ export class OperationManager {
     if (etapa) op.metadata = { ...op.metadata, etapa };
     if (!op.startedAt) op.startedAt = new Date().toISOString();
     this.registro.actualizarProgreso(operationId, op.progress, etapa);
+    this.publicar(operationId, 'operation.progress');
   }
 
   private finalizar(operationId: string, state: 'completed' | 'failed' | 'cancelled', error?: string): void {
     const op = this.operaciones.get(operationId);
-    if (!op) return;
+    if (!op || op.state === 'completed' || op.state === 'failed' || op.state === 'cancelled') return;
     op.state = state;
     op.progress = state === 'completed' ? 100 : op.progress;
     op.finishedAt = new Date().toISOString();
@@ -175,6 +267,32 @@ export class OperationManager {
     if (TIPOS_GIT.has(op.type)) {
       this.registro.completar(operationId, estadoParaRegistro(state), error);
     }
+    const tipo: TipoEventoOperacion =
+      state === 'completed' ? 'operation.completed' : state === 'failed' ? 'operation.failed' : 'operation.cancelled';
+    this.publicar(operationId, tipo);
+  }
+
+  private publicar(operationId: string, type: TipoEventoOperacion): void {
+    const op = this.operaciones.get(operationId);
+    if (!op) return;
+    const mensaje: Record<string, unknown> = {
+      type,
+      operationId: op.operationId,
+      repository: op.repository,
+      operationType: op.type,
+      timestamp: new Date().toISOString(),
+      state: op.state,
+      progress: op.progress,
+    };
+    if (type === 'operation.failed' && op.error) {
+      mensaje.error = op.error;
+    }
+    for (const clave of Object.keys(mensaje)) {
+      if (!(CLAVES_EVENTO as readonly string[]).includes(clave)) {
+        delete mensaje[clave];
+      }
+    }
+    this.difundir(op.repository, mensaje);
   }
 
   private podar(): void {
