@@ -32,6 +32,7 @@ import {
   OperationManager,
   type RegistroOperacion,
 } from '../operaciones/OperationManager.js';
+import { vistaOperacion, type VistaOperacion } from '../operaciones/operacionesAsincronas.js';
 import {
   borrarSnapshot,
   crearSnapshotArchivos,
@@ -74,6 +75,11 @@ export class GitUseCases {
 
   listarOperaciones(): GitOperacion[] {
     return registroOperaciones.listar();
+  }
+
+  obtenerOperacion(operationId: string): VistaOperacion | undefined {
+    const op = this.gestor.obtener(operationId);
+    return op ? vistaOperacion(op) : undefined;
   }
 
   private asegurarUrlsDeRemotos(remotos: RemoteEntity[]): void {
@@ -201,34 +207,69 @@ export class GitUseCases {
   }
 
   async pull(repoPath: string, modo: 'merge' | 'rebase' = 'merge'): Promise<void> {
-    const tipo: TipoGitOperacion = modo === 'rebase' ? 'rebase' : 'pull';
+    const tipo = this.tipoPull(modo);
     this.asegurarUrlsDeRemotos(await this.gitRepository.getRemotes(repoPath));
-    return this.ejecutarExclusiva(repoPath, tipo, async (onProgreso) => {
-      await this.gitRepository.pull(repoPath, modo, onProgreso);
-      this.journal.registrar({
-        tipo: 'pull',
-        repoPath,
-        descripcion: `Pull (${modo})`,
-        puedeDeshacer: false,
-        motivoBloqueo: 'Un pull no se deshace en un paso seguro; usa reflog si hace falta.',
-        payload: { modo },
-      });
-    });
+    return this.ejecutarExclusiva(repoPath, tipo, (onProgreso) => this.trabajoPull(repoPath, modo, onProgreso));
+  }
+
+  async programarPull(repoPath: string, modo: 'merge' | 'rebase' = 'merge'): Promise<VistaOperacion> {
+    const tipo = this.tipoPull(modo);
+    this.asegurarUrlsDeRemotos(await this.gitRepository.getRemotes(repoPath));
+    return vistaOperacion(
+      this.gestor.iniciar({
+        repository: repoPath,
+        type: mapearTipoLock(tipo),
+        trabajo: (onProgreso) => this.trabajoPull(repoPath, modo, onProgreso),
+      })
+    );
   }
 
   async push(repoPath: string): Promise<void> {
     this.asegurarUrlsDeRemotos(await this.gitRepository.getRemotes(repoPath));
-    return this.ejecutarExclusiva(repoPath, 'push', async (onProgreso) => {
-      await this.gitRepository.push(repoPath, onProgreso);
-      this.journal.marcarNoDeshacer('Un push ya está en el remoto; no se deshace desde Abyssan.');
-      this.journal.registrar({
-        tipo: 'push',
-        repoPath,
-        descripcion: 'Push al remoto',
-        puedeDeshacer: false,
-        motivoBloqueo: 'Un push ya está en el remoto; no se deshace desde Abyssan.',
-        payload: {},
-      });
+    return this.ejecutarExclusiva(repoPath, 'push', (onProgreso) => this.trabajoPush(repoPath, onProgreso));
+  }
+
+  async programarPush(repoPath: string): Promise<VistaOperacion> {
+    this.asegurarUrlsDeRemotos(await this.gitRepository.getRemotes(repoPath));
+    return vistaOperacion(
+      this.gestor.iniciar({
+        repository: repoPath,
+        type: 'push',
+        trabajo: (onProgreso) => this.trabajoPush(repoPath, onProgreso),
+      })
+    );
+  }
+
+  private tipoPull(modo: 'merge' | 'rebase'): TipoGitOperacion {
+    return modo === 'rebase' ? 'rebase' : 'pull';
+  }
+
+  private async trabajoPull(
+    repoPath: string,
+    modo: 'merge' | 'rebase',
+    onProgreso: EscuchaProgresoGit
+  ): Promise<void> {
+    await this.gitRepository.pull(repoPath, modo, onProgreso);
+    this.journal.registrar({
+      tipo: 'pull',
+      repoPath,
+      descripcion: `Pull (${modo})`,
+      puedeDeshacer: false,
+      motivoBloqueo: 'Un pull no se deshace en un paso seguro; usa reflog si hace falta.',
+      payload: { modo },
+    });
+  }
+
+  private async trabajoPush(repoPath: string, onProgreso: EscuchaProgresoGit): Promise<void> {
+    await this.gitRepository.push(repoPath, onProgreso);
+    this.journal.marcarNoDeshacer('Un push ya está en el remoto; no se deshace desde Abyssan.');
+    this.journal.registrar({
+      tipo: 'push',
+      repoPath,
+      descripcion: 'Push al remoto',
+      puedeDeshacer: false,
+      motivoBloqueo: 'Un push ya está en el remoto; no se deshace desde Abyssan.',
+      payload: {},
     });
   }
 
@@ -255,16 +296,29 @@ export class GitUseCases {
 
   async clonarRepositorio(url: string, destino: string): Promise<void> {
     const urlValida = validarUrlClone(url);
-    return this.ejecutarExclusiva(destino, 'clone', async (onProgreso) => {
-      await this.gitRepository.clonarRepositorio(urlValida, destino, onProgreso);
-      this.journal.registrar({
-        tipo: 'clone',
-        repoPath: destino,
-        descripcion: `Clonado en ${path.basename(destino)}`,
-        puedeDeshacer: false,
-        motivoBloqueo: 'El clonado no se deshace: borra la carpeta a mano si no la quieres.',
-        payload: { destino },
-      });
+    return this.ejecutarExclusiva(destino, 'clone', (onProgreso) => this.trabajoClone(urlValida, destino, onProgreso));
+  }
+
+  async programarClon(url: string, destino: string): Promise<VistaOperacion> {
+    const urlValida = validarUrlClone(url);
+    return vistaOperacion(
+      this.gestor.iniciar({
+        repository: destino,
+        type: 'clone',
+        trabajo: (onProgreso) => this.trabajoClone(urlValida, destino, onProgreso),
+      })
+    );
+  }
+
+  private async trabajoClone(url: string, destino: string, onProgreso: EscuchaProgresoGit): Promise<void> {
+    await this.gitRepository.clonarRepositorio(url, destino, onProgreso);
+    this.journal.registrar({
+      tipo: 'clone',
+      repoPath: destino,
+      descripcion: `Clonado en ${path.basename(destino)}`,
+      puedeDeshacer: false,
+      motivoBloqueo: 'El clonado no se deshace: borra la carpeta a mano si no la quieres.',
+      payload: { destino },
     });
   }
 
@@ -444,9 +498,20 @@ export class GitUseCases {
 
   async fetchAll(repoPath: string, prune = true): Promise<void> {
     this.asegurarUrlsDeRemotos(await this.gitRepository.getRemotes(repoPath));
-    return this.ejecutarExclusiva(repoPath, 'fetch', async (onProgreso) => {
-      await this.gitRepository.fetchAll(repoPath, prune, onProgreso);
-    });
+    return this.ejecutarExclusiva(repoPath, 'fetch', (onProgreso) =>
+      this.gitRepository.fetchAll(repoPath, prune, onProgreso)
+    );
+  }
+
+  async programarFetch(repoPath: string, prune = true): Promise<VistaOperacion> {
+    this.asegurarUrlsDeRemotos(await this.gitRepository.getRemotes(repoPath));
+    return vistaOperacion(
+      this.gestor.iniciar({
+        repository: repoPath,
+        type: 'fetch',
+        trabajo: (onProgreso) => this.gitRepository.fetchAll(repoPath, prune, onProgreso),
+      })
+    );
   }
 
   async compareBranches(repoPath: string, baseBranch: string, targetBranch: string): Promise<BranchComparisonEntity> {

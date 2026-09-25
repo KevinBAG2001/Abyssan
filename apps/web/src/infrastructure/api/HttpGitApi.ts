@@ -73,6 +73,12 @@ export type SolicitudForjaCreada = {
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
+type VistaOperacionHttp = {
+  operationId: string;
+  state: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
+  error?: string;
+};
+
 type Envelope<T> = {
   exito: boolean;
   mensaje: string;
@@ -159,6 +165,27 @@ export class HttpGitApi {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
+  }
+
+  private async esperarOperacion(operacion: VistaOperacionHttp): Promise<void> {
+    if (!operacion?.operationId) {
+      throw new Error('La operación no devolvió un identificador');
+    }
+    let actual = operacion;
+    const limite = Date.now() + 30 * 60 * 1000;
+    while (actual.state === 'queued' || actual.state === 'running') {
+      if (Date.now() > limite) {
+        throw new Error('La operación sigue en curso. Puedes consultar su estado más tarde.');
+      }
+      actual = await this.pedir<VistaOperacionHttp>(
+        `/api/git/operaciones/${encodeURIComponent(actual.operationId)}`
+      );
+      if (actual.state === 'queued' || actual.state === 'running') {
+        await new Promise((resolver) => setTimeout(resolver, 400));
+      }
+    }
+    if (actual.state === 'completed') return;
+    throw new Error(mensajeCliente(actual.error || 'La operación no se completó'));
   }
 
   async getRepos(root?: string): Promise<RepositorySummaryModel[]> {
@@ -248,11 +275,21 @@ export class HttpGitApi {
   }
 
   async pull(repoPath: string, modo: 'merge' | 'rebase' = 'merge'): Promise<void> {
-    await this.post('/api/git/pull', { repoPath, modo });
+    const datos = await this.pedir<{ operacion: VistaOperacionHttp }>('/api/git/pull', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ repoPath, modo }),
+    });
+    await this.esperarOperacion(datos.operacion);
   }
 
   async push(repoPath: string): Promise<void> {
-    await this.post('/api/git/push', { repoPath });
+    const datos = await this.pedir<{ operacion: VistaOperacionHttp }>('/api/git/push', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ repoPath }),
+    });
+    await this.esperarOperacion(datos.operacion);
   }
 
   async getRemotes(repoPath: string): Promise<RemoteModel[]> {
@@ -268,7 +305,12 @@ export class HttpGitApi {
   }
 
   async fetchAll(repoPath: string, prune = true): Promise<void> {
-    await this.post('/api/git/fetch', { repoPath, prune });
+    const datos = await this.pedir<{ operacion: VistaOperacionHttp }>('/api/git/fetch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ repoPath, prune }),
+    });
+    await this.esperarOperacion(datos.operacion);
   }
 
   async getStashes(repoPath: string): Promise<StashModel[]> {
@@ -375,11 +417,13 @@ export class HttpGitApi {
   }
 
   async clonarRepositorio(url: string, nombreCarpeta: string): Promise<{ path: string }> {
-    return this.pedir('/api/git/clone', {
+    const datos = await this.pedir<{ path: string; operacion: VistaOperacionHttp }>('/api/git/clone', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url, nombreCarpeta }),
     });
+    await this.esperarOperacion(datos.operacion);
+    return { path: datos.path };
   }
 
   async inicializarRepositorio(nombreCarpeta: string): Promise<{ path: string }> {

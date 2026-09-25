@@ -66,6 +66,35 @@ describe('HubWebSocket', () => {
     expect(a.enviados).toHaveLength(0);
   });
 
+  it('emitirGlobal llega a sesiones sin repo; emitirARepo no', () => {
+    const hub = new HubWebSocket();
+    const conRepo = crearSocket();
+    const sinRepo = crearSocket();
+    hub.registrar(conRepo as unknown as WebSocket);
+    hub.registrar(sinRepo as unknown as WebSocket);
+    hub.asociarRepo(conRepo as unknown as WebSocket, '/repos/uno');
+
+    hub.emitirARepo('/repos/uno', { type: 'operation.completed', operationId: 'abc' });
+    expect(conRepo.enviados).toHaveLength(1);
+    expect(sinRepo.enviados).toHaveLength(0);
+
+    hub.emitirGlobal({ type: 'instancia.aviso' }, 'aviso de mantenimiento de la instancia');
+    expect(conRepo.enviados).toHaveLength(2);
+    expect(sinRepo.enviados).toHaveLength(1);
+    expect(() => hub.emitirGlobal({ type: 'x' }, '   ')).toThrow(/motivo/);
+  });
+
+  it('al desconectar, el cliente sale del hub y no recibe el evento', () => {
+    const hub = new HubWebSocket();
+    const a = crearSocket();
+    hub.registrar(a as unknown as WebSocket);
+    hub.asociarRepo(a as unknown as WebSocket, '/repos/uno');
+    a.emitirClose();
+    expect(hub.cantidadClientes()).toBe(0);
+    hub.emitirARepo('/repos/uno', { type: 'operation.completed' });
+    expect(a.enviados).toHaveLength(0);
+  });
+
   it('registrar es idempotente y no duplica el handler de close', () => {
     const hub = new HubWebSocket();
     const a = crearSocket();

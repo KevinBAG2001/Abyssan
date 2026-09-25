@@ -26,12 +26,12 @@ Ninguno abierto en este ciclo.
 | SEC-REM-01 | Mitigado | `RemotePolicy` revalida fetch/pull/push de remotos persistidos; bloquea `file://` | Un remoto peligroso puede existir en `.git/config`; Abyssan lo rechaza al usarlo, no lo borra solo |
 | SEC-WS-01 | Parcialmente mitigado | `?token=` **no autentica**. Handshake `AUTH` o cookie de sesión. | El token permanente sigue existiendo en el servidor. Si alguien lo pega en una URL a mano, no se usa, pero el secreto de instancia sigue siendo de larga duración |
 | SEC-WS-02 | Mitigado | Un watcher por repo, unwatch al último cliente, `UNWATCH` | — |
-| SEC-WS-03 | Mitigado | `emitirARepo`; progreso no es broadcast global | — |
+| SEC-WS-03 | Mitigado | `emitirARepo` para progreso y `operation.*`. `emitirGlobal` exige motivo y las operaciones no lo llaman | — |
 | SEC-VITE-01 | Mitigado | La SPA ya no lee `VITE_ABYSSAN_API_TOKEN`. Sesión HttpOnly + id en memoria | El operador sigue pegando el token permanente una vez en LAN/Docker |
 | SEC-DKR-01 | Parcialmente mitigado | Prod: no-root, `safe.directory` explícito, sin wildcard. Dev: fallback root **solo** si el volumen Windows no es escribible | El compose de desarrollo puede seguir corriendo Git como root dentro del contenedor |
 | CI-01 | Mitigado | typecheck, lint, test, test:seguridad, `pnpm audit --prod --audit-level high`, build; Trivy fs y Trivy image de las cuatro imágenes Compose, en push y PR; actions por SHA; `permissions: contents: read` | Dependabot no se auto-mergea. El scan de imagen omite el npm CLI de `node:22-alpine` y el binario de esbuild 0.25.12 (ver IMG-NPM-01, IMG-ESBUILD-01) |
 | TEST-01 | Mitigado | Tests reales de WS (auth, Origin, cleanup, broadcast, reconnect) | — |
-| OPS-01 | Parcialmente mitigado | `OperationManager` + `RepositoryOperationLock` cableados en `ejecutarExclusiva` y en el piloto merge. Tests reales de éxito, conflicto, concurrencia y liberación del lock | Cancelación cooperativa de simple-git y persistencia de cola no están implementadas. Mutaciones ligeras y checkout de forjas aún no pasan por el motor |
+| OPS-01 | Parcialmente mitigado | `OperationManager` + lock. Clone, fetch, pull, push y rebase responden 202 y se observan por `GET /operaciones/:id` y eventos `operation.*` con `emitirARepo`. Tests de ciclo, fallo sanitizado, aislamiento y desconexión | Cancelar un `simple-git` ya en marcha y persistir la cola no están implementados. Mutaciones ligeras y el checkout de forjas aún no pasan por el motor |
 | OPS-02 | Parcialmente mitigado | Contrato de recuperación documentado | No hay RecoveryManager |
 | REC-01 | Parcialmente mitigado | Journal + snapshots en discard/reset hard | Pull/push/merge no tienen undo seguro |
 | DEP-QS-01 | Mitigado | Express `^4.22.3` (resuelve 4.22.3) y override `qs: '>=6.16.0'`. `pnpm why` muestra una sola `qs@6.16.0` vía `express` y `body-parser`. `pnpm audit` ya no lista GHSA-x5fp-wj9c-mxmx ni GHSA-4mjr-xmp4-gh2g | — |
