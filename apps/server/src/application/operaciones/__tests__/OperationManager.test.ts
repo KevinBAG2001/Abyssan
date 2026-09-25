@@ -2,12 +2,18 @@ import { describe, expect, it } from 'vitest';
 import { OperationManager } from '../OperationManager.js';
 import { RepositoryOperationLock } from '../RepositoryOperationLock.js';
 import { RegistroOperaciones } from '../RegistroOperaciones.js';
+import { OPERACIONES_HTTP_DESACOPLADAS, vistaOperacion } from '../operacionesAsincronas.js';
 
 function crearGestor() {
+  const eventos: Record<string, unknown>[] = [];
   const lock = new RepositoryOperationLock();
-  const gestor = new OperationManager(lock, new RegistroOperaciones());
-  return { lock, gestor };
+  const gestor = new OperationManager(lock, new RegistroOperaciones(), (_repo, mensaje) => {
+    eventos.push(mensaje);
+  });
+  return { lock, gestor, eventos };
 }
+
+const CLAVES_EVENTO = ['type', 'operationId', 'repository', 'operationType', 'timestamp', 'state', 'progress', 'error'];
 
 describe('OperationManager', () => {
   it('registra operationId, estados, duración y libera el lock tras éxito', async () => {
@@ -112,5 +118,114 @@ describe('OperationManager', () => {
       gestor.ejecutar({ repository: '/tmp/b', type: 'merge', trabajo }),
     ]);
     expect(max).toBe(2);
+  });
+
+  it('desacopla clone, fetch, pull, push y rebase; merge y cherry-pick siguen en la petición', () => {
+    expect([...OPERACIONES_HTTP_DESACOPLADAS].sort()).toEqual(['clone', 'fetch', 'pull', 'push', 'rebase']);
+    expect(OPERACIONES_HTTP_DESACOPLADAS.has('merge')).toBe(false);
+    expect(OPERACIONES_HTTP_DESACOPLADAS.has('cherry-pick')).toBe(false);
+  });
+
+  it('iniciar devuelve antes de que el trabajo termine y publica el ciclo', async () => {
+    const { gestor, eventos } = crearGestor();
+    let termino = false;
+    const op = gestor.iniciar({
+      repository: '/tmp/repo-async',
+      type: 'fetch',
+      metadata: { url: 'https://user:ghp_supersecreto@github.com/acme/r.git' },
+      trabajo: async (onProgreso) => {
+        onProgreso({ etapa: 'Receiving objects', porcentaje: 40 });
+        await new Promise((r) => setTimeout(r, 20));
+        termino = true;
+      },
+    });
+
+    expect(termino).toBe(false);
+    expect(op.state === 'queued' || op.state === 'running').toBe(true);
+    const final = await gestor.esperar(op.operationId);
+    expect(termino).toBe(true);
+    expect(final?.state).toBe('completed');
+    expect(eventos.map((e) => e.type)).toEqual([
+      'operation.started',
+      'operation.progress',
+      'operation.completed',
+    ]);
+    const progreso = eventos[1];
+    expect(progreso).toMatchObject({
+      operationId: op.operationId,
+      repository: '/tmp/repo-async',
+      operationType: 'fetch',
+      state: 'running',
+      progress: 40,
+    });
+    expect(progreso?.timestamp).toEqual(expect.any(String));
+    for (const evento of eventos) {
+      const sobrantes = Object.keys(evento).filter((clave) => !CLAVES_EVENTO.includes(clave));
+      expect(sobrantes).toEqual([]);
+      expect(JSON.stringify(evento)).not.toContain('ghp_supersecreto');
+      expect(JSON.stringify(evento)).not.toContain('Receiving objects');
+    }
+    const vista = vistaOperacion(gestor.obtener(op.operationId)!);
+    expect(vista).not.toHaveProperty('metadata');
+    expect(JSON.stringify(vista)).not.toContain('ghp_supersecreto');
+  });
+
+  it('publica operation.failed con el error sanitizado', async () => {
+    const { gestor, eventos } = crearGestor();
+    const op = gestor.iniciar({
+      repository: '/tmp/repo-fallo',
+      type: 'push',
+      trabajo: async () => {
+        throw new Error('fatal: https://user:ghp_secreto@github.com/acme/r.git');
+      },
+    });
+    const final = await gestor.esperar(op.operationId);
+    expect(final?.state).toBe('failed');
+    expect(final?.error).not.toContain('ghp_secreto');
+    const fallo = eventos.find((e) => e.type === 'operation.failed');
+    expect(fallo).toMatchObject({
+      operationId: op.operationId,
+      repository: '/tmp/repo-fallo',
+      operationType: 'push',
+      state: 'failed',
+    });
+    expect(String(fallo?.error)).not.toContain('ghp_secreto');
+  });
+
+  it('cancela solo la operación en cola y emite operation.cancelled', async () => {
+    const { gestor, eventos } = crearGestor();
+    let corrioLaSegunda = false;
+    const primera = gestor.iniciar({
+      repository: '/tmp/repo-cancel',
+      type: 'merge',
+      trabajo: async () => {
+        await new Promise((r) => setTimeout(r, 40));
+      },
+    });
+    await expect.poll(() => gestor.obtener(primera.operationId)?.state).toBe('running');
+    const segunda = gestor.iniciar({
+      repository: '/tmp/repo-cancel',
+      type: 'pull',
+      trabajo: async () => {
+        corrioLaSegunda = true;
+      },
+    });
+
+    expect(segunda.state).toBe('queued');
+    expect(gestor.cancelar(segunda.operationId)).toBe(true);
+    expect(gestor.cancelar(primera.operationId)).toBe(false);
+
+    await gestor.esperar(primera.operationId);
+    await gestor.esperar(segunda.operationId);
+    expect(corrioLaSegunda).toBe(false);
+    expect(gestor.obtener(primera.operationId)?.state).toBe('completed');
+    expect(gestor.obtener(segunda.operationId)?.state).toBe('cancelled');
+    const cancelada = eventos.find((e) => e.operationId === segunda.operationId && e.type === 'operation.cancelled');
+    expect(cancelada).toMatchObject({
+      repository: '/tmp/repo-cancel',
+      operationType: 'pull',
+      state: 'cancelled',
+    });
+    expect(cancelada).not.toHaveProperty('error');
   });
 });

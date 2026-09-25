@@ -89,6 +89,8 @@ describe('Perímetro addRemote (SEC-REM-01)', { timeout: 20_000 }, () => {
       await git.addRemote('escape', `file://${fuera.replace(/\\/g, '/')}`);
       await expect(casos.push(repo)).rejects.toThrow('file://');
       await expect(casos.pull(repo)).rejects.toThrow('file://');
+      await expect(casos.programarPush(repo)).rejects.toThrow('file://');
+      await expect(casos.programarPull(repo)).rejects.toThrow('file://');
     } finally {
       fs.rmSync(fuera, { recursive: true, force: true });
     }

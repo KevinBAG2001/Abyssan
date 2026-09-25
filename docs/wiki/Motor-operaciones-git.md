@@ -45,13 +45,30 @@ Repo A en `merge` + repo A `status` → **continúa** (lectura).
 
 No hay lock global.
 
+## Ejecución desacoplada (Bloque D)
+
+Siguen en memoria. No hay cola externa.
+
+| Operación | HTTP | Motivo |
+|-----------|------|--------|
+| clone, fetch, pull, push | `202` + `datos.operacion` | Dependen de red y pueden durar más que el cliente |
+| rebase | El mismo `POST /pull` con `modo: "rebase"` | No hay ruta de rebase aparte |
+| merge, cherry-pick | La petición espera el resultado | Son locales; el conflicto vuelve en esa respuesta |
+
+`GET /api/git/operaciones` sigue siendo el historial en español de la UI. `GET /api/git/operaciones/:id` lee el motor (`operationId`, `state`, `progress`, `error` sanitizado) y no incluye metadata.
+
+Eventos WS, solo con `emitirARepo`: `operation.started`, `operation.progress`, `operation.completed`, `operation.failed`, `operation.cancelled`. Campos mínimos: `operationId`, `repository`, `operationType`, `timestamp`, `state`. No viajan diffs, URLs ni metadata. `OPERACION_PROGRESO` se mantiene para la UI.
+
+`cancelar` solo aplica en `queued`. Un `simple-git` ya en marcha no se aborta.
+
 ## Qué no se implementa ahora
 
 - Cola persistente
-- Cancelación cooperativa de `simple-git`
+- Cancelación cooperativa de `simple-git` en ejecución
 - Workers en otro proceso
 - Prioridades, dead-letter, retries distribuidos
 - Migrar stage/commit/tag y el checkout de forjas al motor (deuda: forjas sigue sin cola)
+- `POST /operations` genérico: cada mutación conserva su ruta (`/pull`, `/push`, `/fetch`, `/clone`)
 
 ## Siguiente paso
 
