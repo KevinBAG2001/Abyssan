@@ -34,6 +34,16 @@ function etiquetaTipo(tipo: string): string {
   return mapa[tipo] ?? tipo;
 }
 
+function etiquetaEstado(estado: string): string {
+  const mapa: Record<string, string> = {
+    en_curso: 'En curso',
+    completada: 'Completada',
+    fallida: 'Fallida',
+    recuperada: 'Recuperada',
+  };
+  return mapa[estado] ?? estado;
+}
+
 function hora(iso: string): string {
   try {
     return new Date(iso).toLocaleString();
@@ -76,6 +86,9 @@ function TimelineListaEntradas({
               <span className="block font-mono text-code-sm text-ion/80 uppercase">{etiquetaTipo(e.tipo)}</span>
               <span className="block truncate font-semibold">{e.descripcion}</span>
               <span className="block text-code-sm text-on-surface-variant/70">{hora(e.timestamp)}</span>
+              {e.estado && e.estado !== 'completada' && (
+                <span className="text-code-sm text-on-surface-variant/60">{etiquetaEstado(e.estado)}</span>
+              )}
               {e.deshecha && <span className="text-code-sm text-on-surface-variant/60">Deshecha</span>}
             </button>
           </li>
@@ -115,6 +128,14 @@ function TimelineDetalleEntrada({
           <span className={ui.labelCaps}>Estado anterior</span>
         </div>
         <p className="mt-1.5 text-code-sm text-on-surface leading-relaxed">{entrada.estadoAnterior}</p>
+        {entrada.estado && (
+          <p className="mt-1 text-code-sm text-on-surface-variant/80">Estado: {etiquetaEstado(entrada.estado)}</p>
+        )}
+        {entrada.estrategiaRecuperacion === 'ref_temporal' && !entrada.deshecha && (
+          <p className="mt-1 text-code-sm text-primary/90">
+            HEAD previo anclado en una ref del repositorio.
+          </p>
+        )}
         {entrada.archivosSnapshot > 0 && (
           <p className="mt-1 text-code-sm text-primary/90">
             Snapshot: {entrada.archivosSnapshot} archivo{entrada.archivosSnapshot === 1 ? '' : 's'} sucio

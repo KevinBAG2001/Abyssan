@@ -143,4 +143,7 @@ export {
   validarRefspecFetch,
   validarIndiceStash,
   validarTipoReset,
+  construirRefRecuperacion,
+  validarRefRecuperacion,
+  PREFIJO_REF_RECUPERACION,
 } from './politicaRefs.js';

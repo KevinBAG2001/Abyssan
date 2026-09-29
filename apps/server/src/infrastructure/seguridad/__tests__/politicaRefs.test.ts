@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { validarHashGit, validarRefGit, validarRefspecFetch } from '../politicaRefs.js';
+import {
+  construirRefRecuperacion,
+  validarHashGit,
+  validarRefGit,
+  validarRefRecuperacion,
+  validarRefspecFetch,
+} from '../politicaRefs.js';
 
 describe('política de refs Git (SEC-REF-01)', () => {
   it('acepta ramas, tags, HEAD, SHA y refs completas', () => {
@@ -21,6 +27,17 @@ describe('política de refs Git (SEC-REF-01)', () => {
     expect(() => validarRefGit('feature/*')).toThrow('Ref Git');
     expect(() => validarRefGit('main...otra')).toThrow('Ref Git');
     expect(() => validarRefGit('-uorigin')).toThrow('Ref Git');
+  });
+
+  it('la ref de recuperación solo vive bajo refs/abyssan/recovery/', () => {
+    const id = 'a'.repeat(16);
+    expect(construirRefRecuperacion(id)).toBe(`refs/abyssan/recovery/${id}`);
+    expect(validarRefRecuperacion(`refs/abyssan/recovery/${id}`)).toBe(`refs/abyssan/recovery/${id}`);
+    expect(() => construirRefRecuperacion('corto')).toThrow(/operación/);
+    expect(() => validarRefRecuperacion('refs/heads/main')).toThrow(/recuperación/);
+    expect(() => validarRefRecuperacion('HEAD')).toThrow(/recuperación/);
+    expect(() => validarRefRecuperacion('refs/abyssan/recovery/../heads/main')).toThrow(/recuperación/);
+    expect(() => validarRefRecuperacion(`refs/abyssan/recovery/${id}/extra`)).toThrow(/recuperación/);
   });
 
   it('acepta refspecs de forja y rechaza el resto', () => {

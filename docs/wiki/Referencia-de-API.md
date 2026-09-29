@@ -45,7 +45,7 @@ Rutas en `index.ts`, `GitRoutes.ts`, `AuthForjasRoutes.ts` y `ForjasRoutes.ts`. 
 | GET | `/api/git/amend-info` | `path` | No |
 | GET | `/api/git/reflog` | `path`, `limit` default 20 | No |
 | GET | `/api/git/deshacer` | `path?` | No |
-| GET | `/api/git/journal` | `path` | No |
+| GET | `/api/git/journal` | `path` | No. Incluye `estado` y `estrategiaRecuperacion`. No incluye payload, hash completo ni contenidos |
 | GET | `/api/git/identity` | `path` | No |
 | GET | `/api/git/logs` | — | No |
 | GET | `/api/git/operaciones` | — | No. Historial UI en español |
@@ -88,7 +88,7 @@ JSON body. Confirmación de UI, no de API (excepto `confirmarRemoto`).
 | POST | `/api/git/deshacer` | `repoPath`, `id?` | Undo punta |
 | POST | `/api/git/preview` | `repoPath`, `operacion`, params | **No muta** |
 
-Preview: `operacion` es `merge` | `reset` | `cherry-pick` | `revert`. Rebase y force-push **no** forman parte del contrato (400). La UI abre `ModalConfirmacion` con el preview **antes** de mutar.
+Preview: `operacion` es `merge` | `reset` | `cherry-pick` | `revert`. Rebase y force-push **no** forman parte del contrato (400). `datos` es un `PreviewResultado`: `operacion`, `repositorio`, `estadoActual` / `estadoObjetivo` (`rama`, `head`, `base` en merge), `commitsAfectados`, `archivosAfectados`, `posiblesConflictos`, `advertencias`, `seguroEjecutar`, `explicacion`. El merge **no** se ejecuta sobre el repo del usuario. La UI abre `ModalConfirmacion` con el preview **antes** de mutar.
 
 ## Auth y forjas
 

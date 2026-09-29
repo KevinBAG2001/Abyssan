@@ -52,7 +52,7 @@ save, pop, drop, listado. Disponible (gestión básica).
 
 ## Merge
 
-Modifica WT/índice/refs si Git aplica. Journal: no deshacible (usar abort). Abort/continue disponibles. Preview `operacion=merge` **no muta**; la UI lo muestra en `ModalConfirmacion` antes de fusionar.
+Modifica WT/índice/refs si Git aplica. Journal: no deshacible (usar abort). Abort/continue disponibles. Preview `operacion=merge` simula en un clon temporal y **no muta** el repo; la UI muestra explicación, cambios y riesgos antes de Ejecutar.
 
 ## Cherry-pick y revert
 
@@ -64,7 +64,9 @@ Nuevo commit. Journal no deshacible. Preview no mutante en `ModalConfirmacion` d
 |------|----|--------|------|-----------------|
 | soft | No | No | Sí | Preview + `ModalConfirmacion` |
 | mixed | No | Sí | Sí | Preview + `ModalConfirmacion` |
-| hard | Sí | Sí | Sí | Preview; sucio: escribir `RESET`. Snapshot para undo |
+| hard | Sí | Sí | Sí | Preview; sucio: escribir `RESET`. Undo: ref `refs/abyssan/recovery/<id>` + snapshot de sucios |
+
+Antes del reset se crea la ref; deshacer hace reset a esa ref. El hash del journal solo comprueba que la ref siga en el mismo commit. Soft recupera HEAD con `--soft`. Mixed recupera HEAD y deja el índice como quedó tras el mixed. Si la ref no existe, no hay undo. Detalle: [Recuperacion-operaciones.md](./Recuperacion-operaciones.md).
 
 ## Fetch / pull / push
 

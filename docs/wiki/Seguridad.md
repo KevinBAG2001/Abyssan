@@ -41,7 +41,7 @@ Eso **no** elimina por sí solo todas las inyecciones: `GitUseCases` valida refs
 
 La API exige `confirmado: true` en reset `--hard`, discard, borrar rama local y abortar merge. La UI (`ModalConfirmacion`) sigue siendo el gate humano. Un cliente REST sin ese campo recibe **400**.
 
-Reset hard sucio y discard generan **snapshots** bajo `ABYSSAN_HOME/snapshots` (no en el repo). El GET del journal no incluye contenidos.
+Reset hard sucio y discard generan **snapshots** bajo `ABYSSAN_HOME/snapshots` (no en el repo). El reset, además, ancla el HEAD previo en `refs/abyssan/recovery/<id>` dentro del propio repositorio. No se copia el repo. El GET del journal no incluye contenidos ni el hash completo. Una ref que no sea exactamente ese prefijo más 16 hex no se crea ni se borra.
 
 ## WebSocket
 
@@ -87,7 +87,7 @@ Producción: `docker-compose.prod.yml` + `Dockerfile.prod` — usuario no-root, 
 ## Limitaciones
 
 - Sin `Origin`, curl en la misma máquina puede mutar (mismo usuario OS).
-- Preview de rebase/force-push **fuera del contrato** (400). Merge, reset, cherry-pick y revert tienen preview no mutante en API y en `ModalConfirmacion`.
+- Preview de rebase/force-push **fuera del contrato** (400). Merge usa clon temporal (no `merge-tree --write-tree` sobre el repo del usuario). Reset, cherry-pick y revert reutilizan `PreviewResultado` con comandos de solo lectura.
 - El token permanente no se embebe en el bundle. Quien carga la SPA no lo ve; en LAN debe pegarlo una vez.
 - Diseñado para uso local; no afirmar aislamiento multi-tenant.
 
