@@ -82,3 +82,32 @@ export function validarTipoReset(tipo: string): 'soft' | 'mixed' | 'hard' {
   }
   return tipo;
 }
+
+/** Ancla local de recuperación. No es una rama de usuario ni una ref remota. */
+export const PREFIJO_REF_RECUPERACION = 'refs/abyssan/recovery/';
+
+const ID_OPERACION_RECUPERACION = /^[a-f0-9]{16}$/;
+
+export function construirRefRecuperacion(operationId: string): string {
+  const id = (operationId ?? '').trim();
+  if (!ID_OPERACION_RECUPERACION.test(id)) {
+    throw new Error('Identificador de operación no válido');
+  }
+  return `${PREFIJO_REF_RECUPERACION}${id}`;
+}
+
+/**
+ * Solo acepta `refs/abyssan/recovery/` + 16 hex.
+ * Rechaza ramas, HEAD y cualquier ref que no hayamos creado nosotros.
+ */
+export function validarRefRecuperacion(ref: string): string {
+  const recortado = (ref ?? '').trim();
+  if (!recortado.startsWith(PREFIJO_REF_RECUPERACION)) {
+    throw new Error('Ref de recuperación no válida');
+  }
+  const id = recortado.slice(PREFIJO_REF_RECUPERACION.length);
+  if (!ID_OPERACION_RECUPERACION.test(id)) {
+    throw new Error('Ref de recuperación no válida');
+  }
+  return `${PREFIJO_REF_RECUPERACION}${id}`;
+}

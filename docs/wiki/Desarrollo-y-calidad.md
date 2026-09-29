@@ -57,10 +57,11 @@ Vitest en `apps/**/*.test.ts`. Cobertura notable:
 - Validador de rutas y symlink.
 - Flujo Daily Driver (repo temporal en `os.tmpdir()`).
 - Journal persistente (restart, snapshot, traversal en manifiesto).
+- Recuperación de reset (`recuperacionReset.test.ts`): ref en el repo, fallo sin undo, instancia nueva, journal ilegible.
 - Rate limit, token, envelope, forjas HTTP mockeadas.
 - Auditoría JSONL sin tokens.
 - Handshake WS (`AUTH` / `WATCH_REPO`), multiplex de watchers y fan-out `emitirARepo`.
-- Preview no mutante y HEAD real (`rev-parse`, no `log --all`).
+- Preview no mutante (`PreviewResultado`) y HEAD real (`rev-parse`, no `log --all`). Merge de preview en clon temporal.
 
 Las pruebas **no** deben usar remotos Git reales ni operar fuera de un `PROJECTS_ROOT` temporal. Para mutaciones destructivas, el patrón del repo es `fs.mkdtempSync` + `simpleGit().init()`.
 

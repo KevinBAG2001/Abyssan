@@ -15,7 +15,7 @@ import {
   CommandLogEntity,
   InfoAmendEntity,
   EntradaReflogEntity,
-  PreviewOperacionEntity,
+  PreviewResultado,
   TipoOperacionPreview,
   ArchivoCambioEntity,
   OpcionesDiff,
@@ -24,7 +24,8 @@ import {
   JournalOperaciones,
   journalOperaciones,
 } from '../deshacer/JournalOperaciones.js';
-import type { EntradaJournalPublica, UltimaOperacion } from '../deshacer/tiposJournal.js';
+import type { DatosRegistroJournal, EntradaJournalPublica, UltimaOperacion } from '../deshacer/tiposJournal.js';
+import { recuperarReset } from '../deshacer/recuperarReset.js';
 import { registroOperaciones } from '../operaciones/RegistroOperaciones.js';
 import {
   gestorOperaciones,
@@ -46,11 +47,17 @@ import {
   validarNombreRemoto,
   validarIndiceStash,
   validarTipoReset,
+  construirRefRecuperacion,
   validarDestinoFetch,
   validarDestinoPush,
   sanitizarRemotoParaMostrar,
 } from '../../infrastructure/seguridad/validarRutaRepositorio.js';
 import type { EscuchaProgresoGit, GitOperacion, TipoGitOperacion } from '../../domain/entities/GitOperacion.js';
+
+function mensajeDeError(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) return error.message;
+  return 'El reset falló';
+}
 
 export class GitUseCases {
   constructor(
@@ -71,6 +78,30 @@ export class GitUseCases {
       trabajo,
     });
     return resultado;
+  }
+
+  private async anotar(op: DatosRegistroJournal): Promise<void> {
+    this.journal.registrar(op);
+    await this.reconciliarAnclas(op.repoPath);
+  }
+
+  /**
+   * Borra refs `refs/abyssan/recovery/*` que el journal ya no considera vivas.
+   * Si el journal está corrupto, no borra nada: no hay índice fiable.
+   */
+  private async reconciliarAnclas(repoPath: string): Promise<void> {
+    if (!this.journal.estaIntegro()) return;
+    let existentes: string[] = [];
+    try {
+      existentes = await this.gitRepository.listarRefsRecuperacion(repoPath);
+    } catch {
+      return;
+    }
+    const vivas = new Set(this.journal.refsRecuperacionVivas(repoPath));
+    for (const ref of existentes) {
+      if (vivas.has(ref)) continue;
+      await this.gitRepository.borrarRefRecuperacion(repoPath, ref);
+    }
   }
 
   listarOperaciones(): GitOperacion[] {
@@ -135,7 +166,7 @@ export class GitUseCases {
   async commit(repoPath: string, message: string, description?: string): Promise<string> {
     const hashAnterior = await this.gitRepository.obtenerHashHead(repoPath);
     const hash = await this.gitRepository.commit(repoPath, message, description);
-    this.journal.registrar({
+    await this.anotar({
       tipo: 'commit',
       repoPath,
       descripcion: `Commit ${hash.substring(0, 7)}`,
@@ -151,7 +182,7 @@ export class GitUseCases {
       const status = await this.gitRepository.getStatus(repoPath);
       const anterior = status.currentBranch;
       await this.gitRepository.checkout(repoPath, destino);
-      this.journal.registrar({
+      await this.anotar({
         tipo: 'checkout',
         repoPath,
         descripcion: `Checkout a ${destino}`,
@@ -167,7 +198,7 @@ export class GitUseCases {
     const origen = startPoint ? validarRefGit(startPoint) : undefined;
     const status = await this.gitRepository.getStatus(repoPath);
     await this.gitRepository.createBranch(repoPath, rama, origen);
-    this.journal.registrar({
+    await this.anotar({
       tipo: 'crearRama',
       repoPath,
       descripcion: `Rama ${rama} creada`,
@@ -182,7 +213,7 @@ export class GitUseCases {
       const ramas = await this.gitRepository.getBranches(repoPath);
       const encontrada = ramas.find((r) => r.name === rama);
       await this.gitRepository.deleteLocalBranch(repoPath, rama);
-      this.journal.registrar({
+      await this.anotar({
         tipo: 'borrarRama',
         repoPath,
         descripcion: `Rama ${rama} borrada`,
@@ -197,7 +228,7 @@ export class GitUseCases {
     const actual = validarRefGit(nombreActual);
     const nuevo = validarRefGit(nombreNuevo);
     await this.gitRepository.renameLocalBranch(repoPath, actual, nuevo);
-    this.journal.registrar({
+    await this.anotar({
       tipo: 'renombrarRama',
       repoPath,
       descripcion: `Rama ${actual} → ${nuevo}`,
@@ -250,7 +281,7 @@ export class GitUseCases {
     onProgreso: EscuchaProgresoGit
   ): Promise<void> {
     await this.gitRepository.pull(repoPath, modo, onProgreso);
-    this.journal.registrar({
+    await this.anotar({
       tipo: 'pull',
       repoPath,
       descripcion: `Pull (${modo})`,
@@ -263,7 +294,7 @@ export class GitUseCases {
   private async trabajoPush(repoPath: string, onProgreso: EscuchaProgresoGit): Promise<void> {
     await this.gitRepository.push(repoPath, onProgreso);
     this.journal.marcarNoDeshacer('Un push ya está en el remoto; no se deshace desde Abyssan.');
-    this.journal.registrar({
+    await this.anotar({
       tipo: 'push',
       repoPath,
       descripcion: 'Push al remoto',
@@ -280,7 +311,7 @@ export class GitUseCases {
       const existia = snap.manifest.archivos.length > 0;
       if (!existia) borrarSnapshot(snap.id, this.journal.directorioPersistencia());
       await this.gitRepository.discardArchivo(repoPath, archivo);
-      this.journal.registrar({
+      await this.anotar({
         tipo: 'discard',
         repoPath,
         descripcion: `Descartado ${archivo}`,
@@ -312,7 +343,7 @@ export class GitUseCases {
 
   private async trabajoClone(url: string, destino: string, onProgreso: EscuchaProgresoGit): Promise<void> {
     await this.gitRepository.clonarRepositorio(url, destino, onProgreso);
-    this.journal.registrar({
+    await this.anotar({
       tipo: 'clone',
       repoPath: destino,
       descripcion: `Clonado en ${path.basename(destino)}`,
@@ -325,7 +356,7 @@ export class GitUseCases {
   async inicializarRepositorio(destino: string): Promise<void> {
     return this.ejecutarExclusiva(destino, 'init', async () => {
       await this.gitRepository.inicializarRepositorio(destino);
-      this.journal.registrar({
+      await this.anotar({
         tipo: 'init',
         repoPath: destino,
         descripcion: `Init en ${path.basename(destino)}`,
@@ -338,7 +369,7 @@ export class GitUseCases {
 
   async abortarMerge(repoPath: string): Promise<void> {
     await this.gitRepository.abortarMerge(repoPath);
-    this.journal.registrar({
+    await this.anotar({
       tipo: 'merge',
       repoPath,
       descripcion: 'Merge abortado',
@@ -350,7 +381,7 @@ export class GitUseCases {
 
   async continuarMerge(repoPath: string): Promise<void> {
     await this.gitRepository.continuarMerge(repoPath);
-    this.journal.registrar({
+    await this.anotar({
       tipo: 'commit',
       repoPath,
       descripcion: 'Merge continuado',
@@ -375,7 +406,7 @@ export class GitUseCases {
     const hash = await this.ejecutarExclusiva(repoPath, 'amend', async () => {
       return this.gitRepository.enmendarCommit(repoPath, message);
     });
-    this.journal.registrar({
+    await this.anotar({
       tipo: 'amend',
       repoPath,
       descripcion: 'Commit enmendado',
@@ -404,6 +435,7 @@ export class GitUseCases {
 
   async deshacer(repoPath: string, id?: string): Promise<void> {
     return this.ejecutarExclusiva(repoPath, 'deshacer', async () => {
+      await this.reconciliarAnclas(repoPath);
       const punta = this.journal.punta(repoPath);
       if (!punta) {
         throw new Error('No hay operación reciente para deshacer');
@@ -453,10 +485,9 @@ export class GitUseCases {
           }
           break;
         case 'reset':
-          await this.gitRepository.reset(repoPath, 'hard', validarHashGit(op.payload.hashAnterior));
-          if (op.snapshotId) {
-            restaurarSnapshot(op.snapshotId, repoPath, this.journal.directorioPersistencia());
-          }
+          await recuperarReset(this.gitRepository, repoPath, op, (snapshotId) => {
+            restaurarSnapshot(snapshotId, repoPath, this.journal.directorioPersistencia());
+          });
           break;
         case 'discard':
           if (op.snapshotId) {
@@ -530,7 +561,7 @@ export class GitUseCases {
       metadata: { sourceBranch: origen, noFf },
       trabajo: async () => {
         await this.gitRepository.mergeBranch(repoPath, origen, noFf);
-        this.journal.registrar({
+        await this.anotar({
           tipo: 'merge',
           repoPath,
           descripcion: `Merge de ${origen}`,
@@ -576,7 +607,7 @@ export class GitUseCases {
     const commit = validarHashGit(hash);
     return this.ejecutarExclusiva(repoPath, 'cherry-pick', async () => {
       await this.gitRepository.cherryPick(repoPath, commit);
-      this.journal.registrar({
+      await this.anotar({
         tipo: 'cherry-pick',
         repoPath,
         descripcion: `Cherry-pick ${commit.substring(0, 7)}`,
@@ -591,7 +622,7 @@ export class GitUseCases {
     const commit = validarHashGit(hash);
     return this.ejecutarExclusiva(repoPath, 'revert', async () => {
       await this.gitRepository.revertCommit(repoPath, commit);
-      this.journal.registrar({
+      await this.anotar({
         tipo: 'revert',
         repoPath,
         descripcion: `Revert ${commit.substring(0, 7)}`,
@@ -606,27 +637,105 @@ export class GitUseCases {
     const tipo = validarTipoReset(type);
     const destino = validarRefGit(target);
     return this.ejecutarExclusiva(repoPath, 'reset', async () => {
-      const hashAnterior = await this.gitRepository.obtenerHashHead(repoPath);
+      const hashAnterior = (await this.gitRepository.obtenerHashHead(repoPath)).trim().toLowerCase();
+      const puedeAnclar = /^[0-9a-f]{40}$/.test(hashAnterior);
       let snapshotId: string | undefined;
       if (tipo === 'hard') {
         const status = await this.gitRepository.getStatus(repoPath);
         const sucios = status.files.filter((f) => f.status !== 'deleted').map((f) => f.path);
         if (sucios.length > 0) {
           const snap = crearSnapshotArchivos(repoPath, sucios, this.journal.directorioPersistencia());
-          snapshotId = snap.manifest.archivos.length > 0 ? snap.id : undefined;
+          if (snap.manifest.archivos.length > 0) {
+            snapshotId = snap.id;
+          } else {
+            borrarSnapshot(snap.id, this.journal.directorioPersistencia());
+          }
         }
       }
-      await this.gitRepository.reset(repoPath, tipo, destino);
-      this.journal.registrar({
+
+      const entrada = this.journal.iniciar({
         tipo: 'reset',
         repoPath,
         descripcion: `Reset --${tipo} a ${destino.substring(0, 7)}`,
-        puedeDeshacer: Boolean(hashAnterior),
-        motivoBloqueo: hashAnterior ? undefined : 'No se conservó HEAD previo',
+        puedeDeshacer: false,
+        motivoBloqueo: puedeAnclar ? 'Ancla de recuperación pendiente' : 'No había HEAD que anclar',
         payload: { hashAnterior, type: tipo, target: destino },
         snapshotId,
+        antes: puedeAnclar ? { head: hashAnterior } : undefined,
+        recuperacion: {
+          estrategia: puedeAnclar ? 'ref_temporal' : 'ninguna',
+          hash: puedeAnclar ? hashAnterior : undefined,
+          snapshotId,
+          disponible: false,
+          motivo: puedeAnclar ? 'Ancla pendiente' : 'No había HEAD que anclar',
+        },
+      });
+
+      let ref: string | undefined;
+      if (puedeAnclar) {
+        ref = construirRefRecuperacion(entrada.id);
+        try {
+          await this.gitRepository.anclarRefRecuperacion(repoPath, ref, hashAnterior);
+        } catch (error) {
+          await this.gitRepository.borrarRefRecuperacion(repoPath, ref);
+          if (snapshotId) borrarSnapshot(snapshotId, this.journal.directorioPersistencia());
+          this.journal.fallar(entrada.id, mensajeDeError(error), false);
+          throw error;
+        }
+        this.journal.actualizarRecuperacion(
+          entrada.id,
+          {
+            estrategia: 'ref_temporal',
+            ref,
+            hash: hashAnterior,
+            snapshotId,
+            disponible: true,
+          },
+          true
+        );
+        await this.reconciliarAnclas(repoPath);
+      }
+
+      try {
+        await this.gitRepository.reset(repoPath, tipo, destino);
+      } catch (error) {
+        await this.cerrarResetFallido(repoPath, entrada.id, hashAnterior, ref, snapshotId, error);
+        throw error;
+      }
+
+      const hashNuevo = (await this.gitRepository.obtenerHashHead(repoPath)).trim().toLowerCase();
+      this.journal.completar(entrada.id, {
+        despues: { head: hashNuevo },
+        puedeDeshacer: puedeAnclar,
+        motivoBloqueo: puedeAnclar ? undefined : 'No había HEAD que anclar',
+        payload: { hashAnterior, hashNuevo, type: tipo, target: destino },
       });
     });
+  }
+
+  private async cerrarResetFallido(
+    repoPath: string,
+    entradaId: string,
+    hashAnterior: string,
+    ref: string | undefined,
+    snapshotId: string | undefined,
+    error: unknown
+  ): Promise<void> {
+    const mensaje = mensajeDeError(error);
+    let headAhora = '';
+    try {
+      headAhora = (await this.gitRepository.obtenerHashHead(repoPath)).trim().toLowerCase();
+    } catch {
+      headAhora = '';
+    }
+    const movio = Boolean(hashAnterior) && Boolean(headAhora) && headAhora !== hashAnterior;
+    if (!movio) {
+      if (ref) await this.gitRepository.borrarRefRecuperacion(repoPath, ref);
+      if (snapshotId) borrarSnapshot(snapshotId, this.journal.directorioPersistencia());
+      this.journal.fallar(entradaId, mensaje, false);
+      return;
+    }
+    this.journal.fallar(entradaId, mensaje, true, { head: headAhora });
   }
 
   async getConflict(repoPath: string, filePath: string): Promise<ConflictEntity> {
@@ -659,7 +768,7 @@ export class GitUseCases {
     repoPath: string,
     operacion: TipoOperacionPreview,
     params: { sourceBranch?: string; type?: 'soft' | 'mixed' | 'hard'; target?: string; hash?: string }
-  ): Promise<PreviewOperacionEntity> {
+  ): Promise<PreviewResultado> {
     switch (operacion) {
       case 'merge': {
         if (!params.sourceBranch) throw new Error('sourceBranch es requerido para preview de merge');

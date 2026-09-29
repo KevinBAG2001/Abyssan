@@ -11,7 +11,7 @@ import {
   BranchComparisonEntity,
   InfoAmendEntity,
   EntradaReflogEntity,
-  PreviewOperacionEntity,
+  PreviewResultado,
   ArchivoCambioEntity,
   OpcionesDiff,
 } from '../entities/GitEntities.js';
@@ -87,9 +87,25 @@ export interface IGitRepository {
   /** Hash de HEAD (rev-parse). Vacío si el repo no tiene commits. */
   obtenerHashHead(repoPath: string): Promise<string>;
 
-  // Preview de operaciones peligrosas (no mutante)
-  previewMerge(repoPath: string, sourceBranch: string): Promise<PreviewOperacionEntity>;
-  previewReset(repoPath: string, type: 'soft' | 'mixed' | 'hard', target: string): Promise<PreviewOperacionEntity>;
-  previewCherryPick(repoPath: string, hash: string): Promise<PreviewOperacionEntity>;
-  previewRevert(repoPath: string, hash: string): Promise<PreviewOperacionEntity>;
+  /**
+   * Ancla un commit en `refs/abyssan/recovery/<id>`.
+   * La ref vive en el repositorio y evita que `git gc` recoja el objeto
+   * mientras la operación siga siendo recuperable.
+   */
+  anclarRefRecuperacion(repoPath: string, ref: string, hash: string): Promise<void>;
+
+  /** Resuelve la ref de recuperación al hash del commit, o null si no existe. */
+  resolverRefRecuperacion(repoPath: string, ref: string): Promise<string | null>;
+
+  /** Borra solo una ref bajo `refs/abyssan/recovery/`. No toca ramas del usuario. */
+  borrarRefRecuperacion(repoPath: string, ref: string): Promise<void>;
+
+  /** Lista refs de recuperación de este repositorio. No lista el resto de refs. */
+  listarRefsRecuperacion(repoPath: string): Promise<string[]>;
+
+  // Preview de operaciones (no mutante; merge usa sandbox)
+  previewMerge(repoPath: string, sourceBranch: string): Promise<PreviewResultado>;
+  previewReset(repoPath: string, type: 'soft' | 'mixed' | 'hard', target: string): Promise<PreviewResultado>;
+  previewCherryPick(repoPath: string, hash: string): Promise<PreviewResultado>;
+  previewRevert(repoPath: string, hash: string): Promise<PreviewResultado>;
 }

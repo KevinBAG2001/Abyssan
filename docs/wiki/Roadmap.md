@@ -28,8 +28,8 @@ El plan las marca **cerradas**. En código sí existen clone/init, discard, conf
 | Slice | Estado en código |
 |-------|------------------|
 | 4.0 Cola, realpath, rate limit, auditoría, confirmación contextual | Disponible |
-| 4.1 Preview HTTP merge/reset/cherry-pick/revert | Disponible en API y **cableado en UI** (`ModalConfirmacion`). rebase/force-push **fuera del contrato** (400) |
-| 4.2 Journal persistente + timeline + snapshots | Disponible |
+| 4.1 Preview HTTP (`PreviewResultado`) | Contrato común + merge en sandbox aislado + UI explicación/cambios/riesgos. reset/cherry-pick/revert reutilizan el shape. rebase/force-push **fuera del contrato** (400) |
+| 4.2 Journal persistente + timeline + snapshots | Disponible. El reset se recupera con ref temporal en el repo, no solo con el hash del journal |
 | 4.3 Explain Mode | Disponible (plantillas estáticas, modo aprendizaje) |
 | 4.4 Grafo highlight / merge-base / camino | Disponible; HEAD = ref HEAD (`%D`), no la primera fila de `--all` |
 | 4.U UI/UX | Confirmación contextual + preview; merge ya no usa `window.confirm` |

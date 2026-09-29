@@ -48,7 +48,7 @@ Workspaces: `apps/*` (`pnpm-workspace.yaml`). Scope npm interno: `@abyssan/web`,
 | Watcher | `infrastructure/watcher/ChokidarWatcherAdapter.ts` | Un watcher por ruta de repo |
 | Logging | `infrastructure/logging/InMemoryCommandLogAdapter.ts` | Log de comandos en memoria |
 | Auditoría | `infrastructure/auditoria/AuditoriaJsonlAdapter.ts` | Append-only local, sin diffs |
-| Deshacer | `application/deshacer/JournalOperaciones.ts` | Journal persistente |
+| Deshacer | `application/deshacer/JournalOperaciones.ts` | Journal en disco. El reset ancla HEAD en `refs/abyssan/recovery/` |
 
 ### Frontend
 
@@ -126,8 +126,9 @@ Si el token LAN es obligatorio, hay 5 s para enviar `AUTH`. Fallo o `WATCH_REPO`
 
 | Dónde | Qué |
 |-------|-----|
-| Proceso Node | Cola de operaciones, log de comandos, watchers, journal en memoria + disco |
+| Proceso Node | Cola de operaciones, log de comandos, watchers. El journal se carga desde disco; no es la copia del commit |
 | `ABYSSAN_HOME` o `~/.abyssan` | `auditoria.jsonl`, `journal.json`, `snapshots/`, credenciales OAuth cifradas |
+| `.git` del repositorio | `refs/abyssan/recovery/<id>` mientras un reset siga siendo recuperable |
 | Navegador | Estado React; `localStorage` (modo pull); id de sesión en memoria (no `VITE_*` de token) |
 
 Sin base de datos.
@@ -140,7 +141,7 @@ Sin base de datos.
 
 - Un adaptador Git. Un `HttpGitApi`.
 - Forjas no bloquean Git local si la API remota falla (`ErrorForja`, típicamente 503).
-- Preview no debe escribir el worktree (comandos de solo lectura como `merge-tree`). La UI llama `POST /api/git/preview` y muestra el resultado en `ModalConfirmacion` antes de mutar. Contrato: merge, reset, cherry-pick, revert.
+- Preview no debe escribir worktree, índice, refs ni objetos del repo del usuario. El merge se simula en un clon temporal (`sandboxGit`); si el clon falla, se usa `merge-tree` clásico (stdout, sin `--write-tree`). La UI muestra `PreviewResultado` en `ModalConfirmacion` (explicación → cambios → riesgos → Ejecutar/Cancelar). Contrato estable: merge; reset, cherry-pick y revert reutilizan el mismo shape. Rebase y force-push siguen fuera (400).
 - El grafo marca HEAD con la ref `%D` (`HEAD` / `HEAD -> rama`), no con la primera fila de `git log --all`.
 - IA fuera del horizonte del producto.
 

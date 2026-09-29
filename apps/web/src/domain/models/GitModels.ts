@@ -108,7 +108,7 @@ export interface CommandLogModel {
   error?: string;
 }
 
-// --- Preview de operaciones peligrosas ---
+// --- Preview de operaciones (contrato PreviewResult) ---
 
 export type TipoOperacionPreview = 'merge' | 'reset' | 'cherry-pick' | 'revert';
 
@@ -117,14 +117,23 @@ export interface ArchivoAfectadoPreview {
   tipo: 'modificado' | 'agregado' | 'eliminado' | 'conflicto';
 }
 
+export interface EstadoRefPreview {
+  rama?: string;
+  head: string;
+  base?: string;
+}
+
 export interface PreviewOperacionModel {
   operacion: TipoOperacionPreview;
-  viable: boolean;
-  conflictos: string[];
+  repositorio: string;
+  estadoActual: EstadoRefPreview;
+  estadoObjetivo: EstadoRefPreview;
   commitsAfectados: CommitModel[];
   archivosAfectados: ArchivoAfectadoPreview[];
-  riesgos: string[];
-  resumen: string;
+  posiblesConflictos: string[];
+  advertencias: string[];
+  seguroEjecutar: boolean;
+  explicacion: string;
 }
 
 export type EstadoGitOperacion = 'en_cola' | 'corriendo' | 'exito' | 'fallo';
@@ -173,5 +182,7 @@ export type EntradaJournal = {
   deshecha: boolean;
   esPunta: boolean;
   archivosSnapshot: number;
+  estado?: 'en_curso' | 'completada' | 'fallida' | 'recuperada';
+  estrategiaRecuperacion?: 'ref_temporal' | 'snapshot' | 'ninguna';
 };
 
