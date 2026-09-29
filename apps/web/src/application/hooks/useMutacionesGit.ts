@@ -245,11 +245,11 @@ export function useMutacionesGit({
       const preview = await httpGitApi.previewOperacion(selectedRepo, 'merge', { sourceBranch });
       setConfirmacion({
         titulo: `Fusionar ${sourceBranch}`,
-        descripcion: preview.resumen,
+        descripcion: preview.explicacion,
         preview,
-        peligro: preview.conflictos.length > 0 || preview.riesgos.length > 0,
-        etiqueta: preview.viable ? 'Fusionar' : 'No viable',
-        bloquearConfirmar: !preview.viable,
+        peligro: !preview.seguroEjecutar || preview.posiblesConflictos.length > 0,
+        etiqueta: preview.seguroEjecutar ? 'Ejecutar' : 'No se puede ejecutar',
+        bloquearConfirmar: !preview.seguroEjecutar,
         ejecutar: async () => {
           await httpGitApi.merge(selectedRepo, sourceBranch, noFf);
           showToast(`Fusión con ${sourceBranch} completada`, 'success');
@@ -326,11 +326,11 @@ export function useMutacionesGit({
       const preview = await httpGitApi.previewOperacion(selectedRepo, 'cherry-pick', { hash });
       setConfirmacion({
         titulo: `Cherry-pick ${hash.substring(0, 7)}`,
-        descripcion: preview.resumen,
+        descripcion: preview.explicacion,
         preview,
-        peligro: preview.conflictos.length > 0,
-        etiqueta: preview.viable ? 'Aplicar cherry-pick' : 'No viable',
-        bloquearConfirmar: !preview.viable,
+        peligro: preview.posiblesConflictos.length > 0,
+        etiqueta: preview.seguroEjecutar ? 'Ejecutar' : 'No se puede ejecutar',
+        bloquearConfirmar: !preview.seguroEjecutar,
         ejecutar: async () => {
           await httpGitApi.cherryPick(selectedRepo, hash);
           showToast(`Cherry-pick aplicado (${hash.substring(0, 7)})`, 'success');
@@ -348,11 +348,11 @@ export function useMutacionesGit({
       const preview = await httpGitApi.previewOperacion(selectedRepo, 'revert', { hash });
       setConfirmacion({
         titulo: `Revertir ${hash.substring(0, 7)}`,
-        descripcion: preview.resumen,
+        descripcion: preview.explicacion,
         preview,
         peligro: true,
-        etiqueta: preview.viable ? 'Revertir' : 'No viable',
-        bloquearConfirmar: !preview.viable,
+        etiqueta: preview.seguroEjecutar ? 'Ejecutar' : 'No se puede ejecutar',
+        bloquearConfirmar: !preview.seguroEjecutar,
         ejecutar: async () => {
           await httpGitApi.revert(selectedRepo, hash);
           showToast(`Commit revertido (${hash.substring(0, 7)})`, 'success');
@@ -372,10 +372,11 @@ export function useMutacionesGit({
         const sucios = status?.files.length ?? 0;
         setConfirmacion({
           titulo: `Reset ${type}`,
-          descripcion: preview.resumen,
+          descripcion: preview.explicacion,
           preview,
-          peligro: type === 'hard' || preview.riesgos.length > 0,
-          etiqueta: `Reset ${type}`,
+          peligro: type === 'hard' || preview.advertencias.length > 0,
+          etiqueta: preview.seguroEjecutar ? 'Ejecutar' : 'No se puede ejecutar',
+          bloquearConfirmar: !preview.seguroEjecutar,
           nombreRequerido: type === 'hard' && sucios > 0 ? 'RESET' : undefined,
           ejecutar: async () => {
             await httpGitApi.reset(selectedRepo, type, hash);

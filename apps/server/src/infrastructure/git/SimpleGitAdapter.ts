@@ -16,8 +16,10 @@ import {
   BranchComparisonEntity,
   InfoAmendEntity,
   EntradaReflogEntity,
-  PreviewOperacionEntity,
+  PreviewResultado,
   ArchivoAfectadoPreview,
+  EstadoRefPreview,
+  TipoOperacionPreview,
   ArchivoCambioEntity,
   OpcionesDiff,
 } from '../../domain/entities/GitEntities.js';
@@ -33,6 +35,10 @@ import {
 import { mapearEstadoPorcelain } from './mapearEstadoPorcelain.js';
 import { construirDiffArchivoNuevo, LIMITE_DIFF_ARCHIVO_NUEVO } from './diffArchivoNuevo.js';
 import { parsearNameStatus } from './parsearNameStatus.js';
+import { ejecutarEnClonTemporal } from './sandboxGit.js';
+import { extraerConflictosMergeTree } from './extraerConflictosMergeTree.js';
+import { validarHashGit, validarRutaRepositorio } from '../seguridad/validarRutaRepositorio.js';
+import { validarRefRecuperacion } from '../seguridad/politicaRefs.js';
 
 const DIRECTORIOS_IGNORADOS = new Set([
   'node_modules',
@@ -1100,6 +1106,73 @@ export class SimpleGitAdapter implements IGitRepository {
     }
   }
 
+  async anclarRefRecuperacion(repoPath: string, ref: string, hash: string): Promise<void> {
+    const repo = validarRutaRepositorio(repoPath);
+    const segura = validarRefRecuperacion(ref);
+    const objeto = validarHashGit(hash);
+    const start = Date.now();
+    const git = this.getGitInstance(repo);
+    try {
+      await git.raw(['update-ref', segura, objeto]);
+      const resuelta = (await git.raw(['rev-parse', '--verify', '--end-of-options', segura])).trim();
+      if (resuelta.toLowerCase() !== objeto.toLowerCase()) {
+        throw new Error('La ref de recuperación no quedó apuntando al commit esperado');
+      }
+      this.logRepository.addLog(`git update-ref ${segura} ${objeto.substring(0, 7)}`, Date.now() - start, true);
+    } catch (err: any) {
+      this.logRepository.addLog(`git update-ref ${segura}`, Date.now() - start, false, undefined, err.message);
+      throw err;
+    }
+  }
+
+  async resolverRefRecuperacion(repoPath: string, ref: string): Promise<string | null> {
+    const repo = validarRutaRepositorio(repoPath);
+    const segura = validarRefRecuperacion(ref);
+    try {
+      const hash = (await this.getGitInstance(repo).raw(['rev-parse', '--verify', '--end-of-options', segura])).trim();
+      if (!/^[0-9a-f]{40}$/i.test(hash)) return null;
+      return hash.toLowerCase();
+    } catch {
+      return null;
+    }
+  }
+
+  async borrarRefRecuperacion(repoPath: string, ref: string): Promise<void> {
+    const repo = validarRutaRepositorio(repoPath);
+    const segura = validarRefRecuperacion(ref);
+    try {
+      await this.getGitInstance(repo).raw(['update-ref', '-d', segura]);
+      this.logRepository.addLog(`git update-ref -d ${segura}`, 0, true);
+    } catch {
+      // La ref ya no existe. No es un fallo de recuperación.
+    }
+  }
+
+  async listarRefsRecuperacion(repoPath: string): Promise<string[]> {
+    const repo = validarRutaRepositorio(repoPath);
+    try {
+      const raw = await this.getGitInstance(repo).raw([
+        'for-each-ref',
+        '--format=%(refname)',
+        'refs/abyssan/recovery',
+      ]);
+      return raw
+        .split('\n')
+        .map((linea) => linea.trim())
+        .filter((linea) => {
+          if (!linea) return false;
+          try {
+            validarRefRecuperacion(linea);
+            return true;
+          } catch {
+            return false;
+          }
+        });
+    } catch {
+      return [];
+    }
+  }
+
   async mergeBase(repoPath: string, refA: string, refB: string): Promise<string | null> {
     const git = simpleGit(repoPath);
     try {
@@ -1110,67 +1183,185 @@ export class SimpleGitAdapter implements IGitRepository {
     }
   }
 
-  async previewMerge(repoPath: string, sourceBranch: string): Promise<PreviewOperacionEntity> {
+  private crearPreview(
+    operacion: TipoOperacionPreview,
+    repositorio: string,
+    estadoActual: EstadoRefPreview,
+    estadoObjetivo: EstadoRefPreview,
+    extras: Partial<Omit<PreviewResultado, 'operacion' | 'repositorio' | 'estadoActual' | 'estadoObjetivo'>> = {},
+  ): PreviewResultado {
+    return {
+      operacion,
+      repositorio,
+      estadoActual,
+      estadoObjetivo,
+      commitsAfectados: extras.commitsAfectados ?? [],
+      archivosAfectados: extras.archivosAfectados ?? [],
+      posiblesConflictos: extras.posiblesConflictos ?? [],
+      advertencias: extras.advertencias ?? [],
+      seguroEjecutar: extras.seguroEjecutar ?? false,
+      explicacion: extras.explicacion ?? '',
+    };
+  }
+
+  private async describirRef(git: SimpleGit, ref: string): Promise<EstadoRefPreview> {
+    const head = (await git.raw(['rev-parse', ref])).trim();
+    let rama: string | undefined;
+    try {
+      const abb = (await git.raw(['rev-parse', '--abbrev-ref', ref])).trim();
+      if (abb && abb !== 'HEAD') rama = abb;
+    } catch {
+      // hash u otro árbol sin nombre de rama
+    }
+    return { head, rama };
+  }
+
+  private async estimarConflictosPorSolape(
+    git: SimpleGit,
+    ramaActual: string,
+    sourceBranch: string,
+    mergeBase: string,
+  ): Promise<string[]> {
+    try {
+      const diffNames = await git.raw(['diff', '--name-only', `${ramaActual}...${sourceBranch}`]);
+      const archivosSource = new Set(diffNames.trim().split('\n').filter(Boolean));
+      const diffLocal = await git.raw(['diff', '--name-only', `${mergeBase}..${ramaActual}`]);
+      const archivosLocal = new Set(diffLocal.trim().split('\n').filter(Boolean));
+      return [...archivosSource].filter((f) => archivosLocal.has(f));
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Conflictos de merge sin tocar el repo del usuario: clon temporal + merge --no-commit.
+   * Si el clon falla, merge-tree clásico (stdout, sin --write-tree) y por último solape de diffs.
+   */
+  private async detectarConflictosMerge(
+    repoPath: string,
+    git: SimpleGit,
+    ramaActual: string,
+    sourceBranch: string,
+    mergeBase: string,
+    headHash: string,
+    sourceHead: string,
+  ): Promise<string[]> {
+    try {
+      return await ejecutarEnClonTemporal(repoPath, async (sandbox) => {
+        const gitSandbox = simpleGit(sandbox);
+        await gitSandbox.addConfig('user.email', 'preview@abyssan.local');
+        await gitSandbox.addConfig('user.name', 'Abyssan Preview');
+        // El clon solo materializa la rama por defecto; las demás quedan como origin/*.
+        // Merge por hash para no depender de refs locales.
+        await gitSandbox.raw(['checkout', '-f', headHash]);
+        try {
+          await gitSandbox.raw(['merge', '--no-commit', '--no-ff', sourceHead]);
+        } catch {
+          // conflictos: el índice del sandbox queda en MERGE; el origen no se toca
+        }
+        const unmerged = new Set<string>();
+        const status = await gitSandbox.status();
+        for (const f of status.conflicted ?? []) unmerged.add(f);
+        try {
+          const crudo = await gitSandbox.raw(['ls-files', '-u', '-z']);
+          for (const linea of crudo.split('\0')) {
+            const partes = linea.split('\t');
+            const archivo = partes[partes.length - 1]?.trim();
+            if (archivo) unmerged.add(archivo);
+          }
+        } catch {
+          // ls-files no disponible
+        }
+        return [...unmerged];
+      });
+    } catch {
+      try {
+        const clasico = await git.raw(['merge-tree', mergeBase, ramaActual, sourceBranch]);
+        const deTree = extraerConflictosMergeTree(clasico);
+        if (deTree.length > 0) return deTree;
+      } catch (err: unknown) {
+        const salida = err instanceof Error ? err.message : '';
+        const deTree = extraerConflictosMergeTree(salida);
+        if (deTree.length > 0) return deTree;
+      }
+      return this.estimarConflictosPorSolape(git, ramaActual, sourceBranch, mergeBase);
+    }
+  }
+
+  async previewMerge(repoPath: string, sourceBranch: string): Promise<PreviewResultado> {
+    const start = Date.now();
     const git = this.getGitInstance(repoPath);
-    const riesgos: string[] = [];
-    const conflictos: string[] = [];
-    let viable = true;
+    const advertencias: string[] = [];
+    const gitDir = path.join(repoPath, '.git');
+    const enMerge = fs.existsSync(path.join(gitDir, 'MERGE_HEAD'));
+    const enRebase =
+      fs.existsSync(path.join(gitDir, 'rebase-apply')) || fs.existsSync(path.join(gitDir, 'rebase-merge'));
+
+    let estadoActual: EstadoRefPreview = { head: '' };
+    let estadoObjetivo: EstadoRefPreview = { rama: sourceBranch, head: '' };
+    try {
+      estadoActual = await this.describirRef(git, 'HEAD');
+      estadoObjetivo = await this.describirRef(git, sourceBranch);
+    } catch (err: unknown) {
+      const mensaje = err instanceof Error ? err.message : 'ref no resoluble';
+      this.logRepository.addLog('git preview merge', Date.now() - start, true);
+      return this.crearPreview('merge', repoPath, estadoActual, estadoObjetivo, {
+        seguroEjecutar: false,
+        advertencias: [`No se pudo resolver la ref «${sourceBranch}».`],
+        explicacion: `No se puede fusionar: ${mensaje}`,
+      });
+    }
 
     const status = await git.status();
     const ramaActual = status.current || 'HEAD';
     if (status.files.length > 0) {
-      riesgos.push('Hay cambios sin commitear que podrían interferir con el merge.');
+      advertencias.push('Hay cambios sin commitear que podrían interferir con el merge.');
+    }
+    if (enMerge) {
+      advertencias.push('El repositorio ya está en medio de un merge. Termínalo o aborta antes de fusionar otra rama.');
+    }
+    if (enRebase) {
+      advertencias.push('El repositorio está en rebase. Termínalo o aborta antes de fusionar.');
+    }
+    if (estadoActual.rama && estadoActual.rama === sourceBranch) {
+      this.logRepository.addLog('git preview merge', Date.now() - start, true);
+      return this.crearPreview('merge', repoPath, estadoActual, estadoObjetivo, {
+        seguroEjecutar: false,
+        advertencias,
+        explicacion: `No se puede fusionar «${sourceBranch}» sobre sí misma.`,
+      });
     }
 
-    // merge-base
     let mergeBase: string;
     try {
       mergeBase = (await git.raw(['merge-base', ramaActual, sourceBranch])).trim();
     } catch {
-      return {
-        operacion: 'merge', viable: false, conflictos: [], commitsAfectados: [],
-        archivosAfectados: [], riesgos: [`No se encontró ancestro común entre ${ramaActual} y ${sourceBranch}.`],
-        resumen: `No se puede hacer merge: sin ancestro común.`,
-      };
+      this.logRepository.addLog('git preview merge', Date.now() - start, true);
+      return this.crearPreview('merge', repoPath, { ...estadoActual }, estadoObjetivo, {
+        seguroEjecutar: false,
+        advertencias: [
+          ...advertencias,
+          `No se encontró ancestro común entre ${ramaActual} y ${sourceBranch}.`,
+        ],
+        explicacion: 'No se puede hacer merge: sin ancestro común.',
+      });
     }
+    estadoActual = { ...estadoActual, rama: estadoActual.rama ?? ramaActual, base: mergeBase };
 
-    // Detectar conflictos con merge-tree (Git 2.38+)
-    try {
-      const result = await git.raw(['merge-tree', '--write-tree', '--no-messages', ramaActual, sourceBranch]);
-      const lineas = result.trim().split('\n');
-      for (let i = 1; i < lineas.length; i++) {
-        const l = lineas[i].trim();
-        if (l) conflictos.push(l);
-      }
-    } catch (err: any) {
-      // merge-tree retorna exit code 1 si hay conflictos (Git 2.38+)
-      const salida = err.message || '';
-      const lineas = salida.split('\n');
-      for (const l of lineas) {
-        const trimmed = l.trim();
-        if (trimmed && !trimmed.startsWith('CONFLICT') && trimmed.length === 40) continue;
-        if (trimmed.startsWith('CONFLICT')) {
-          const match = trimmed.match(/CONFLICT \([^)]+\): .* (\S+)$/);
-          if (match) conflictos.push(match[1]);
-          else conflictos.push(trimmed);
-        }
-      }
-      if (conflictos.length === 0) {
-        // Fallback: usar diff para estimar
-        try {
-          const diffNames = await git.raw(['diff', '--name-only', `${ramaActual}...${sourceBranch}`]);
-          const archivosSource = new Set(diffNames.trim().split('\n').filter(Boolean));
-          const diffLocal = await git.raw(['diff', '--name-only', `${mergeBase}..${ramaActual}`]);
-          const archivosLocal = new Set(diffLocal.trim().split('\n').filter(Boolean));
-          for (const f of archivosSource) {
-            if (archivosLocal.has(f)) conflictos.push(f);
-          }
-        } catch { /* sin estimación */ }
-      }
-    }
+    const posiblesConflictos = (enMerge || enRebase)
+      ? []
+      : await this.detectarConflictosMerge(
+        repoPath,
+        git,
+        ramaActual,
+        sourceBranch,
+        mergeBase,
+        estadoActual.head,
+        estadoObjetivo.head,
+      );
 
-    if (conflictos.length > 0) {
-      riesgos.push(`${conflictos.length} archivo(s) en conflicto requieren resolución manual.`);
+    if (posiblesConflictos.length > 0) {
+      advertencias.push(`${posiblesConflictos.length} archivo(s) en conflicto requieren resolución manual.`);
     }
 
     const commitsAfectados = await this.obtenerCommitsEntre(git, ramaActual, sourceBranch);
@@ -1178,80 +1369,87 @@ export class SimpleGitAdapter implements IGitRepository {
     let archivosAfectados: ArchivoAfectadoPreview[] = [];
     try {
       const numstat = await git.raw(['diff', '--numstat', `${ramaActual}...${sourceBranch}`]);
-      archivosAfectados = this.parsearArchivosDeNumstat(numstat);
-      // Marcar los que tienen conflicto
-      const setConflictos = new Set(conflictos);
-      archivosAfectados = archivosAfectados.map((a) =>
+      const setConflictos = new Set(posiblesConflictos);
+      archivosAfectados = this.parsearArchivosDeNumstat(numstat).map((a) =>
         setConflictos.has(a.path) ? { ...a, tipo: 'conflicto' as const } : a
       );
     } catch { /* sin detalle de archivos */ }
 
-    const resumen = conflictos.length > 0
-      ? `Merge de ${sourceBranch} → ${ramaActual}: ${commitsAfectados.length} commit(s), ${conflictos.length} conflicto(s).`
-      : `Merge de ${sourceBranch} → ${ramaActual}: ${commitsAfectados.length} commit(s), sin conflictos.`;
+    const explicacion = posiblesConflictos.length > 0
+      ? `Fusionar ${sourceBranch} en ${ramaActual} incorporaría ${commitsAfectados.length} commit(s) y dejaría ${posiblesConflictos.length} conflicto(s) para resolver a mano.`
+      : `Fusionar ${sourceBranch} en ${ramaActual} incorporaría ${commitsAfectados.length} commit(s) sobre el HEAD actual, sin conflictos detectados.`;
 
-    return { operacion: 'merge', viable, conflictos, commitsAfectados, archivosAfectados, riesgos, resumen };
+    const resultado = this.crearPreview('merge', repoPath, estadoActual, estadoObjetivo, {
+      commitsAfectados,
+      archivosAfectados,
+      posiblesConflictos,
+      advertencias,
+      seguroEjecutar: !enMerge && !enRebase,
+      explicacion,
+    });
+    this.logRepository.addLog('git preview merge', Date.now() - start, true);
+    return resultado;
   }
 
-  async previewReset(repoPath: string, type: 'soft' | 'mixed' | 'hard', target: string): Promise<PreviewOperacionEntity> {
+  async previewReset(repoPath: string, type: 'soft' | 'mixed' | 'hard', target: string): Promise<PreviewResultado> {
     const git = this.getGitInstance(repoPath);
-    const riesgos: string[] = [];
+    const advertencias: string[] = [];
+    const estadoActual = await this.describirRef(git, 'HEAD');
+    const estadoObjetivo = await this.describirRef(git, target);
 
-    const headHash = (await git.raw(['rev-parse', 'HEAD'])).trim();
-    const targetHash = (await git.raw(['rev-parse', target])).trim();
-
-    if (headHash === targetHash) {
-      return {
-        operacion: 'reset', viable: true, conflictos: [], commitsAfectados: [],
-        archivosAfectados: [], riesgos: [],
-        resumen: `HEAD ya apunta a ${target.substring(0, 7)}. El reset no tendrá efecto.`,
-      };
+    if (estadoActual.head === estadoObjetivo.head) {
+      return this.crearPreview('reset', repoPath, estadoActual, estadoObjetivo, {
+        seguroEjecutar: true,
+        explicacion: `HEAD ya apunta a ${target.substring(0, 7)}. El reset no tendrá efecto.`,
+      });
     }
 
-    const commitsPerdidos = await this.obtenerCommitsEntre(git, targetHash, headHash);
+    const commitsPerdidos = await this.obtenerCommitsEntre(git, estadoObjetivo.head, estadoActual.head);
 
     if (type === 'hard') {
-      riesgos.push('reset --hard descarta todos los cambios del working tree y staging. Esta operación es destructiva.');
+      advertencias.push('reset --hard descarta todos los cambios del working tree y staging. Esta operación es destructiva.');
       const status = await git.status();
       if (status.files.length > 0) {
-        riesgos.push(`${status.files.length} archivo(s) con cambios locales serán descartados permanentemente.`);
+        advertencias.push(`${status.files.length} archivo(s) con cambios locales serán descartados permanentemente.`);
       }
     } else if (type === 'mixed') {
-      riesgos.push('reset --mixed mueve los cambios de los commits al working tree (unstaged).');
+      advertencias.push('reset --mixed mueve los cambios de los commits al working tree (unstaged).');
     } else {
-      riesgos.push('reset --soft mantiene todos los cambios en staging.');
+      advertencias.push('reset --soft mantiene todos los cambios en staging.');
     }
 
     if (commitsPerdidos.length > 0) {
-      riesgos.push(`${commitsPerdidos.length} commit(s) dejarán de ser alcanzables desde HEAD (recuperables vía reflog).`);
+      advertencias.push(`${commitsPerdidos.length} commit(s) dejarán de ser alcanzables desde HEAD (recuperables vía reflog).`);
     }
 
-    // Comprobar si algún commit ya está en remoto
     try {
-      const remoteBranches = await git.raw(['branch', '-r', '--contains', headHash]);
+      const remoteBranches = await git.raw(['branch', '-r', '--contains', estadoActual.head]);
       if (remoteBranches.trim()) {
-        riesgos.push('Algunos commits ya están en el remoto; un push posterior requerirá --force.');
+        advertencias.push('Algunos commits ya están en el remoto; un push posterior requerirá --force.');
       }
     } catch { /* sin info de remoto */ }
 
     let archivosAfectados: ArchivoAfectadoPreview[] = [];
     try {
-      const numstat = await git.raw(['diff', '--numstat', `${targetHash}..${headHash}`]);
+      const numstat = await git.raw(['diff', '--numstat', `${estadoObjetivo.head}..${estadoActual.head}`]);
       archivosAfectados = this.parsearArchivosDeNumstat(numstat);
     } catch { /* sin detalle */ }
 
-    return {
-      operacion: 'reset', viable: true, conflictos: [],
-      commitsAfectados: commitsPerdidos, archivosAfectados, riesgos,
-      resumen: `Reset --${type} a ${target.substring(0, 7)}: ${commitsPerdidos.length} commit(s) retrocedidos, ${archivosAfectados.length} archivo(s) afectados.`,
-    };
+    return this.crearPreview('reset', repoPath, estadoActual, estadoObjetivo, {
+      commitsAfectados: commitsPerdidos,
+      archivosAfectados,
+      advertencias,
+      seguroEjecutar: true,
+      explicacion: `Reset --${type} a ${target.substring(0, 7)}: ${commitsPerdidos.length} commit(s) retrocedidos, ${archivosAfectados.length} archivo(s) afectados.`,
+    });
   }
 
-  async previewCherryPick(repoPath: string, hash: string): Promise<PreviewOperacionEntity> {
+  async previewCherryPick(repoPath: string, hash: string): Promise<PreviewResultado> {
     const git = this.getGitInstance(repoPath);
-    const riesgos: string[] = [];
+    const advertencias: string[] = [];
+    const estadoActual = await this.describirRef(git, 'HEAD');
+    const estadoObjetivo = await this.describirRef(git, hash);
 
-    // Obtener info del commit
     const commitInfo: CommitEntity[] = await this.obtenerCommitsEntre(git, `${hash}~1`, hash).catch((): CommitEntity[] => []);
     if (commitInfo.length === 0) {
       try {
@@ -1265,50 +1463,52 @@ export class SimpleGitAdapter implements IGitRepository {
       } catch { /* sin info */ }
     }
 
-    // Estimar archivos afectados
     let archivosAfectados: ArchivoAfectadoPreview[] = [];
     try {
       const numstat = await git.raw(['diff', '--numstat', `${hash}~1`, hash]);
       archivosAfectados = this.parsearArchivosDeNumstat(numstat);
     } catch { /* sin detalle */ }
 
-    // Estimar conflictos: archivos tocados por el commit que también difieren en HEAD
-    const conflictos: string[] = [];
+    const posiblesConflictos: string[] = [];
     try {
       const archivosCommit = new Set(archivosAfectados.map((a) => a.path));
       const status = await git.status();
       for (const f of status.modified) {
-        if (archivosCommit.has(f)) conflictos.push(f);
+        if (archivosCommit.has(f)) posiblesConflictos.push(f);
       }
-      // Verificar si ya existe en HEAD con diferencias
       const headDiff = await git.raw(['diff', '--name-only', 'HEAD']);
       for (const f of headDiff.trim().split('\n').filter(Boolean)) {
-        if (archivosCommit.has(f) && !conflictos.includes(f)) conflictos.push(f);
+        if (archivosCommit.has(f) && !posiblesConflictos.includes(f)) posiblesConflictos.push(f);
       }
     } catch { /* sin estimación */ }
 
-    if (conflictos.length > 0) {
-      riesgos.push(`${conflictos.length} archivo(s) podrían generar conflictos.`);
+    if (posiblesConflictos.length > 0) {
+      advertencias.push(`${posiblesConflictos.length} archivo(s) podrían generar conflictos.`);
       archivosAfectados = archivosAfectados.map((a) =>
-        conflictos.includes(a.path) ? { ...a, tipo: 'conflicto' as const } : a
+        posiblesConflictos.includes(a.path) ? { ...a, tipo: 'conflicto' as const } : a
       );
     }
 
     const status = await git.status();
     if (status.files.length > 0) {
-      riesgos.push('Hay cambios sin commitear que podrían interferir.');
+      advertencias.push('Hay cambios sin commitear que podrían interferir.');
     }
 
-    return {
-      operacion: 'cherry-pick', viable: true, conflictos,
-      commitsAfectados: commitInfo, archivosAfectados, riesgos,
-      resumen: `Cherry-pick de ${hash.substring(0, 7)}: ${archivosAfectados.length} archivo(s) afectados.`,
-    };
+    return this.crearPreview('cherry-pick', repoPath, estadoActual, estadoObjetivo, {
+      commitsAfectados: commitInfo,
+      archivosAfectados,
+      posiblesConflictos,
+      advertencias,
+      seguroEjecutar: true,
+      explicacion: `Cherry-pick de ${hash.substring(0, 7)}: ${archivosAfectados.length} archivo(s) afectados.`,
+    });
   }
 
-  async previewRevert(repoPath: string, hash: string): Promise<PreviewOperacionEntity> {
+  async previewRevert(repoPath: string, hash: string): Promise<PreviewResultado> {
     const git = this.getGitInstance(repoPath);
-    const riesgos: string[] = [];
+    const advertencias: string[] = [];
+    const estadoActual = await this.describirRef(git, 'HEAD');
+    const estadoObjetivo = await this.describirRef(git, hash);
 
     const commitInfo: CommitEntity[] = [];
     try {
@@ -1322,7 +1522,7 @@ export class SimpleGitAdapter implements IGitRepository {
     } catch { /* sin info */ }
 
     if (commitInfo[0]?.parents?.length > 1) {
-      riesgos.push('El commit es un merge commit; revert de merges puede tener efectos inesperados.');
+      advertencias.push('El commit es un merge commit; revert de merges puede tener efectos inesperados.');
     }
 
     let archivosAfectados: ArchivoAfectadoPreview[] = [];
@@ -1336,27 +1536,29 @@ export class SimpleGitAdapter implements IGitRepository {
       }));
     } catch { /* sin detalle */ }
 
-    // Estimar conflictos
-    const conflictos: string[] = [];
+    const posiblesConflictos: string[] = [];
     try {
       const archivosRevert = new Set(archivosAfectados.map((a) => a.path));
       const diffSinceCommit = await git.raw(['diff', '--name-only', hash, 'HEAD']);
       for (const f of diffSinceCommit.trim().split('\n').filter(Boolean)) {
-        if (archivosRevert.has(f)) conflictos.push(f);
+        if (archivosRevert.has(f)) posiblesConflictos.push(f);
       }
     } catch { /* sin estimación */ }
 
-    if (conflictos.length > 0) {
-      riesgos.push(`${conflictos.length} archivo(s) modificados después del commit podrían generar conflictos.`);
+    if (posiblesConflictos.length > 0) {
+      advertencias.push(`${posiblesConflictos.length} archivo(s) modificados después del commit podrían generar conflictos.`);
       archivosAfectados = archivosAfectados.map((a) =>
-        conflictos.includes(a.path) ? { ...a, tipo: 'conflicto' as const } : a
+        posiblesConflictos.includes(a.path) ? { ...a, tipo: 'conflicto' as const } : a
       );
     }
 
-    return {
-      operacion: 'revert', viable: true, conflictos,
-      commitsAfectados: commitInfo, archivosAfectados, riesgos,
-      resumen: `Revert de ${hash.substring(0, 7)}: ${archivosAfectados.length} archivo(s) afectados, creará un nuevo commit.`,
-    };
+    return this.crearPreview('revert', repoPath, estadoActual, estadoObjetivo, {
+      commitsAfectados: commitInfo,
+      archivosAfectados,
+      posiblesConflictos,
+      advertencias,
+      seguroEjecutar: true,
+      explicacion: `Revert de ${hash.substring(0, 7)}: ${archivosAfectados.length} archivo(s) afectados, creará un nuevo commit.`,
+    });
   }
 }

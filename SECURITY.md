@@ -119,8 +119,8 @@ Ver [docs/wiki/Despliegue-con-Docker.md](docs/wiki/Despliegue-con-Docker.md). Co
 - Diseñado para **uso local** (un operador, localhost). No hay cuentas de usuario de Abyssan.
 - Sin `Origin`, un cliente en la misma máquina (curl, malware con el mismo usuario OS) puede llamar al API. Eso está fuera de alcance si el atacante ya es el usuario del proceso.
 - El token permanente no viaja en el bundle. Queda en el entorno del servidor; la SPA pide una sesión de 12 h.
-- El journal y los snapshots viven en disco local; no son un backup cifrado de grado empresarial.
-- Preview de rebase y force-push está **fuera del contrato** (`POST /api/git/preview` responde 400). Merge, reset, cherry-pick y revert sí tienen preview no mutante.
+- El journal y los snapshots viven en disco local; no son un backup cifrado de grado empresarial. El undo de reset ancla una ref en el `.git` del repositorio; no copia el repo ni promete deshacer pull, push o merge.
+- Preview de rebase y force-push está **fuera del contrato** (`POST /api/git/preview` responde 400). Merge se simula en un clon temporal; reset, cherry-pick y revert tienen preview de solo lectura. El preview **no** escribe el `.git` del usuario.
 - Compose sigue siendo desarrollo, no Fase 6 (producción multi-usuario).
 
 Abyssan **no** es “completamente seguro”.

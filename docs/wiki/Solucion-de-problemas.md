@@ -161,7 +161,7 @@ Solo con bind no loopback y cliente no-localhost. Espera un minuto o trabaja con
 
 ## Preview «no soportada»
 
-`POST /api/git/preview` solo acepta `merge`, `reset`, `cherry-pick` y `revert`. `rebase` o `force-push` responden **400**. El merge/reset/cherry-pick/revert de la UI pide ese preview antes de confirmar.
+`POST /api/git/preview` solo acepta `merge`, `reset`, `cherry-pick` y `revert`. `rebase` o `force-push` responden **400**. El merge se evalúa en un clon temporal; la UI pide ese preview (Ejecutar/Cancelar) antes de confirmar.
 
 ## Siguiente
 

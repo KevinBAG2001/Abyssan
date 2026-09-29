@@ -8,6 +8,9 @@ import type {
   DatosRegistroJournal,
   EntradaJournal,
   EntradaJournalPublica,
+  EstadoJournal,
+  InformacionRecuperacion,
+  PuntoRepositorio,
   UltimaOperacion,
 } from './tiposJournal.js';
 
@@ -15,7 +18,16 @@ const MAX_POR_REPO = 60;
 const MAX_TOTAL = 200;
 const CLAVES_SENSIBLES = /^(contenido|content|token|password|secret|authorization)$/i;
 
-type DocumentoJournal = { version: 1; entradas: EntradaJournal[] };
+type DocumentoJournal = { version: 1 | 2; entradas: EntradaJournal[] };
+
+function estadoDeEntrada(e: { estado?: EstadoJournal; deshecha?: boolean }): EstadoJournal {
+  if (e.estado) return e.estado;
+  return e.deshecha ? 'recuperada' : 'completada';
+}
+
+function normalizarEntrada(e: EntradaJournal): EntradaJournal {
+  return { ...e, estado: estadoDeEntrada(e) };
+}
 
 function payloadSeguro(payload: Record<string, string>): Record<string, string> {
   const limpio: Record<string, string> = {};
@@ -29,6 +41,8 @@ function payloadSeguro(payload: Record<string, string>): Record<string, string> 
 export class JournalOperaciones {
   private entradas: EntradaJournal[] = [];
   private cargado = false;
+  /** False si `journal.json` existe pero no se pudo leer. En ese caso no se borran refs. */
+  private integro = true;
 
   constructor(private readonly dirBase?: string) {}
 
@@ -44,19 +58,27 @@ export class JournalOperaciones {
     return path.join(this.directorio(), 'journal.json');
   }
 
+  estaIntegro(): boolean {
+    this.asegurarCargado();
+    return this.integro;
+  }
+
   recargar(): void {
     this.cargado = true;
     const archivo = this.rutaArchivo();
     if (!fs.existsSync(archivo)) {
       this.entradas = [];
+      this.integro = true;
       return;
     }
     try {
       const bruto = fs.readFileSync(archivo, 'utf8');
       const doc = JSON.parse(bruto) as DocumentoJournal;
-      this.entradas = Array.isArray(doc.entradas) ? doc.entradas : [];
+      this.entradas = Array.isArray(doc.entradas) ? doc.entradas.map((e) => normalizarEntrada(e)) : [];
+      this.integro = Array.isArray(doc.entradas);
     } catch {
       this.entradas = [];
+      this.integro = false;
     }
   }
 
@@ -68,7 +90,7 @@ export class JournalOperaciones {
     this.asegurarCargado();
     const dir = this.directorio();
     fs.mkdirSync(dir, { recursive: true });
-    const doc: DocumentoJournal = { version: 1, entradas: this.entradas };
+    const doc: DocumentoJournal = { version: 2, entradas: this.entradas };
     const destino = this.rutaArchivo();
     const tmp = `${destino}.${process.pid}.tmp`;
     fs.writeFileSync(tmp, `${JSON.stringify(doc)}\n`, 'utf8');
@@ -124,11 +146,96 @@ export class JournalOperaciones {
       estadoAnterior: op.estadoAnterior ?? estadoAnteriorDeOperacion(op.tipo, payload, archivos),
       timestamp: new Date().toISOString(),
       deshecha: false,
+      estado: op.estado ?? 'completada',
+      antes: op.antes,
+      despues: op.despues,
+      recuperacion: op.recuperacion,
     };
     this.entradas.push(entrada);
     this.podar();
     this.persistir();
     return entrada;
+  }
+
+  /** Persiste la operación antes de mutar el repositorio. */
+  iniciar(op: DatosRegistroJournal): EntradaJournal {
+    return this.registrar({ ...op, estado: 'en_curso' });
+  }
+
+  completar(
+    id: string,
+    datos: {
+      despues?: PuntoRepositorio;
+      puedeDeshacer: boolean;
+      motivoBloqueo?: string;
+      payload?: Record<string, string>;
+    }
+  ): void {
+    const entrada = this.exigir(id);
+    if (!entrada) return;
+    entrada.estado = 'completada';
+    entrada.deshecha = false;
+    entrada.puedeDeshacer = datos.puedeDeshacer;
+    entrada.motivoBloqueo = datos.motivoBloqueo
+      ? sanitizarTextoAuditoria(datos.motivoBloqueo).slice(0, 240)
+      : undefined;
+    if (datos.despues) entrada.despues = datos.despues;
+    if (datos.payload) entrada.payload = payloadSeguro({ ...entrada.payload, ...datos.payload });
+    entrada.estadoAnterior = estadoAnteriorDeOperacion(
+      entrada.tipo,
+      entrada.payload,
+      contarArchivosSnapshot(entrada.snapshotId, this.dirBase)
+    );
+    this.persistir();
+  }
+
+  fallar(id: string, motivo: string, puedeDeshacer = false, despues?: PuntoRepositorio): void {
+    const entrada = this.exigir(id);
+    if (!entrada) return;
+    entrada.estado = 'fallida';
+    entrada.puedeDeshacer = puedeDeshacer;
+    entrada.motivoBloqueo = sanitizarTextoAuditoria(motivo).slice(0, 240);
+    if (despues) entrada.despues = despues;
+    if (entrada.recuperacion && !puedeDeshacer) {
+      entrada.recuperacion = {
+        ...entrada.recuperacion,
+        disponible: false,
+        motivo: entrada.motivoBloqueo,
+      };
+    }
+    this.persistir();
+  }
+
+  actualizarRecuperacion(id: string, info: InformacionRecuperacion, puedeDeshacer: boolean): void {
+    const entrada = this.exigir(id);
+    if (!entrada) return;
+    entrada.recuperacion = info;
+    entrada.puedeDeshacer = puedeDeshacer;
+    if (puedeDeshacer) entrada.motivoBloqueo = undefined;
+    if (info.ref && entrada.tipo === 'reset') {
+      const modo = entrada.payload.type === 'hard' ? 'hard' : 'soft';
+      entrada.comandoGit = `git reset --${modo} ${info.ref}`;
+    }
+    this.persistir();
+  }
+
+  /** Refs que todavía garantizan una recuperación. No incluye entradas ya deshechas. */
+  refsRecuperacionVivas(repoPath: string): string[] {
+    this.asegurarCargado();
+    const refs: string[] = [];
+    for (const e of this.entradas) {
+      if (e.repoPath !== repoPath) continue;
+      if (e.deshecha || e.estado === 'recuperada') continue;
+      const info = e.recuperacion;
+      if (!info?.ref || !info.disponible || info.estrategia !== 'ref_temporal') continue;
+      refs.push(info.ref);
+    }
+    return refs;
+  }
+
+  private exigir(id: string): EntradaJournal | null {
+    this.asegurarCargado();
+    return this.entradas.find((e) => e.id === id) ?? null;
   }
 
   listar(repoPath: string): EntradaJournalPublica[] {
@@ -175,7 +282,11 @@ export class JournalOperaciones {
     if (!entrada) return;
     entrada.deshecha = true;
     entrada.puedeDeshacer = false;
+    entrada.estado = 'recuperada';
     entrada.motivoBloqueo = 'Ya se deshizo';
+    if (entrada.recuperacion) {
+      entrada.recuperacion = { ...entrada.recuperacion, disponible: false };
+    }
     this.persistir();
   }
 
@@ -220,6 +331,8 @@ export class JournalOperaciones {
       deshecha: e.deshecha,
       esPunta,
       archivosSnapshot: contarArchivosSnapshot(e.snapshotId, this.dirBase),
+      estado: estadoDeEntrada(e),
+      estrategiaRecuperacion: e.recuperacion?.estrategia ?? (e.snapshotId ? 'snapshot' : 'ninguna'),
     };
   }
 }
