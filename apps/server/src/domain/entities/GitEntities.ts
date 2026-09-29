@@ -120,7 +120,7 @@ export interface BranchComparisonEntity {
   archivos: ArchivoCambioEntity[];
 }
 
-// --- Preview de operaciones peligrosas (no mutante) ---
+// --- Preview de operaciones (no mutante). Contrato PreviewResult. ---
 
 export type TipoOperacionPreview = 'merge' | 'reset' | 'cherry-pick' | 'revert';
 
@@ -129,15 +129,32 @@ export interface ArchivoAfectadoPreview {
   tipo: 'modificado' | 'agregado' | 'eliminado' | 'conflicto';
 }
 
-export interface PreviewOperacionEntity {
+/** HEAD / rama implicados en el preview. `base` es merge-base cuando aplica. */
+export interface EstadoRefPreview {
+  rama?: string;
+  head: string;
+  base?: string;
+}
+
+/**
+ * Resultado común de `POST /api/git/preview`.
+ * Pequeño a propósito: rebase y force-push no entran hasta que este contrato esté estable.
+ */
+export interface PreviewResultado {
   operacion: TipoOperacionPreview;
-  viable: boolean;
-  conflictos: string[];
+  repositorio: string;
+  estadoActual: EstadoRefPreview;
+  estadoObjetivo: EstadoRefPreview;
   commitsAfectados: CommitEntity[];
   archivosAfectados: ArchivoAfectadoPreview[];
-  riesgos: string[];
-  resumen: string;
+  posiblesConflictos: string[];
+  advertencias: string[];
+  seguroEjecutar: boolean;
+  explicacion: string;
 }
+
+/** Alias histórico: el contrato canónico es PreviewResultado. */
+export type PreviewOperacionEntity = PreviewResultado;
 
 export interface CommandLogEntity {
   id: string;

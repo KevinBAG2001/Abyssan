@@ -12,7 +12,7 @@ Hacer visible la historia (DAG), preparar el commit con diff y ejecutar flujos G
 
 - El `git log` lineal no muestra merges, HEAD y refs de un vistazo.
 - Preparar un commit (`git add`, diff, mensaje) es fácil de equivocar en CLI.
-- Merge, reset, cherry-pick y revert muestran un preview no mutante (`POST /api/git/preview`) en `ModalConfirmacion` antes de aplicar. Stash drop y reset hard siguen pidiendo confirmación contextual.
+- Merge, reset, cherry-pick y revert muestran un `PreviewResultado` no mutante (`POST /api/git/preview`) en `ModalConfirmacion` (explicación, cambios, riesgos, Ejecutar/Cancelar) antes de aplicar. El merge se simula en un clon temporal. Stash drop y reset hard siguen pidiendo confirmación contextual.
 - Un reset o discard mal aplicado pierde trabajo local.
 
 ## Alcance actual (verificado en código)
@@ -23,9 +23,9 @@ Disponible en este repositorio:
 - Status, grafo de commits, diff, stage/unstage **por archivo**, commit, checkout, ramas, tags, stash, remotos, fetch, pull (merge o rebase), push.
 - Merge, abortar/continuar merge, cherry-pick, revert, reset, discard, amend, reflog.
 - Conflictos 3-way (lectura y resolución de contenido).
-- Journal persistente de undo y timeline en UI (Fase 4.2).
+- Journal persistente de undo y timeline en UI (Fase 4.2). El reset se ancla en `refs/abyssan/recovery/`; el resto del undo no promete esa misma garantía.
 - Cola de operaciones, progreso por WebSocket, auditoría JSONL local.
-- Preview HTTP no mutante para merge, reset, cherry-pick y revert.
+- Preview HTTP no mutante (`PreviewResultado`) para merge (sandbox), reset, cherry-pick y revert.
 - OAuth GitHub/GitLab y listado/creación de PR/MR (forjas), si hay credenciales.
 - Token de instancia y rate limit cuando `BIND_HOST` no es loopback.
 
