@@ -9,6 +9,8 @@ import {
   ramasUnicas,
   esCommitHead,
   esRefRemota,
+  asignarLanes,
+  aristasQueCruzanVentana,
 } from '../grafo-utils';
 import type { GitCommit } from '../../types/git';
 
@@ -170,6 +172,54 @@ describe('esCommitHead', () => {
 
   it('detecta HEAD desvinculado', () => {
     expect(esCommitHead(commit('ccccc', ['bbbbb'], { refs: ['HEAD'] }))).toBe(true);
+  });
+});
+
+describe('asignarLanes', () => {
+  it('mantiene la columna del primer padre y abre otra para el merge', () => {
+    const lanes = asignarLanes(GRAFO);
+    const col = (hash: string) => lanes.find((c) => c.hash === hash)?.column;
+    expect(col('eeeee')).toBe(col('ccccc'));
+    expect(col('ddddd')).toBe(col('bbbbb'));
+    expect(col('eeeee')).not.toBe(col('ddddd'));
+    expect(lanes.every((c) => typeof c.color === 'string' && c.color.length > 0)).toBe(true);
+  });
+
+  it('reutiliza la columna libre de más a la izquierda', () => {
+    const lanes = asignarLanes([
+      commit('c1ccc', ['c2ccc']),
+      commit('d1ddd', ['d2ddd']),
+      commit('c2ccc', []),
+      commit('d2ddd', []),
+      commit('e1eee', []),
+    ]);
+    const col = (hash: string) => lanes.find((c) => c.hash === hash)?.column;
+    expect(col('c1ccc')).toBe(0);
+    expect(col('d1ddd')).toBe(1);
+    expect(col('e1eee')).toBe(0);
+  });
+
+  it('no envuelve la columna al tamaño de la paleta', () => {
+    const puntas = Array.from({ length: 8 }, (_, i) =>
+      commit(`t${i}ttt`, [`p${i}ppp`]),
+    );
+    const padres = Array.from({ length: 8 }, (_, i) => commit(`p${i}ppp`, []));
+    const lanes = asignarLanes([...puntas, ...padres]);
+    const columnasPuntas = new Set(puntas.map((p) => lanes.find((c) => c.hash === p.hash)?.column));
+    expect(columnasPuntas.size).toBe(8);
+  });
+});
+
+describe('aristasQueCruzanVentana', () => {
+  it('incluye la arista que entra en la ventana y omite las que quedan fuera', () => {
+    const lineal = Array.from({ length: 30 }, (_, i) =>
+      commit(`c${String(i).padStart(2, '0')}`, i < 29 ? [`c${String(i + 1).padStart(2, '0')}`] : []),
+    );
+    const aristas = aristasQueCruzanVentana(lineal, 10, 20);
+    expect(aristas.some((a) => a.hijo === 'c09' && a.padre === 'c10')).toBe(true);
+    expect(aristas.some((a) => a.hijo === 'c00' && a.padre === 'c01')).toBe(false);
+    expect(aristas.some((a) => a.hijo === 'c25' && a.padre === 'c26')).toBe(false);
+    expect(aristas.every((a) => a.primerPadre)).toBe(true);
   });
 });
 

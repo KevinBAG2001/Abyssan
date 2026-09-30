@@ -4,6 +4,7 @@ import { StagingPanel } from '../StagingPanel';
 import { DiffViewer } from '../DiffViewer';
 import { ConflictResolver } from '../ConflictResolver';
 import type { GitBranch, GitCommit, GitConflictData, GitFileStatus, GitRepoStatus, GitTag } from '../../types/git';
+import type { InteligenciaGrafo } from '../../lib/semantica-grafo';
 
 type AreaTrabajoGitProps = {
   selectedRepo?: string | null;
@@ -20,6 +21,7 @@ type AreaTrabajoGitProps = {
   ramaActual: string;
   ramaInspeccionada?: string | null;
   nombresRemotos?: string[];
+  inteligenciaGrafo?: InteligenciaGrafo;
   onCheckout: (target: string) => void;
   onInspectarRama: (branch: GitBranch) => void;
   onCreateBranch: (name: string) => void;
@@ -58,6 +60,7 @@ export function AreaTrabajoGit({
   ramaActual,
   ramaInspeccionada = null,
   nombresRemotos = [],
+  inteligenciaGrafo,
   onCheckout,
   onInspectarRama,
   onCreateBranch,
@@ -129,6 +132,7 @@ export function AreaTrabajoGit({
             currentBranch={ramaActual}
             selectedRepo={selectedRepo}
             nombresRemotos={nombresRemotos}
+            inteligencia={inteligenciaGrafo}
             onSelectCommit={onSelectCommit}
             onContextMenu={onContextMenu}
           />
