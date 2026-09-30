@@ -13,7 +13,7 @@
     "cors": "^2.8.5",
     "express": "^4.22.3",
     "simple-git": "^3.36.0",
-    "ws": "^8.18.0"
+    "ws": "^8.22.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
