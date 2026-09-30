@@ -17,6 +17,7 @@ import { PanelExplicacion } from './components/PanelExplicacion';
 import { ui } from './lib/diseno';
 import { cn } from './lib/utils';
 import { esCommitHead } from './lib/grafo-utils';
+import type { InteligenciaGrafo } from './lib/semantica-grafo';
 
 export const App: React.FC = () => {
   const sesion = useSesionInstancia();
@@ -72,6 +73,57 @@ export const App: React.FC = () => {
     commitHead?.shortHash ||
     git.branches.find((b) => b.current)?.commit?.slice(0, 7) ||
     undefined;
+
+  const inteligenciaGrafo = React.useMemo<InteligenciaGrafo>(() => {
+    const preview = mut.confirmacion?.preview;
+    const activa = git.operaciones.find((op) => op.estado === 'en_cola' || op.estado === 'corriendo');
+    const textos = new Set<string>();
+    if (mut.ultimaOp.puedeDeshacer && mut.ultimaOp.estadoAnterior) textos.add(mut.ultimaOp.estadoAnterior);
+    for (const entrada of mut.journal) {
+      if (!entrada.deshecha && entrada.puedeDeshacer && entrada.estadoAnterior) {
+        textos.add(entrada.estadoAnterior);
+      }
+    }
+    return {
+      headDesvinculado,
+      tracking: git.status?.tracking ?? null,
+      ahead: git.status?.ahead ?? 0,
+      behind: git.status?.behind ?? 0,
+      isMerging: Boolean(git.status?.isMerging),
+      isRebasing: Boolean(git.status?.isRebasing),
+      ramaSeleccionada: shell.ramaInspeccionada,
+      puntas: git.branches.map((rama) => ({
+        nombre: rama.name,
+        hash: rama.commit,
+        actual: rama.current,
+        remota: Boolean(rama.isRemote),
+      })),
+      hashesPreview: preview?.commitsAfectados.map((commit) => commit.hash) ?? [],
+      hashBasePreview: preview?.estadoActual.base ?? null,
+      advertenciasPreview: preview?.advertencias ?? [],
+      previewActivo: Boolean(preview),
+      seguroEjecutar: preview ? preview.seguroEjecutar : null,
+      textosRecuperacion: [...textos],
+      operacion:
+        activa && (activa.estado === 'en_cola' || activa.estado === 'corriendo')
+          ? {
+              tipo: activa.tipo,
+              estado: activa.estado,
+              progreso: activa.progreso,
+              etapa: activa.etapa,
+            }
+          : null,
+    };
+  }, [
+    headDesvinculado,
+    git.status,
+    git.branches,
+    git.operaciones,
+    shell.ramaInspeccionada,
+    mut.confirmacion,
+    mut.journal,
+    mut.ultimaOp,
+  ]);
 
   return (
     <div className={cn(ui.app, 'h-screen w-screen')} aria-busy={ocupado || sesion.cargando}>
@@ -142,6 +194,7 @@ export const App: React.FC = () => {
         ramaActual={ramaActual}
         ramaInspeccionada={shell.ramaInspeccionada}
         nombresRemotos={git.remotes.map((r) => r.name)}
+        inteligenciaGrafo={inteligenciaGrafo}
         onCheckout={mut.handleCheckout}
         onInspectarRama={shell.inspectarRama}
         onCreateBranch={(name) => mut.handleCreateBranch(name)}

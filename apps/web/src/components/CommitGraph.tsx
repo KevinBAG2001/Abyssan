@@ -1,23 +1,39 @@
-// Austria: Grafo de commits — Fase 4.4 Grafo excepcional
-import React, { useMemo, useState, useCallback } from 'react';
+// Austria: Grafo de commits — renderer SVG virtualizado (bloque G).
+// El pan es el scroll. No hay zoom: la altura de fila fija es la que permite virtualizar.
+// Lanes y semántica viven en funciones puras; aquí solo se pintan.
+import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { GitCommit } from '../types/git';
-import { COLORES_RAMA_GRAFO, COLOR_RAMA_DEFECTO } from '../lib/tokens-grafo';
 import { ChipRama } from './ui/chip-rama';
 import { cn } from '../lib/utils';
 import {
+  aristasQueCruzanVentana,
+  asignarLanes,
+  commitsDeLaRama,
+  esRefRemota,
   obtenerAncestros,
   obtenerDescendientes,
   encontrarCamino,
   autoresUnicos,
   ramasUnicas,
-  esCommitHead,
-  esRefRemota,
+  type CommitConLane,
 } from '../lib/grafo-utils';
+import {
+  estiloAristaSemantica,
+  familiaDeCommit,
+  INTELIGENCIA_GRAFO_VACIA,
+  marcasDeCommit,
+  relacionConHead,
+  resolverSemanticaGrafo,
+  textoMarcas,
+  mismaRef,
+  type InteligenciaGrafo,
+  type MarcasCommit,
+} from '../lib/semantica-grafo';
 import { httpGitApi } from '../infrastructure/api/HttpGitApi';
 import { BarraSuperiorGrafo } from './grafo/BarraSuperiorGrafo';
 import { BarraFiltrosGrafo } from './grafo/BarraFiltrosGrafo';
-
-// --- Tipos internos ---
+import { BarraSemanticaGrafo } from './grafo/BarraSemanticaGrafo';
+import { FichaCommitSeleccionado } from './grafo/FichaCommitSeleccionado';
 
 type ModoResaltado =
   | { tipo: 'ninguno' }
@@ -39,19 +55,16 @@ function leerDensidad(): Densidad {
   return 'normal';
 }
 
-// --- Props del componente (compatibles con las existentes) ---
-
 interface CommitGraphProps {
   commits: GitCommit[];
   selectedCommit: GitCommit | null;
   currentBranch?: string;
   selectedRepo?: string | null;
   nombresRemotos?: string[];
+  inteligencia?: InteligenciaGrafo;
   onSelectCommit: (commit: GitCommit) => void;
   onContextMenu: (commit: GitCommit, position: { x: number; y: number }) => void;
 }
-
-// --- Componente principal ---
 
 export const CommitGraph: React.FC<CommitGraphProps> = ({
   commits,
@@ -59,25 +72,84 @@ export const CommitGraph: React.FC<CommitGraphProps> = ({
   currentBranch,
   selectedRepo,
   nombresRemotos = [],
+  inteligencia,
   onSelectCommit,
   onContextMenu,
 }) => {
+  const intel = inteligencia ?? INTELIGENCIA_GRAFO_VACIA;
   const [searchTerm, setSearchTerm] = useState('');
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportH, setViewportH] = useState(600);
   const scrollerRef = React.useRef<HTMLDivElement>(null);
+  const enfocarTrasTecla = React.useRef<string | null>(null);
 
   const [modo, setModo] = useState<ModoResaltado>({ tipo: 'ninguno' });
   const [commitB, setCommitB] = useState<string | null>(null);
   const [densidad, setDensidad] = useState<Densidad>(leerDensidad);
   const [filtroAbierto, setFiltroAbierto] = useState(false);
+  const [foco, setFoco] = useState<GitCommit | null>(null);
 
   const ROW_HEIGHT = ALTURAS[densidad];
   const COL_WIDTH = 22;
   const GRAPH_OFFSET_X = 22;
 
+  const bases = useBasesDelGrafo(
+    selectedRepo,
+    currentBranch,
+    intel.tracking,
+    intel.ramaSeleccionada,
+    intel.headDesvinculado,
+  );
+
   const autores = useMemo(() => autoresUnicos(commits), [commits]);
   const ramas = useMemo(() => ramasUnicas(commits), [commits]);
+  const processedGraph = useMemo(() => asignarLanes(commits), [commits]);
+  const anchoGrafo = useMemo(() => {
+    let max = 0;
+    for (const commit of processedGraph) {
+      if (commit.column > max) max = commit.column;
+    }
+    return Math.max(180, GRAPH_OFFSET_X + (max + 2) * COL_WIDTH);
+  }, [processedGraph]);
+
+  const semantica = useMemo(
+    () =>
+      resolverSemanticaGrafo({
+        ...intel,
+        commits,
+        ramaActual: currentBranch || 'HEAD',
+        mergeBaseUpstream: bases.upstream,
+        mergeBaseSeleccion: bases.seleccion,
+        mergeBaseUpstreamResuelto: bases.upstreamListo,
+        mergeBaseSeleccionResuelto: bases.seleccionLista,
+      }),
+    [intel, commits, currentBranch, bases.upstream, bases.seleccion, bases.upstreamListo, bases.seleccionLista],
+  );
+
+  const familia = useMemo(
+    () => (selectedCommit ? familiaDeCommit(selectedCommit.hash, commits) : null),
+    [selectedCommit, commits],
+  );
+  const relacion = useMemo(
+    () =>
+      selectedCommit
+        ? relacionConHead(selectedCommit.hash, semantica.resumen.hashHead, commits)
+        : 'otro',
+    [selectedCommit, semantica.resumen.hashHead, commits],
+  );
+  const marcasSeleccion = useMemo(
+    () => (selectedCommit ? marcasDeCommit(selectedCommit.hash, semantica) : null),
+    [selectedCommit, semantica],
+  );
+
+  const focoInfo = useMemo(() => {
+    if (!foco || foco.hash === selectedCommit?.hash) return null;
+    return {
+      shortHash: foco.shortHash,
+      message: foco.message,
+      marcas: textoMarcas(marcasDeCommit(foco.hash, semantica)),
+    };
+  }, [foco, selectedCommit, semantica]);
 
   const hashesCoincidentes = useMemo(() => {
     if (!searchTerm.trim()) return null;
@@ -116,9 +188,7 @@ export const CommitGraph: React.FC<CommitGraphProps> = ({
     [hashesCoincidentes, resaltados],
   );
 
-  const processedGraph = useMemo(() => procesarGrafo(commits), [commits]);
-
-  React.useEffect(() => {
+  useEffect(() => {
     const el = scrollerRef.current;
     if (!el) return;
     const sync = () => setViewportH(el.clientHeight);
@@ -127,6 +197,20 @@ export const CommitGraph: React.FC<CommitGraphProps> = ({
     obs.observe(el);
     return () => obs.disconnect();
   }, []);
+
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (el) setScrollTop(el.scrollTop);
+  }, [ROW_HEIGHT]);
+
+  useEffect(() => {
+    const hash = enfocarTrasTecla.current;
+    if (!hash || !scrollerRef.current) return;
+    const nodo = scrollerRef.current.querySelector<HTMLButtonElement>(`[data-commit="${CSS.escape(hash)}"]`);
+    if (!nodo) return;
+    enfocarTrasTecla.current = null;
+    nodo.focus();
+  }, [selectedCommit, scrollTop]);
 
   const ramasVisibles = useMemo(() => {
     const set = new Set<string>();
@@ -137,6 +221,60 @@ export const CommitGraph: React.FC<CommitGraphProps> = ({
     }
     return [...set].slice(0, 4);
   }, [commits, currentBranch]);
+
+  const onScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      const top = e.currentTarget.scrollTop;
+      setScrollTop((prev) => (Math.floor(prev / ROW_HEIGHT) === Math.floor(top / ROW_HEIGHT) ? prev : top));
+    },
+    [ROW_HEIGHT],
+  );
+
+  const onEnfocar = useCallback((hash: string | null) => {
+    setFoco((prev) => {
+      if (hash === null) return prev === null ? prev : null;
+      if (prev?.hash === hash) return prev;
+      return commits.find((c) => c.hash === hash) ?? null;
+    });
+  }, [commits]);
+
+  const seleccionar = useCallback(
+    (commit: GitCommit) => {
+      onSelectCommit(commit);
+    },
+    [onSelectCommit],
+  );
+
+  const revelar = useCallback(
+    (hash: string) => {
+      const commit = commits.find((c) => c.hash === hash) ?? processedGraph.find((c) => c.hash === hash);
+      if (!commit) return;
+      onSelectCommit(commit);
+      const idx = processedGraph.findIndex((c) => c.hash === hash);
+      const el = scrollerRef.current;
+      if (idx < 0 || !el) return;
+      const top = idx * ROW_HEIGHT;
+      if (top < el.scrollTop || top + ROW_HEIGHT > el.scrollTop + el.clientHeight) {
+        el.scrollTop = Math.max(0, top - el.clientHeight / 2);
+      }
+    },
+    [commits, processedGraph, onSelectCommit, ROW_HEIGHT],
+  );
+
+  const onTeclado = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+      if (processedGraph.length === 0) return;
+      e.preventDefault();
+      const actual = selectedCommit ? processedGraph.findIndex((c) => c.hash === selectedCommit.hash) : -1;
+      const delta = e.key === 'ArrowDown' ? 1 : -1;
+      const siguiente = Math.min(processedGraph.length - 1, Math.max(0, actual < 0 ? 0 : actual + delta));
+      const commit = processedGraph[siguiente];
+      enfocarTrasTecla.current = commit.hash;
+      revelar(commit.hash);
+    },
+    [processedGraph, selectedCommit, revelar],
+  );
 
   const activarAncestros = useCallback(() => {
     setModo((prev) => (prev.tipo === 'ancestros' ? { tipo: 'ninguno' } : { tipo: 'ancestros' }));
@@ -234,8 +372,28 @@ export const CommitGraph: React.FC<CommitGraphProps> = ({
         />
       )}
 
+      <BarraSemanticaGrafo resumen={semantica.resumen} foco={focoInfo} />
+
+      {selectedCommit && familia && marcasSeleccion ? (
+        <FichaCommitSeleccionado
+          commit={selectedCommit}
+          familia={familia}
+          relacion={relacion}
+          marcas={marcasSeleccion}
+          commitB={commitB}
+          nombresRemotos={nombresRemotos}
+          onElegir={revelar}
+        />
+      ) : null}
+
       <div className="h-8 bg-surface-container border-b border-outline-variant px-4 flex items-center text-label-caps text-on-surface-variant select-none shrink-0 min-w-0">
-        <div className="w-[140px] sm:w-[180px] shrink-0">Grafo / Ramas</div>
+        <div
+          className="shrink-0"
+          style={{ width: anchoGrafo }}
+          title="Línea continua: primer padre. Línea punteada: merge."
+        >
+          Grafo / Ramas
+        </div>
         <div className="flex-1 truncate">Mensaje de Commit</div>
         <div className="w-36 shrink-0 hidden md:block">Autor</div>
         <div className="w-28 shrink-0 hidden lg:block">Fecha</div>
@@ -244,8 +402,13 @@ export const CommitGraph: React.FC<CommitGraphProps> = ({
 
       <div
         ref={scrollerRef}
-        className="flex-1 overflow-y-auto overflow-x-auto relative"
-        onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
+        tabIndex={0}
+        aria-label="Grafo de commits. Flechas arriba y abajo mueven la selección."
+        aria-describedby="semantica-grafo"
+        className="flex-1 overflow-y-auto overflow-x-auto relative focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/40"
+        onScroll={onScroll}
+        onKeyDown={onTeclado}
+        onMouseLeave={() => onEnfocar(null)}
       >
         {processedGraph.length === 0 ? (
           <div className="flex items-center justify-center h-full text-xs text-on-surface-variant/70">
@@ -258,15 +421,18 @@ export const CommitGraph: React.FC<CommitGraphProps> = ({
             processedGraph={processedGraph}
             selectedCommit={selectedCommit}
             commitB={commitB}
-            onSelectCommit={onSelectCommit}
+            onSelectCommit={seleccionar}
             onContextMenu={onContextMenu}
+            onEnfocar={onEnfocar}
             nombresRemotos={nombresRemotos}
             esResaltado={esResaltado}
+            semantica={semantica}
             scrollTop={scrollTop}
             viewportH={viewportH}
             ROW_HEIGHT={ROW_HEIGHT}
             COL_WIDTH={COL_WIDTH}
             GRAPH_OFFSET_X={GRAPH_OFFSET_X}
+            anchoGrafo={anchoGrafo}
           />
         )}
       </div>
@@ -274,7 +440,87 @@ export const CommitGraph: React.FC<CommitGraphProps> = ({
   );
 };
 
-// --- Funciones puras extraídas ---
+function refDeCabeza(ramaActual: string | undefined, headDesvinculado: boolean): string {
+  if (!ramaActual || headDesvinculado || /\s/.test(ramaActual)) return 'HEAD';
+  return ramaActual;
+}
+
+function useBasesDelGrafo(
+  repo: string | null | undefined,
+  ramaActual: string | undefined,
+  tracking: string | null,
+  ramaSeleccionada: string | null,
+  headDesvinculado: boolean,
+) {
+  const [upstream, setUpstream] = useState<string | null>(null);
+  const [upstreamListo, setUpstreamListo] = useState(false);
+  const [seleccion, setSeleccion] = useState<string | null>(null);
+  const [seleccionLista, setSeleccionLista] = useState(false);
+
+  useEffect(() => {
+    if (!repo || !tracking) {
+      setUpstream(null);
+      setUpstreamListo(true);
+      return;
+    }
+    const refA = refDeCabeza(ramaActual, headDesvinculado);
+    if (mismaRef(tracking, refA) || (ramaActual ? mismaRef(tracking, ramaActual) : false)) {
+      setUpstream(null);
+      setUpstreamListo(true);
+      return;
+    }
+    let vivo = true;
+    setUpstreamListo(false);
+    void httpGitApi.mergeBase(repo, refA, tracking).then(
+      (mb) => {
+        if (!vivo) return;
+        setUpstream(mb);
+        setUpstreamListo(true);
+      },
+      () => {
+        if (!vivo) return;
+        setUpstream(null);
+        setUpstreamListo(true);
+      },
+    );
+    return () => {
+      vivo = false;
+    };
+  }, [repo, ramaActual, tracking, headDesvinculado]);
+
+  useEffect(() => {
+    if (!repo || !ramaSeleccionada) {
+      setSeleccion(null);
+      setSeleccionLista(false);
+      return;
+    }
+    const refA = refDeCabeza(ramaActual, headDesvinculado);
+    if (mismaRef(ramaSeleccionada, refA) || (ramaActual ? mismaRef(ramaSeleccionada, ramaActual) : false)) {
+      setSeleccion(null);
+      setSeleccionLista(true);
+      return;
+    }
+    let vivo = true;
+    setSeleccionLista(false);
+    void httpGitApi.mergeBase(repo, refA, ramaSeleccionada).then(
+      (mb) => {
+        if (!vivo) return;
+        setSeleccion(mb);
+        setSeleccionLista(true);
+      },
+      () => {
+        if (!vivo) return;
+        setSeleccion(null);
+        setSeleccionLista(true);
+      },
+    );
+    return () => {
+      vivo = false;
+    };
+  }, [repo, ramaActual, ramaSeleccionada, headDesvinculado]);
+
+  return { upstream, upstreamListo, seleccion, seleccionLista };
+}
 
 function calcularResaltados(
   modo: ModoResaltado,
@@ -329,95 +575,45 @@ function calcularResaltados(
     case 'explicacionRama': {
       const tip = commits.find((c) => c.branches?.includes(modo.rama));
       if (!tip) return null;
-      if (modo.mergeBase) {
-        const indicePor = new Map<string, GitCommit>();
-        for (const c of commits) indicePor.set(c.hash, c);
-        const resultado = new Set<string>();
-        const cola: string[] = [tip.hash];
-        while (cola.length > 0) {
-          const actual = cola.pop()!;
-          if (resultado.has(actual)) continue;
-          resultado.add(actual);
-          if (actual === modo.mergeBase) continue;
-          const commit = indicePor.get(actual);
-          if (commit) {
-            for (const p of commit.parents) {
-              if (indicePor.has(p) && !resultado.has(p)) cola.push(p);
-            }
-          }
-        }
-        return resultado;
-      }
-      const anc = obtenerAncestros(tip.hash, commits);
-      anc.add(tip.hash);
-      return anc;
+      return commitsDeLaRama(tip.hash, modo.mergeBase, commits);
     }
     default:
       return null;
   }
 }
 
-function procesarGrafo(commits: GitCommit[]) {
-  const branchColumnMap: Record<string, number> = {};
-  const columnColors: Record<number, string> = {};
-  let nextCol = 0;
-
-  return commits.map((commit) => {
-    let col = branchColumnMap[commit.hash];
-    if (col === undefined) {
-      col = nextCol % COLORES_RAMA_GRAFO.length;
-      branchColumnMap[commit.hash] = col;
-      columnColors[col] = COLORES_RAMA_GRAFO[col % COLORES_RAMA_GRAFO.length];
-      nextCol++;
-    }
-    if (commit.parents && commit.parents.length > 0) {
-      const primaryParent = commit.parents[0];
-      if (branchColumnMap[primaryParent] === undefined) {
-        branchColumnMap[primaryParent] = col;
-      }
-      if (commit.parents.length > 1) {
-        const secondary = commit.parents[1];
-        if (branchColumnMap[secondary] === undefined) {
-          const colSec = (col + 1) % COLORES_RAMA_GRAFO.length;
-          branchColumnMap[secondary] = colSec;
-          columnColors[colSec] = COLORES_RAMA_GRAFO[colSec];
-        }
-      }
-    }
-    return { ...commit, column: col, color: columnColors[col] || COLOR_RAMA_DEFECTO };
-  });
-}
-
-// --- Componente virtualizado ---
-
-type CommitGrafo = GitCommit & { column?: number; color?: string };
-
-function GrafoVirtualizado({
+const GrafoVirtualizado = memo(function GrafoVirtualizado({
   processedGraph,
   selectedCommit,
   commitB,
   nombresRemotos,
+  semantica,
   onSelectCommit,
   onContextMenu,
+  onEnfocar,
   esResaltado,
   scrollTop,
   viewportH,
   ROW_HEIGHT,
   COL_WIDTH,
   GRAPH_OFFSET_X,
+  anchoGrafo,
 }: {
-  processedGraph: CommitGrafo[];
+  processedGraph: CommitConLane[];
   selectedCommit: GitCommit | null;
   commitB: string | null;
   nombresRemotos: string[];
+  semantica: ReturnType<typeof resolverSemanticaGrafo>;
   onSelectCommit: (commit: GitCommit) => void;
   onContextMenu: (commit: GitCommit, position: { x: number; y: number }) => void;
+  onEnfocar: (hash: string | null) => void;
   esResaltado: (hash: string) => boolean | null;
   scrollTop: number;
   viewportH: number;
   ROW_HEIGHT: number;
   COL_WIDTH: number;
   GRAPH_OFFSET_X: number;
+  anchoGrafo: number;
 }) {
   const overscan = 12;
   const start = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - overscan);
@@ -425,103 +621,116 @@ function GrafoVirtualizado({
   const end = Math.min(processedGraph.length, start + visible);
   const slice = processedGraph.slice(start, end);
 
-  const indicePorHash = React.useMemo(() => {
+  const indicePorHash = useMemo(() => {
     const m = new Map<string, number>();
     processedGraph.forEach((c, i) => m.set(c.hash, i));
     return m;
   }, [processedGraph]);
 
-  const maxCol = useMemo(() => {
-    let max = 0;
-    for (const c of processedGraph) {
-      if ((c.column ?? 0) > max) max = c.column ?? 0;
-    }
-    return max;
-  }, [processedGraph]);
-
-  const graphWidth = GRAPH_OFFSET_X + (maxCol + 2) * COL_WIDTH;
+  const aristas = useMemo(
+    () => aristasQueCruzanVentana(processedGraph, start, end),
+    [processedGraph, start, end],
+  );
 
   return (
-    <div className="relative" style={{ height: `${processedGraph.length * ROW_HEIGHT}px`, minWidth: `${Math.max(graphWidth + 500, 800)}px` }}>
+    <div className="relative" style={{ height: `${processedGraph.length * ROW_HEIGHT}px`, minWidth: `${Math.max(anchoGrafo + 520, 800)}px` }}>
       <svg
-        className="absolute top-0 left-0 pointer-events-none"
-        style={{ width: `${graphWidth}px`, height: `${processedGraph.length * ROW_HEIGHT}px` }}
+        className="absolute top-0 left-4 pointer-events-none"
+        style={{ width: `${anchoGrafo}px`, height: `${processedGraph.length * ROW_HEIGHT}px` }}
       >
-        {slice.map((commit, localIdx) => {
-          const index = start + localIdx;
-          const x1 = GRAPH_OFFSET_X + (commit.column || 0) * COL_WIDTH;
-          const y1 = index * ROW_HEIGHT + ROW_HEIGHT / 2;
-          const highlight = esResaltado(commit.hash);
-          const opacidadLinea = highlight === false ? 0.15 : 0.8;
-
-          return commit.parents.map((parentHash) => {
-            const parentIndex = indicePorHash.get(parentHash);
-            if (parentIndex === undefined) return null;
-            const parentCommit = processedGraph[parentIndex];
-            const x2 = GRAPH_OFFSET_X + (parentCommit.column || 0) * COL_WIDTH;
-            const y2 = parentIndex * ROW_HEIGHT + ROW_HEIGHT / 2;
-            const path = `M ${x1} ${y1} C ${x1} ${(y1 + y2) / 2}, ${x2} ${(y1 + y2) / 2}, ${x2} ${y2}`;
-            return (
-              <path
-                key={`${commit.hash}-${parentHash}`}
-                d={path}
-                fill="none"
-                stroke={commit.color || COLOR_RAMA_DEFECTO}
-                strokeWidth="2.5"
-                strokeOpacity={opacidadLinea}
-              />
-            );
-          });
+        {aristas.map((arista) => {
+          const iHijo = indicePorHash.get(arista.hijo);
+          const iPadre = indicePorHash.get(arista.padre);
+          if (iHijo === undefined || iPadre === undefined) return null;
+          const hijo = processedGraph[iHijo];
+          const padre = processedGraph[iPadre];
+          const x1 = GRAPH_OFFSET_X + hijo.column * COL_WIDTH;
+          const y1 = iHijo * ROW_HEIGHT + ROW_HEIGHT / 2;
+          const x2 = GRAPH_OFFSET_X + padre.column * COL_WIDTH;
+          const y2 = iPadre * ROW_HEIGHT + ROW_HEIGHT / 2;
+          const path = `M ${x1} ${y1} C ${x1} ${(y1 + y2) / 2}, ${x2} ${(y1 + y2) / 2}, ${x2} ${y2}`;
+          const marcaHijo = esResaltado(arista.hijo);
+          const marcaPadre = esResaltado(arista.padre);
+          const estilo = estiloAristaSemantica(arista.hijo, arista.primerPadre, semantica, hijo.color);
+          return (
+            <path
+              key={`${arista.hijo}-${arista.padre}`}
+              d={path}
+              fill="none"
+              stroke={estilo.stroke}
+              strokeWidth={estilo.ancho}
+              strokeOpacity={marcaHijo === false || marcaPadre === false ? 0.15 : 0.9}
+              strokeDasharray={estilo.dasharray}
+            />
+          );
         })}
       </svg>
 
-      {slice.map((commit, localIdx) => (
+      {slice.map((commit) => (
         <FilaCommit
           key={commit.hash}
           commit={commit}
-          index={start + localIdx}
-          isHead={esCommitHead(commit)}
+          index={indicePorHash.get(commit.hash) ?? 0}
           isSelected={selectedCommit?.hash === commit.hash}
           isCompareB={commitB === commit.hash}
           atenuado={esResaltado(commit.hash) === false}
+          semantica={semantica}
           nombresRemotos={nombresRemotos}
-          nodeX={GRAPH_OFFSET_X + (commit.column || 0) * COL_WIDTH}
+          nodeX={GRAPH_OFFSET_X + commit.column * COL_WIDTH}
+          anchoGrafo={anchoGrafo}
           ROW_HEIGHT={ROW_HEIGHT}
           onSelectCommit={onSelectCommit}
           onContextMenu={onContextMenu}
+          onEnfocar={onEnfocar}
         />
       ))}
     </div>
   );
+});
+
+function claseAnillo(marcas: MarcasCommit, isCompareB: boolean): string {
+  if (marcas.preview) return 'ring-2 ring-magma';
+  if (marcas.head) return 'glow-biolume-sm ring-2 ring-ion/40 motion-reduce:shadow-none motion-reduce:ring-0';
+  if (marcas.base) return 'ring-2 ring-gold';
+  if (marcas.recuperacion) return 'ring-2 ring-ember';
+  if (isCompareB) return 'ring-2 ring-secondary/70';
+  if (marcas.saliente) return 'ring-2 ring-ember/80';
+  if (marcas.entrante) return 'ring-2 ring-secondary/80';
+  return 'group-hover:ring-2 group-hover:ring-on-surface/30';
 }
 
-function FilaCommit({
+const FilaCommit = memo(function FilaCommit({
   commit,
   index,
-  isHead,
   isSelected,
   isCompareB,
   atenuado,
+  semantica,
   nombresRemotos,
   nodeX,
+  anchoGrafo,
   ROW_HEIGHT,
   onSelectCommit,
   onContextMenu,
+  onEnfocar,
 }: {
-  commit: CommitGrafo;
+  commit: CommitConLane;
   index: number;
-  isHead: boolean;
   isSelected: boolean;
   isCompareB: boolean;
   atenuado: boolean;
+  semantica: ReturnType<typeof resolverSemanticaGrafo>;
   nombresRemotos: string[];
   nodeX: number;
+  anchoGrafo: number;
   ROW_HEIGHT: number;
   onSelectCommit: (commit: GitCommit) => void;
   onContextMenu: (commit: GitCommit, position: { x: number; y: number }) => void;
+  onEnfocar: (hash: string | null) => void;
 }) {
+  const marcas = marcasDeCommit(commit.hash, semantica);
   const etiqueta = [
-    isHead ? 'HEAD' : null,
+    textoMarcas(marcas),
     commit.shortHash,
     commit.message,
     commit.branches?.length ? `ramas ${commit.branches.join(', ')}` : null,
@@ -532,32 +741,38 @@ function FilaCommit({
   return (
     <button
       type="button"
+      data-commit={commit.hash}
       aria-label={etiqueta}
-      aria-current={isHead ? 'true' : undefined}
+      aria-current={marcas.head ? 'true' : undefined}
       onClick={() => onSelectCommit(commit)}
+      onMouseEnter={() => onEnfocar(commit.hash)}
+      onFocus={() => onEnfocar(commit.hash)}
       onContextMenu={(e) => {
         e.preventDefault();
         onContextMenu(commit, { x: e.clientX, y: e.clientY });
       }}
       style={{ top: `${index * ROW_HEIGHT}px`, height: `${ROW_HEIGHT}px` }}
       className={cn(
-        'absolute left-0 right-0 px-4 flex items-center text-label-md cursor-pointer border-b border-outline-variant/30 text-left w-full transition-opacity motion-reduce:transition-none',
+        'group absolute left-0 right-0 px-4 flex items-center text-label-md cursor-pointer border-b border-outline-variant/30 text-left w-full transition-colors motion-reduce:transition-none focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50',
         isSelected
           ? 'bg-primary-container/10 border-l-2 border-l-primary text-on-surface glow-biolume-sm motion-reduce:shadow-none'
-          : isCompareB
-            ? 'bg-secondary/10 border-l-2 border-l-secondary text-on-surface'
-            : isHead
-              ? 'bg-ion/5 border-l-2 border-l-ion/40 text-on-surface'
-              : 'hover:bg-surface-container-high/40 text-on-surface-variant',
+          : marcas.preview
+            ? 'bg-magma/5 border-l-2 border-l-magma text-on-surface'
+            : isCompareB
+              ? 'bg-secondary/10 border-l-2 border-l-secondary text-on-surface'
+              : marcas.head
+                ? 'bg-ion/5 border-l-2 border-l-ion/40 text-on-surface'
+                : marcas.base
+                  ? 'bg-gold/5 border-l-2 border-l-gold text-on-surface'
+                  : 'hover:bg-surface-container-high/40 text-on-surface-variant',
         atenuado && 'opacity-25',
       )}
     >
-      <div className="w-[140px] sm:w-[180px] shrink-0 relative h-full flex items-center">
+      <div className="shrink-0 relative h-full" style={{ width: anchoGrafo }}>
         <div
           className={cn(
             'absolute w-3.5 h-3.5 rounded-full border-2 border-surface-container-lowest transform -translate-x-1/2 -translate-y-1/2',
-            isHead && 'glow-biolume-sm ring-2 ring-ion/30 motion-reduce:shadow-none motion-reduce:ring-0',
-            isCompareB && 'ring-2 ring-secondary/60',
+            claseAnillo(marcas, isCompareB),
           )}
           style={{
             left: `${nodeX}px`,
@@ -567,7 +782,32 @@ function FilaCommit({
         />
       </div>
       <div className="flex-1 flex items-center gap-1.5 truncate pr-4 min-w-0">
-        {isHead && <ChipRama nombre="HEAD" tipo="head" />}
+        {marcas.head && <ChipRama nombre="HEAD" tipo="head" />}
+        {marcas.base && (
+          <span title="Merge-base" className="px-1 py-0.5 rounded text-[10px] font-bold bg-gold/20 text-gold border border-gold/40 shrink-0">
+            BASE
+          </span>
+        )}
+        {marcas.saliente && (
+          <span title="Por delante del remoto" className="px-1 py-0.5 rounded text-[10px] font-bold text-ember border border-ember/40 shrink-0">
+            ↑
+          </span>
+        )}
+        {marcas.entrante && (
+          <span title="Por detrás del remoto" className="px-1 py-0.5 rounded text-[10px] font-bold text-secondary border border-secondary/40 shrink-0">
+            ↓
+          </span>
+        )}
+        {marcas.preview && (
+          <span title="En la vista previa" className="px-1 py-0.5 rounded text-[10px] font-bold text-magma border border-magma/40 shrink-0">
+            PRE
+          </span>
+        )}
+        {marcas.recuperacion && (
+          <span title={marcas.notaRecuperacion ?? 'Punto de recuperación'} className="px-1 py-0.5 rounded text-[10px] font-bold text-ember border border-ember/40 shrink-0">
+            REC
+          </span>
+        )}
         {commit.branches?.map((b) => (
           <ChipRama key={b} nombre={b} tipo={esRefRemota(b, nombresRemotos) ? 'remota' : 'rama'} />
         ))}
@@ -593,4 +833,4 @@ function FilaCommit({
       <div className="w-20 shrink-0 text-right font-mono text-[11px] text-on-surface-variant">{commit.shortHash}</div>
     </button>
   );
-}
+});

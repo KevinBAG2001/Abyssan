@@ -1,7 +1,8 @@
-// Austria: Utilidades puras para análisis del grafo de commits (Fase 4.4)
+// Austria: Utilidades puras para análisis del grafo de commits (Fase 4.4 / bloque G)
 // Sin dependencias de React ni de red. Solo operaciones sobre arrays de commits.
 
 import type { GitCommit } from '../types/git';
+import { COLOR_RAMA_DEFECTO, COLORES_RAMA_GRAFO } from './tokens-grafo';
 
 /**
  * Construye un mapa de hijos: hash → hashes de commits que lo tienen como padre.
@@ -241,4 +242,123 @@ export function esRefRemota(nombre: string, nombresRemotos: string[]): boolean {
   const normalizado = nombre.replace(/^remotes\//, '');
   if (nombre.startsWith('remotes/')) return true;
   return nombresRemotos.some((remoto) => normalizado === remoto || normalizado.startsWith(`${remoto}/`));
+}
+
+export type CommitConLane = GitCommit & { column: number; color: string };
+
+export type AristaGrafo = {
+  hijo: string;
+  padre: string;
+  primerPadre: boolean;
+};
+
+/** Color estable por nombre de rama. El índice de paleta no es la columna. */
+export function colorDeSemilla(semilla: string): string {
+  let hash = 2166136261;
+  for (let i = 0; i < semilla.length; i++) {
+    hash ^= semilla.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return COLORES_RAMA_GRAFO[(hash >>> 0) % COLORES_RAMA_GRAFO.length] ?? COLOR_RAMA_DEFECTO;
+}
+
+function semillaDeCommit(commit: GitCommit): string {
+  const local = commit.branches?.find((rama) => !rama.includes('/'));
+  if (local) return local;
+  if (commit.branches && commit.branches.length > 0) return commit.branches[0];
+  return commit.hash.slice(0, 8);
+}
+
+/**
+ * Asigna columnas del DAG en orden del log (más nuevo primero).
+ * Reutiliza una columna cuando su reserva ya se consumió.
+ * No envuelve el índice con el tamaño de la paleta: el color y la columna van aparte.
+ */
+export function asignarLanes(commits: GitCommit[]): CommitConLane[] {
+  const columnas: Array<string | null> = [];
+  const colores: string[] = [];
+  const columnaDe = new Map<string, number>();
+
+  const reservar = (hash: string, semilla: string): number => {
+    const existente = columnaDe.get(hash);
+    if (existente !== undefined) return existente;
+    let idx = columnas.indexOf(null);
+    if (idx === -1) {
+      idx = columnas.length;
+      columnas.push(hash);
+    } else {
+      columnas[idx] = hash;
+    }
+    columnaDe.set(hash, idx);
+    colores[idx] = colorDeSemilla(semilla);
+    return idx;
+  };
+
+  const liberar = (idx: number) => {
+    const actual = columnas[idx];
+    if (actual) columnaDe.delete(actual);
+    columnas[idx] = null;
+  };
+
+  const ocupar = (idx: number, hash: string) => {
+    const actual = columnas[idx];
+    if (actual && actual !== hash) columnaDe.delete(actual);
+    columnas[idx] = hash;
+    columnaDe.set(hash, idx);
+  };
+
+  return commits.map((commit) => {
+    const semilla = semillaDeCommit(commit);
+    let col = columnaDe.get(commit.hash);
+    if (col === undefined) col = reservar(commit.hash, semilla);
+
+    const padrePrincipal = commit.parents[0];
+    if (!padrePrincipal) {
+      liberar(col);
+    } else {
+      const columnaPadre = columnaDe.get(padrePrincipal);
+      if (columnaPadre === undefined) ocupar(col, padrePrincipal);
+      else if (columnaPadre !== col) liberar(col);
+    }
+
+    for (let i = 1; i < commit.parents.length; i++) {
+      const padre = commit.parents[i];
+      if (!columnaDe.has(padre)) reservar(padre, `${semilla}~${i}`);
+    }
+
+    return {
+      ...commit,
+      column: col,
+      color: colores[col] || COLOR_RAMA_DEFECTO,
+    };
+  });
+}
+
+/**
+ * Aristas cuyo segmento de filas cruza la ventana virtualizada.
+ * Recorre cada commit una vez (O(n)), no pares de nodos.
+ */
+export function aristasQueCruzanVentana(
+  commits: Array<Pick<GitCommit, 'hash' | 'parents'>>,
+  inicio: number,
+  fin: number,
+): AristaGrafo[] {
+  const indice = new Map<string, number>();
+  for (let i = 0; i < commits.length; i++) indice.set(commits[i].hash, i);
+
+  const aristas: AristaGrafo[] = [];
+  for (let i = 0; i < commits.length; i++) {
+    const commit = commits[i];
+    for (let p = 0; p < commit.parents.length; p++) {
+      const padre = commit.parents[p];
+      const iPadre = indice.get(padre);
+      if (iPadre === undefined) continue;
+      const lo = i < iPadre ? i : iPadre;
+      const hi = i < iPadre ? iPadre : i;
+      if (hi >= inicio && lo < fin) {
+        aristas.push({ hijo: commit.hash, padre, primerPadre: p === 0 });
+      }
+    }
+  }
+  return aristas;
 }
