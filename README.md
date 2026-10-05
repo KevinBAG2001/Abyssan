@@ -297,6 +297,20 @@ Abre **[http://localhost:5174](http://localhost:5174)**, elige un repositorio ba
 | `pnpm lint`       | oxlint                                    |
 | `pnpm test`       | Vitest                                    |
 | `pnpm test:seguridad` | Subconjunto de perímetro de seguridad |
+| `pnpm demo:repo`  | Crea `abyssan-demo` bajo `PROJECTS_ROOT` (ver abajo) |
+
+
+### Repo de demostración
+
+Para evaluar Abyssan sin un repo real a mano, hay un script que genera uno bajo `PROJECTS_ROOT`:
+
+```bash
+pnpm demo:repo                # crea abyssan-demo (falla si ya existe)
+pnpm demo:repo mi-demo        # elige otro nombre
+pnpm demo:repo abyssan-demo --force   # sobreescribe el existente
+```
+
+El repo trae **20 commits** en `main`, rama `feature/pagos` fusionada con merge-commit, rama `fix/choca-con-main` con un commit que choca con el final de `main`, dos tags anotados (`v0.1.0` sobre el merge, `v0.2.0` sobre `HEAD`) y, al terminar, un archivo *staged* y otro *unstaged* para que el panel de Staging no esté vacío. Útil para capturas, QA manual y para probar el preview de merge en un conflicto reproducible.
 
 
 ### Atajos (Daily Driver)
