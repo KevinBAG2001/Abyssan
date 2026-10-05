@@ -214,10 +214,12 @@ Abyssan/
 
 | Herramienta | Versión                  |
 | ----------- | ------------------------ |
-| Node.js     | 20 LTS o superior        |
-| pnpm        | 9+                       |
+| Node.js     | 22.13 LTS o superior     |
+| pnpm        | 11.25.0 (vía Corepack)   |
 | Git         | En el `PATH` del sistema |
 | Docker      | Opcional, para Compose   |
+
+> `package.json` declara `engines.node: ">=22.13.0"` y `engines.pnpm: ">=11.25.0"` para coincidir con lo que exige el `packageManager` fijado. CI y las imágenes Docker usan `node:22-alpine` desde Fase 3.
 
 
 

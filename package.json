@@ -26,7 +26,8 @@
   "license": "MIT",
   "packageManager": "pnpm@11.25.0",
   "engines": {
-    "node": ">=20"
+    "node": ">=22.13.0",
+    "pnpm": ">=11.25.0"
   },
   "devDependencies": {
     "oxlint": "^0.15.15",
