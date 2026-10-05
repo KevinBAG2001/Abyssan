@@ -1,9 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { httpGitApi, type EntradaReflog, type UltimaOperacion } from '../../infrastructure/api/HttpGitApi';
 import type { ConflictModel, EntradaJournal, FileStatusModel, PreviewOperacionModel, RepositoryStatusModel } from '../../domain/models/GitModels';
+import {
+  subtituloCherryPick,
+  subtituloFusion,
+  subtituloReset,
+  subtituloRevert,
+} from '../mutaciones/subtituloConfirmacion';
 
 export type ConfirmacionPendiente = {
   titulo: string;
+  subtitulo?: string;
   descripcion: string;
   peligro?: boolean;
   etiqueta?: string;
@@ -243,8 +250,10 @@ export function useMutacionesGit({
     if (!selectedRepo) return;
     try {
       const preview = await httpGitApi.previewOperacion(selectedRepo, 'merge', { sourceBranch });
+      const ramaActual = status?.currentBranch ?? 'HEAD';
       setConfirmacion({
         titulo: `Fusionar ${sourceBranch}`,
+        subtitulo: subtituloFusion(sourceBranch, ramaActual),
         descripcion: preview.explicacion,
         preview,
         peligro: !preview.seguroEjecutar || preview.posiblesConflictos.length > 0,
@@ -324,8 +333,11 @@ export function useMutacionesGit({
     if (!selectedRepo) return;
     try {
       const preview = await httpGitApi.previewOperacion(selectedRepo, 'cherry-pick', { hash });
+      const hashCorto = hash.substring(0, 7);
+      const ramaActual = status?.currentBranch ?? 'HEAD';
       setConfirmacion({
-        titulo: `Cherry-pick ${hash.substring(0, 7)}`,
+        titulo: `Cherry-pick ${hashCorto}`,
+        subtitulo: subtituloCherryPick(hashCorto, ramaActual),
         descripcion: preview.explicacion,
         preview,
         peligro: preview.posiblesConflictos.length > 0,
@@ -333,7 +345,7 @@ export function useMutacionesGit({
         bloquearConfirmar: !preview.seguroEjecutar,
         ejecutar: async () => {
           await httpGitApi.cherryPick(selectedRepo, hash);
-          showToast(`Cherry-pick aplicado (${hash.substring(0, 7)})`, 'success');
+          showToast(`Cherry-pick aplicado (${hashCorto})`, 'success');
           await afterMutacion();
         },
       });
@@ -346,8 +358,11 @@ export function useMutacionesGit({
     if (!selectedRepo) return;
     try {
       const preview = await httpGitApi.previewOperacion(selectedRepo, 'revert', { hash });
+      const hashCorto = hash.substring(0, 7);
+      const ramaActual = status?.currentBranch ?? 'HEAD';
       setConfirmacion({
-        titulo: `Revertir ${hash.substring(0, 7)}`,
+        titulo: `Revertir ${hashCorto}`,
+        subtitulo: subtituloRevert(hashCorto, ramaActual),
         descripcion: preview.explicacion,
         preview,
         peligro: true,
@@ -355,7 +370,7 @@ export function useMutacionesGit({
         bloquearConfirmar: !preview.seguroEjecutar,
         ejecutar: async () => {
           await httpGitApi.revert(selectedRepo, hash);
-          showToast(`Commit revertido (${hash.substring(0, 7)})`, 'success');
+          showToast(`Commit revertido (${hashCorto})`, 'success');
           await afterMutacion();
         },
       });
@@ -370,8 +385,11 @@ export function useMutacionesGit({
       try {
         const preview = await httpGitApi.previewOperacion(selectedRepo, 'reset', { type, target: hash });
         const sucios = status?.files.length ?? 0;
+        const hashCorto = hash.substring(0, 7);
+        const ramaActual = status?.currentBranch ?? 'HEAD';
         setConfirmacion({
           titulo: `Reset ${type}`,
+          subtitulo: subtituloReset(type, hashCorto, ramaActual),
           descripcion: preview.explicacion,
           preview,
           peligro: type === 'hard' || preview.advertencias.length > 0,
