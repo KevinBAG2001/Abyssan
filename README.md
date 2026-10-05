@@ -70,7 +70,7 @@ Superficie actual (Fases 0–3 cerradas) frente al siguiente listo: **Identidad*
 | --------------------------------- | ----------------------------------- | ------------------------------------------- |
 | Repositorios bajo `PROJECTS_ROOT` | Listado, clone, init, tabs          | + progreso de clone/fetch (ops largas)      |
 | Grafo DAG                         | Virtualizado, lanes, búsqueda texto | Highlight, merge-base, camino, comparar A…B |
-| Stage / unstage / commit          | Archivo + hunk + línea              | Igual (no-regresión)                        |
+| Stage / unstage / commit          | Archivo completo + stage-all        | Stage por hunk y línea (pendiente, 4.x)     |
 | Diff                              | Shiki + unified / split             | “Ver cambios” desde el preview              |
 | Ramas y tags                      | CRUD, fetch, pull merge/rebase      | Preview antes de merge/rebase/reset         |
 | Merge / rebase                    | Merge, abort, rebase visual         | Informe *antes* de ejecutar                 |
@@ -81,7 +81,7 @@ Superficie actual (Fases 0–3 cerradas) frente al siguiente listo: **Identidad*
 | Worktrees                         | No                                  | Fase 5                                      |
 
 
-Operaciones Git disponibles en API hoy: status, log, diff, stage, commit, checkout, branch, tag, stash, merge, cherry-pick, revert, reset, fetch, push, pull, remotos, conflictos, hunks, blame, rebase, forjas.
+Operaciones Git disponibles en API hoy: status, log, diff, stage (archivo completo), commit, checkout, branch, tag, stash, merge, cherry-pick, revert, reset, fetch, push, pull, remotos, conflictos (parseo de hunks para 3-way), blame, rebase, forjas. **Stage por hunk y por línea aún no está expuesto en API ni UI**; vive en el backlog de Fase 4.
 
 ---
 
@@ -420,7 +420,7 @@ Estimaciones en **semanas-persona** de trabajo enfocado, no en calendario. Fases
 | ------------------ | ----------------------------------------------------------------------- | ------ |
 | **0 Higiene**      | Un env, un cliente HTTP, tests verdes, Docker RW, identidad **Abyssan** | Hecha |
 | **1 Daily Driver** | Clone/init, discard, 3-way, ramas, fetch, undo mínimo, grafo virtualizado | Hecha |
-| **2 Power**        | Stage por hunk/línea, command palette, tabs, blame, rebase visual       | Hecha |
+| **2 Power**        | Stage por hunk/línea, command palette, tabs, blame, rebase visual       | Parcial — hunk/línea pendiente |
 | **3 Forjas**       | OAuth GitHub/GitLab y cola de pull/merge requests                       | Hecha |
 | **4 Identidad**    | Preview, journal de undo, Explain Mode, grafo que enseña, seguridad     | **Ahora** |
 | **5 Superficie**   | Worktrees bajo `PROJECTS_ROOT`; PR/MR como contexto de rama             | Después |
