@@ -43,10 +43,25 @@ Git no se paga por “hacer `git`”. Los clientes gráficos maduros ya cubren e
 ## Interfaz
 
 <p align="center">
+  <img src="./assets/capturas/grafo.svg" alt="Captura del grafo de Abyssan sobre el repo de demo (abyssan-demo)">
+</p>
+
+Grafo DAG del repo `abyssan-demo` generado por `pnpm demo:repo`. Layout de tres columnas, tema oscuro, escritorio-first (≥ 1280 px). Si ves un placeholder con «Captura real pendiente», genera la real con los pasos de [«Capturas reales»](#capturas-reales) más abajo.
+
+<p align="center">
+  <img src="./assets/capturas/preview-merge.svg" alt="Preview no mutante de merge de fix/choca-con-main hacia main con conflicto detectado">
+</p>
+
+Modal de confirmación con preview no mutante de merge sobre el mismo repo demo: antes de ejecutar, Abyssan muestra la rama, la dirección (`fix/choca-con-main → main`), los riesgos (incluido el conflicto en `src/core/tenant.js`) y los cambios que entrarían.
+
+<details>
+<summary>Esquema SVG original (referencia visual pre-captura)</summary>
+
+<p align="center">
   <img src="./assets/layout.svg" alt="Esquema de la interfaz de Abyssan: sidebar de ramas, grafo DAG y panel de staging">
 </p>
 
-Esquema de producto (no es una captura). Layout de tres columnas, tema oscuro, escritorio-first (≥ 1280 px).
+</details>
 
 
 | Zona               | Rol                                                                        |
@@ -311,6 +326,37 @@ pnpm demo:repo abyssan-demo --force   # sobreescribe el existente
 ```
 
 El repo trae **20 commits** en `main`, rama `feature/pagos` fusionada con merge-commit, rama `fix/choca-con-main` con un commit que choca con el final de `main`, dos tags anotados (`v0.1.0` sobre el merge, `v0.2.0` sobre `HEAD`) y, al terminar, un archivo *staged* y otro *unstaged* para que el panel de Staging no esté vacío. Útil para capturas, QA manual y para probar el preview de merge en un conflicto reproducible.
+
+
+### Capturas reales
+
+El README muestra placeholders SVG bajo `assets/capturas/` para no publicar en el repo imágenes derivadas de proyectos personales. Para generar las capturas reales usando el repo demo:
+
+```bash
+# 1. Repo de demo bajo PROJECTS_ROOT
+pnpm demo:repo
+
+# 2. API + SPA en paralelo (en otra terminal)
+pnpm dev
+
+# 3. Chromium para Playwright (primera vez; .npmrc trae ignore-scripts=true)
+pnpm --filter @abyssan/web exec playwright install chromium
+
+# 4. Capturas (headless, no muta el repo: el preview es no mutante)
+pnpm --filter @abyssan/web capturas
+```
+
+El script `apps/web/scripts/capturar-pantallas.mjs` abre Chromium a 1280×800, selecciona el repo demo, captura el grafo y después abre el preview de merge de `fix/choca-con-main → main`. Al terminar deja dos PNG en `assets/capturas/grafo.png` y `assets/capturas/preview-merge.png`. Si quieres que el README apunte a las PNG en vez de a los SVG de placeholder, cambia la extensión en los `<img>` de la sección [Interfaz](#interfaz).
+
+Variables opcionales:
+
+| Variable | Default | Qué cambia |
+|----------|---------|------------|
+| `ABYSSAN_URL` | `http://localhost:5174` | URL base de la SPA |
+| `DEMO_REPO` | `abyssan-demo` | Nombre del repo bajo `PROJECTS_ROOT` |
+| `DEMO_RAMA_ORIGEN` | `fix/choca-con-main` | Rama que se fusiona en el preview |
+| `DEMO_RAMA_BASE` | `main` | Rama destino del preview |
+| `DEMO_TIMEOUT_MS` | `15000` | Timeout por paso en milisegundos |
 
 
 ### Atajos (Daily Driver)
