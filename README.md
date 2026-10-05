@@ -63,25 +63,36 @@ Esquema de producto (no es una captura). Layout de tres columnas, tema oscuro, e
 
 ## Capacidades
 
-Superficie actual (Fases 0–3 cerradas) frente al siguiente listo: **Identidad**.
+Superficie **verificada en el código** (no inventario de intenciones). Fases 0–3 cerradas, Fase 4 Identidad en curso. Cada fila declara su estado: **Hecho** (presente en API y UI), **Parcial** (parte del flujo cableado, parte pendiente) o **Pendiente** (no está).
 
 
-| Dominio                           | Hoy (post Fase 3)                   | Identidad (Fase 4)                          |
-| --------------------------------- | ----------------------------------- | ------------------------------------------- |
-| Repositorios bajo `PROJECTS_ROOT` | Listado, clone, init, tabs          | + progreso de clone/fetch (ops largas)      |
-| Grafo DAG                         | Virtualizado, lanes, búsqueda texto | Highlight, merge-base, camino, comparar A…B |
-| Stage / unstage / commit          | Archivo completo + stage-all        | Stage por hunk y línea (pendiente, 4.x)     |
-| Diff                              | Shiki + unified / split             | “Ver cambios” desde el preview              |
-| Ramas y tags                      | CRUD, fetch, pull merge/rebase      | Preview antes de merge/rebase/reset         |
-| Merge / rebase                    | Merge, abort, rebase visual         | Informe *antes* de ejecutar                 |
-| Undo                              | Última operación en memoria         | Journal persistente + timeline              |
-| Aprendizaje                       | No                                  | Explain Mode (plantillas, sin IA)           |
-| Seguridad                         | Paths léxicos + token LAN           | realpath/symlinks, rate limit, auditoría    |
-| Forjas                            | Modal PRs/MRs + OAuth               | Contexto de rama en Fase 5                  |
-| Worktrees                         | No                                  | Fase 5                                      |
+| Dominio | Capacidad | Estado |
+| ------- | --------- | ------ |
+| Repositorios bajo `PROJECTS_ROOT` | Listado, clone, init; validación con `realpath` | Hecho |
+| Repositorios bajo `PROJECTS_ROOT` | Progreso async de clone/fetch/push/pull vía `OperationManager` + WS | Hecho |
+| Repositorios bajo `PROJECTS_ROOT` | Multi-tab de repos | Pendiente (Fase 5) |
+| Grafo DAG | Virtualizado, lanes, búsqueda por texto, HEAD con ahead/behind | Hecho |
+| Grafo DAG | `merge-base`, comparar A…B (`BranchCompareModal`) | Hecho |
+| Grafo DAG | Highlight de camino en modo aprendizaje (semántica cableada) | Parcial |
+| Stage / commit | Archivo completo, `stage-all`, amend con detección de commit publicado | Hecho |
+| Stage / commit | Stage por hunk y por línea | Pendiente (Fase 4.x) |
+| Diff | Shiki + unified / split, copiar diff, comparación por commit o rango | Hecho |
+| Diff | «Ver cambios» desde el preview | Pendiente |
+| Ramas y tags | CRUD, rename, fetch, pull (merge/rebase), delete seguro, tag en commit | Hecho |
+| Merge | Preview no mutante (clon temporal) con detección de conflictos | Hecho |
+| Merge | Ejecutar, abort, continuar | Hecho |
+| Rebase | Pull en modo rebase | Parcial — rebase interactivo/visual pendiente |
+| Cherry-pick / Revert / Reset | Preview + confirmación tipada en reset hard sucio | Hecho |
+| Undo | Journal persistente (`JournalOperaciones`), timeline en UI, recovery ref `refs/abyssan/recovery/` para reset | Hecho |
+| Aprendizaje | Explain Mode con plantillas (`PanelExplicacion`, sin IA) | Hecho |
+| Seguridad | `validarRutaRepositorio` con `realpath`, token de instancia, rate limit, CORS/Origin, auditoría JSONL | Hecho |
+| Forjas | OAuth GitHub/GitLab, token cifrado en disco, listar/crear PR/MR, PAT para push HTTPS en Docker | Hecho |
+| Blame | — | Pendiente |
+| Worktrees | — | Pendiente (Fase 5) |
+| Preview rebase / force-push | — | Pendiente |
 
 
-Operaciones Git disponibles en API hoy: status, log, diff, stage (archivo completo), commit, checkout, branch, tag, stash, merge, cherry-pick, revert, reset, fetch, push, pull, remotos, conflictos (parseo de hunks para 3-way), blame, rebase, forjas. **Stage por hunk y por línea aún no está expuesto en API ni UI**; vive en el backlog de Fase 4.
+Operaciones Git disponibles en API hoy (verificables en `GitRoutes` y `GitUseCases`): status, log, diff, stage y unstage (archivo completo), commit, amend, checkout, branch, rename-branch, delete-branch, tag, stash, merge, cherry-pick, revert, reset, fetch, push, pull (merge/rebase), remotos (add/remove/list), conflictos (parseo 3-way), preview no mutante de merge/reset/cherry-pick/revert, forjas (OAuth + PR/MR). **No** hay endpoints de blame, rebase interactivo ni stage por hunk/línea.
 
 ---
 
@@ -422,9 +433,9 @@ Estimaciones en **semanas-persona** de trabajo enfocado, no en calendario. Fases
 | ------------------ | ----------------------------------------------------------------------- | ------ |
 | **0 Higiene**      | Un env, un cliente HTTP, tests verdes, Docker RW, identidad **Abyssan** | Hecha |
 | **1 Daily Driver** | Clone/init, discard, 3-way, ramas, fetch, undo mínimo, grafo virtualizado | Hecha |
-| **2 Power**        | Stage por hunk/línea, command palette, tabs, blame, rebase visual       | Parcial — hunk/línea pendiente |
+| **2 Power**        | Stage por hunk/línea, command palette, tabs, blame, rebase visual       | Parcial — hunk/línea, blame, tabs y rebase visual siguen pendientes |
 | **3 Forjas**       | OAuth GitHub/GitLab y cola de pull/merge requests                       | Hecha |
-| **4 Identidad**    | Preview, journal de undo, Explain Mode, grafo que enseña, seguridad     | **Ahora** |
+| **4 Identidad**    | Preview, journal de undo, Explain Mode, grafo que enseña, seguridad     | **Ahora** — preview, journal, explain y seguridad en código; highlight de grafo parcial |
 | **5 Superficie**   | Worktrees bajo `PROJECTS_ROOT`; PR/MR como contexto de rama             | Después |
 | **6 Plataforma**   | Compose prod; usuarios/roles si LAN real; Tauri opcional; plugins       | Después |
 
