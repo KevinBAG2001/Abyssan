@@ -6,6 +6,8 @@ import { ConflictResolver } from '../ConflictResolver';
 import type { GitBranch, GitCommit, GitConflictData, GitFileStatus, GitRepoStatus, GitTag } from '../../types/git';
 import type { InteligenciaGrafo } from '../../lib/semantica-grafo';
 
+const REMOTOS_VACIOS: string[] = [];
+
 type AreaTrabajoGitProps = {
   selectedRepo?: string | null;
   branches: GitBranch[];
@@ -59,7 +61,7 @@ export function AreaTrabajoGit({
   headDesvinculado = false,
   ramaActual,
   ramaInspeccionada = null,
-  nombresRemotos = [],
+  nombresRemotos = REMOTOS_VACIOS,
   inteligenciaGrafo,
   onCheckout,
   onInspectarRama,

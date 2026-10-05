@@ -43,10 +43,25 @@ Git no se paga por “hacer `git`”. Los clientes gráficos maduros ya cubren e
 ## Interfaz
 
 <p align="center">
+  <img src="./assets/capturas/grafo.svg" alt="Captura del grafo de Abyssan sobre el repo de demo (abyssan-demo)">
+</p>
+
+Grafo DAG del repo `abyssan-demo` generado por `pnpm demo:repo`. Layout de tres columnas, tema oscuro, escritorio-first (≥ 1280 px). Si ves un placeholder con «Captura real pendiente», genera la real con los pasos de [«Capturas reales»](#capturas-reales) más abajo.
+
+<p align="center">
+  <img src="./assets/capturas/preview-merge.svg" alt="Preview no mutante de merge de fix/choca-con-main hacia main con conflicto detectado">
+</p>
+
+Modal de confirmación con preview no mutante de merge sobre el mismo repo demo: antes de ejecutar, Abyssan muestra la rama, la dirección (`fix/choca-con-main → main`), los riesgos (incluido el conflicto en `src/core/tenant.js`) y los cambios que entrarían.
+
+<details>
+<summary>Esquema SVG original (referencia visual pre-captura)</summary>
+
+<p align="center">
   <img src="./assets/layout.svg" alt="Esquema de la interfaz de Abyssan: sidebar de ramas, grafo DAG y panel de staging">
 </p>
 
-Esquema de producto (no es una captura). Layout de tres columnas, tema oscuro, escritorio-first (≥ 1280 px).
+</details>
 
 
 | Zona               | Rol                                                                        |
@@ -63,25 +78,36 @@ Esquema de producto (no es una captura). Layout de tres columnas, tema oscuro, e
 
 ## Capacidades
 
-Superficie actual (Fases 0–3 cerradas) frente al siguiente listo: **Identidad**.
+Superficie **verificada en el código** (no inventario de intenciones). Fases 0–3 cerradas, Fase 4 Identidad en curso. Cada fila declara su estado: **Hecho** (presente en API y UI), **Parcial** (parte del flujo cableado, parte pendiente) o **Pendiente** (no está).
 
 
-| Dominio                           | Hoy (post Fase 3)                   | Identidad (Fase 4)                          |
-| --------------------------------- | ----------------------------------- | ------------------------------------------- |
-| Repositorios bajo `PROJECTS_ROOT` | Listado, clone, init, tabs          | + progreso de clone/fetch (ops largas)      |
-| Grafo DAG                         | Virtualizado, lanes, búsqueda texto | Highlight, merge-base, camino, comparar A…B |
-| Stage / unstage / commit          | Archivo + hunk + línea              | Igual (no-regresión)                        |
-| Diff                              | Shiki + unified / split             | “Ver cambios” desde el preview              |
-| Ramas y tags                      | CRUD, fetch, pull merge/rebase      | Preview antes de merge/rebase/reset         |
-| Merge / rebase                    | Merge, abort, rebase visual         | Informe *antes* de ejecutar                 |
-| Undo                              | Última operación en memoria         | Journal persistente + timeline              |
-| Aprendizaje                       | No                                  | Explain Mode (plantillas, sin IA)           |
-| Seguridad                         | Paths léxicos + token LAN           | realpath/symlinks, rate limit, auditoría    |
-| Forjas                            | Modal PRs/MRs + OAuth               | Contexto de rama en Fase 5                  |
-| Worktrees                         | No                                  | Fase 5                                      |
+| Dominio | Capacidad | Estado |
+| ------- | --------- | ------ |
+| Repositorios bajo `PROJECTS_ROOT` | Listado, clone, init; validación con `realpath` | Hecho |
+| Repositorios bajo `PROJECTS_ROOT` | Progreso async de clone/fetch/push/pull vía `OperationManager` + WS | Hecho |
+| Repositorios bajo `PROJECTS_ROOT` | Multi-tab de repos | Pendiente (Fase 5) |
+| Grafo DAG | Virtualizado, lanes, búsqueda por texto, HEAD con ahead/behind | Hecho |
+| Grafo DAG | `merge-base`, comparar A…B (`BranchCompareModal`) | Hecho |
+| Grafo DAG | Highlight de camino en modo aprendizaje (semántica cableada) | Parcial |
+| Stage / commit | Archivo completo, `stage-all`, amend con detección de commit publicado | Hecho |
+| Stage / commit | Stage por hunk y por línea | Pendiente (Fase 4.x) |
+| Diff | Shiki + unified / split, copiar diff, comparación por commit o rango | Hecho |
+| Diff | «Ver cambios» desde el preview | Pendiente |
+| Ramas y tags | CRUD, rename, fetch, pull (merge/rebase), delete seguro, tag en commit | Hecho |
+| Merge | Preview no mutante (clon temporal) con detección de conflictos | Hecho |
+| Merge | Ejecutar, abort, continuar | Hecho |
+| Rebase | Pull en modo rebase | Parcial — rebase interactivo/visual pendiente |
+| Cherry-pick / Revert / Reset | Preview + confirmación tipada en reset hard sucio | Hecho |
+| Undo | Journal persistente (`JournalOperaciones`), timeline en UI, recovery ref `refs/abyssan/recovery/` para reset | Hecho |
+| Aprendizaje | Explain Mode con plantillas (`PanelExplicacion`, sin IA) | Hecho |
+| Seguridad | `validarRutaRepositorio` con `realpath`, token de instancia, rate limit, CORS/Origin, auditoría JSONL | Hecho |
+| Forjas | OAuth GitHub/GitLab, token cifrado en disco, listar/crear PR/MR, PAT para push HTTPS en Docker | Hecho |
+| Blame | — | Pendiente |
+| Worktrees | — | Pendiente (Fase 5) |
+| Preview rebase / force-push | — | Pendiente |
 
 
-Operaciones Git disponibles en API hoy: status, log, diff, stage, commit, checkout, branch, tag, stash, merge, cherry-pick, revert, reset, fetch, push, pull, remotos, conflictos, hunks, blame, rebase, forjas.
+Operaciones Git disponibles en API hoy (verificables en `GitRoutes` y `GitUseCases`): status, log, diff, stage y unstage (archivo completo), commit, amend, checkout, branch, rename-branch, delete-branch, tag, stash, merge, cherry-pick, revert, reset, fetch, push, pull (merge/rebase), remotos (add/remove/list), conflictos (parseo 3-way), preview no mutante de merge/reset/cherry-pick/revert, forjas (OAuth + PR/MR). **No** hay endpoints de blame, rebase interactivo ni stage por hunk/línea.
 
 ---
 
@@ -214,10 +240,12 @@ Abyssan/
 
 | Herramienta | Versión                  |
 | ----------- | ------------------------ |
-| Node.js     | 20 LTS o superior        |
-| pnpm        | 9+                       |
+| Node.js     | 22.13 LTS o superior     |
+| pnpm        | 11.25.0 (vía Corepack)   |
 | Git         | En el `PATH` del sistema |
 | Docker      | Opcional, para Compose   |
+
+> `package.json` declara `engines.node: ">=22.13.0"` y `engines.pnpm: ">=11.25.0"` para coincidir con lo que exige el `packageManager` fijado. CI y las imágenes Docker usan `node:22-alpine` desde Fase 3.
 
 
 
@@ -284,6 +312,51 @@ Abre **[http://localhost:5174](http://localhost:5174)**, elige un repositorio ba
 | `pnpm lint`       | oxlint                                    |
 | `pnpm test`       | Vitest                                    |
 | `pnpm test:seguridad` | Subconjunto de perímetro de seguridad |
+| `pnpm demo:repo`  | Crea `abyssan-demo` bajo `PROJECTS_ROOT` (ver abajo) |
+
+
+### Repo de demostración
+
+Para evaluar Abyssan sin un repo real a mano, hay un script que genera uno bajo `PROJECTS_ROOT`:
+
+```bash
+pnpm demo:repo                # crea abyssan-demo (falla si ya existe)
+pnpm demo:repo mi-demo        # elige otro nombre
+pnpm demo:repo abyssan-demo --force   # sobreescribe el existente
+```
+
+El repo trae **20 commits** en `main`, rama `feature/pagos` fusionada con merge-commit, rama `fix/choca-con-main` con un commit que choca con el final de `main`, dos tags anotados (`v0.1.0` sobre el merge, `v0.2.0` sobre `HEAD`) y, al terminar, un archivo *staged* y otro *unstaged* para que el panel de Staging no esté vacío. Útil para capturas, QA manual y para probar el preview de merge en un conflicto reproducible.
+
+
+### Capturas reales
+
+El README muestra placeholders SVG bajo `assets/capturas/` para no publicar en el repo imágenes derivadas de proyectos personales. Para generar las capturas reales usando el repo demo:
+
+```bash
+# 1. Repo de demo bajo PROJECTS_ROOT
+pnpm demo:repo
+
+# 2. API + SPA en paralelo (en otra terminal)
+pnpm dev
+
+# 3. Chromium para Playwright (primera vez; .npmrc trae ignore-scripts=true)
+pnpm --filter @abyssan/web exec playwright install chromium
+
+# 4. Capturas (headless, no muta el repo: el preview es no mutante)
+pnpm --filter @abyssan/web capturas
+```
+
+El script `apps/web/scripts/capturar-pantallas.mjs` abre Chromium a 1280×800, selecciona el repo demo, captura el grafo y después abre el preview de merge de `fix/choca-con-main → main`. Al terminar deja dos PNG en `assets/capturas/grafo.png` y `assets/capturas/preview-merge.png`. Si quieres que el README apunte a las PNG en vez de a los SVG de placeholder, cambia la extensión en los `<img>` de la sección [Interfaz](#interfaz).
+
+Variables opcionales:
+
+| Variable | Default | Qué cambia |
+|----------|---------|------------|
+| `ABYSSAN_URL` | `http://localhost:5174` | URL base de la SPA |
+| `DEMO_REPO` | `abyssan-demo` | Nombre del repo bajo `PROJECTS_ROOT` |
+| `DEMO_RAMA_ORIGEN` | `fix/choca-con-main` | Rama que se fusiona en el preview |
+| `DEMO_RAMA_BASE` | `main` | Rama destino del preview |
+| `DEMO_TIMEOUT_MS` | `15000` | Timeout por paso en milisegundos |
 
 
 ### Atajos (Daily Driver)
@@ -420,9 +493,9 @@ Estimaciones en **semanas-persona** de trabajo enfocado, no en calendario. Fases
 | ------------------ | ----------------------------------------------------------------------- | ------ |
 | **0 Higiene**      | Un env, un cliente HTTP, tests verdes, Docker RW, identidad **Abyssan** | Hecha |
 | **1 Daily Driver** | Clone/init, discard, 3-way, ramas, fetch, undo mínimo, grafo virtualizado | Hecha |
-| **2 Power**        | Stage por hunk/línea, command palette, tabs, blame, rebase visual       | Hecha |
+| **2 Power**        | Stage por hunk/línea, command palette, tabs, blame, rebase visual       | Parcial — hunk/línea, blame, tabs y rebase visual siguen pendientes |
 | **3 Forjas**       | OAuth GitHub/GitLab y cola de pull/merge requests                       | Hecha |
-| **4 Identidad**    | Preview, journal de undo, Explain Mode, grafo que enseña, seguridad     | **Ahora** |
+| **4 Identidad**    | Preview, journal de undo, Explain Mode, grafo que enseña, seguridad     | **Ahora** — preview, journal, explain y seguridad en código; highlight de grafo parcial |
 | **5 Superficie**   | Worktrees bajo `PROJECTS_ROOT`; PR/MR como contexto de rama             | Después |
 | **6 Plataforma**   | Compose prod; usuarios/roles si LAN real; Tauri opcional; plugins       | Después |
 

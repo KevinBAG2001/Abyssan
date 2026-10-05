@@ -28,18 +28,24 @@ export function ModalEncabezado({
         className
       )}
     >
-      <div className="flex items-start gap-2.5 min-w-0">
+      <div className="flex items-start gap-2.5 min-w-0 flex-1">
         {icono && (
           <div className="w-8 h-8 rounded-lg bg-primary-container/15 flex items-center justify-center shrink-0">
             {icono}
           </div>
         )}
-        <div className="min-w-0">
-          <h2 id={id} className="text-headline-sm text-on-surface truncate">
+        <div className="min-w-0 flex-1">
+          <h2
+            id={id}
+            className="text-headline-sm text-on-surface wrap-anywhere line-clamp-2"
+            title={titulo}
+          >
             {titulo}
           </h2>
           {subtitulo && (
-            <p className="text-label-md text-on-surface-variant/80 mt-0.5">{subtitulo}</p>
+            <p className="text-label-md text-on-surface-variant/80 mt-0.5 wrap-anywhere">
+              {subtitulo}
+            </p>
           )}
         </div>
       </div>

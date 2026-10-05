@@ -79,14 +79,6 @@ export function useGitRepository(sesionLista = true) {
     }
   };
 
-  const refreshOperaciones = async () => {
-    try {
-      setOperaciones(await httpGitApi.getOperaciones());
-    } catch {
-      // Silencioso
-    }
-  };
-
   const refreshRepoData = useCallback(async (repoPath: string) => {
     if (!repoPath) return;
     const yo = ++generacion.current;
@@ -139,12 +131,12 @@ export function useGitRepository(sesionLista = true) {
 
   useEffect(() => {
     if (!sesionLista) return;
-    let vivo = true;
+    let ignorar = false;
     void (async () => {
       setCargandoRepos(true);
       try {
         const data = await httpGitApi.getRepos();
-        if (vivo) {
+        if (!ignorar) {
           setRepos(data);
           setSelectedRepo((actual) => {
             if (actual) return actual;
@@ -153,17 +145,24 @@ export function useGitRepository(sesionLista = true) {
           });
         }
       } catch (err: unknown) {
-        if (vivo) {
+        if (!ignorar) {
           showToast(err instanceof Error ? err.message : 'Error cargando repositorios', 'error');
         }
       } finally {
-        if (vivo) setCargandoRepos(false);
+        if (!ignorar) setCargandoRepos(false);
       }
     })();
-    void refreshOperaciones();
+    void (async () => {
+      try {
+        const operaciones = await httpGitApi.getOperaciones();
+        if (!ignorar) setOperaciones(operaciones);
+      } catch {
+        // Silencioso
+      }
+    })();
     wsClient.connect();
     return () => {
-      vivo = false;
+      ignorar = true;
     };
   }, [showToast, sesionLista]);
 
