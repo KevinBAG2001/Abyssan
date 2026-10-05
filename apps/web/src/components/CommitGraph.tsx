@@ -47,12 +47,189 @@ type ModoResaltado =
 type Densidad = 'compacta' | 'normal' | 'amplia';
 const ALTURAS: Record<Densidad, number> = { compacta: 32, normal: 44, amplia: 56 };
 const CLAVE_DENSIDAD = 'abyssan.densidadGrafo';
+const REMOTOS_VACIOS: string[] = [];
 
 function leerDensidad(): Densidad {
   if (typeof window === 'undefined') return 'normal';
   const v = localStorage.getItem(CLAVE_DENSIDAD);
   if (v === 'compacta' || v === 'amplia') return v;
   return 'normal';
+}
+
+function etiquetaModo(modo: ModoResaltado): string | null {
+  switch (modo.tipo) {
+    case 'ancestros':
+      return 'Ancestros';
+    case 'descendientes':
+      return 'Descendientes';
+    case 'camino':
+      return 'Camino';
+    case 'autor':
+      return `Autor: ${modo.autor}`;
+    case 'rama':
+      return `Rama: ${modo.rama}`;
+    case 'explicacionRama':
+      return `Rama: ${modo.rama}`;
+    default:
+      return null;
+  }
+}
+
+function useAccionesGrafo({
+  commits,
+  processedGraph,
+  selectedCommit,
+  selectedRepo,
+  currentBranch,
+  commitB,
+  modo,
+  onSelectCommit,
+  rowHeight,
+  scrollerRef,
+  enfocarTrasTecla,
+  setScrollTop,
+  setFoco,
+  setModo,
+  setCommitB,
+  setDensidad,
+}: {
+  commits: GitCommit[];
+  processedGraph: CommitConLane[];
+  selectedCommit: GitCommit | null;
+  selectedRepo?: string | null;
+  currentBranch?: string;
+  commitB: string | null;
+  modo: ModoResaltado;
+  onSelectCommit: (commit: GitCommit) => void;
+  rowHeight: number;
+  scrollerRef: React.RefObject<HTMLDivElement | null>;
+  enfocarTrasTecla: { current: string | null };
+  setScrollTop: React.Dispatch<React.SetStateAction<number>>;
+  setFoco: React.Dispatch<React.SetStateAction<GitCommit | null>>;
+  setModo: React.Dispatch<React.SetStateAction<ModoResaltado>>;
+  setCommitB: React.Dispatch<React.SetStateAction<string | null>>;
+  setDensidad: React.Dispatch<React.SetStateAction<Densidad>>;
+}) {
+  const onScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      const top = e.currentTarget.scrollTop;
+      setScrollTop((prev) => (Math.floor(prev / rowHeight) === Math.floor(top / rowHeight) ? prev : top));
+    },
+    [rowHeight, setScrollTop],
+  );
+
+  const onEnfocar = useCallback((hash: string | null) => {
+    setFoco((prev) => {
+      if (hash === null) return prev === null ? prev : null;
+      if (prev?.hash === hash) return prev;
+      return commits.find((c) => c.hash === hash) ?? null;
+    });
+  }, [commits, setFoco]);
+
+  const seleccionar = useCallback(
+    (commit: GitCommit) => {
+      onSelectCommit(commit);
+    },
+    [onSelectCommit],
+  );
+
+  const revelar = useCallback(
+    (hash: string) => {
+      const commit = commits.find((c) => c.hash === hash) ?? processedGraph.find((c) => c.hash === hash);
+      if (!commit) return;
+      onSelectCommit(commit);
+      const idx = processedGraph.findIndex((c) => c.hash === hash);
+      const el = scrollerRef.current;
+      if (idx < 0 || !el) return;
+      const top = idx * rowHeight;
+      if (top < el.scrollTop || top + rowHeight > el.scrollTop + el.clientHeight) {
+        el.scrollTop = Math.max(0, top - el.clientHeight / 2);
+      }
+    },
+    [commits, processedGraph, onSelectCommit, rowHeight, scrollerRef],
+  );
+
+  const onTeclado = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+      if (processedGraph.length === 0) return;
+      e.preventDefault();
+      const actual = selectedCommit ? processedGraph.findIndex((c) => c.hash === selectedCommit.hash) : -1;
+      const delta = e.key === 'ArrowDown' ? 1 : -1;
+      const siguiente = Math.min(processedGraph.length - 1, Math.max(0, actual < 0 ? 0 : actual + delta));
+      const commit = processedGraph[siguiente];
+      enfocarTrasTecla.current = commit.hash;
+      revelar(commit.hash);
+    },
+    [processedGraph, selectedCommit, revelar, enfocarTrasTecla],
+  );
+
+  const activarAncestros = useCallback(() => {
+    setModo((prev) => (prev.tipo === 'ancestros' ? { tipo: 'ninguno' } : { tipo: 'ancestros' }));
+  }, [setModo]);
+
+  const activarDescendientes = useCallback(() => {
+    setModo((prev) => (prev.tipo === 'descendientes' ? { tipo: 'ninguno' } : { tipo: 'descendientes' }));
+  }, [setModo]);
+
+  const iniciarComparar = useCallback(() => {
+    if (!selectedCommit) return;
+    if (commitB === null) {
+      setCommitB(selectedCommit.hash);
+      return;
+    }
+    const hashA = selectedCommit.hash;
+    const hashB = commitB;
+    setCommitB(null);
+    if (!selectedRepo) {
+      setModo({ tipo: 'camino', hashB, mergeBase: null });
+      return;
+    }
+    void httpGitApi.mergeBase(selectedRepo, hashA, hashB).then((mb) => {
+      setModo({ tipo: 'camino', hashB, mergeBase: mb });
+    });
+  }, [selectedCommit, commitB, selectedRepo, setCommitB, setModo]);
+
+  const activarExplicacionRama = useCallback(
+    (rama: string) => {
+      const tip = commits.find((c) => c.branches?.includes(rama));
+      if (!tip || !selectedRepo || !currentBranch) {
+        setModo({ tipo: 'explicacionRama', rama, mergeBase: null });
+        return;
+      }
+      void httpGitApi.mergeBase(selectedRepo, rama, currentBranch).then((mb) => {
+        setModo({ tipo: 'explicacionRama', rama, mergeBase: mb });
+      });
+    },
+    [commits, selectedRepo, currentBranch, setModo],
+  );
+
+  const cambiarDensidad = useCallback((d: Densidad) => {
+    setDensidad(d);
+    localStorage.setItem(CLAVE_DENSIDAD, d);
+  }, [setDensidad]);
+
+  const limpiarModo = useCallback(() => {
+    setModo({ tipo: 'ninguno' });
+    setCommitB(null);
+  }, [setModo, setCommitB]);
+
+  const badgeModo = useMemo(() => etiquetaModo(modo), [modo]);
+
+  return {
+    onScroll,
+    onEnfocar,
+    seleccionar,
+    revelar,
+    onTeclado,
+    activarAncestros,
+    activarDescendientes,
+    iniciarComparar,
+    activarExplicacionRama,
+    cambiarDensidad,
+    limpiarModo,
+    badgeModo,
+  };
 }
 
 interface CommitGraphProps {
@@ -71,7 +248,7 @@ export const CommitGraph: React.FC<CommitGraphProps> = ({
   selectedCommit,
   currentBranch,
   selectedRepo,
-  nombresRemotos = [],
+  nombresRemotos = REMOTOS_VACIOS,
   inteligencia,
   onSelectCommit,
   onContextMenu,
@@ -222,121 +399,37 @@ export const CommitGraph: React.FC<CommitGraphProps> = ({
     return [...set].slice(0, 4);
   }, [commits, currentBranch]);
 
-  const onScroll = useCallback(
-    (e: React.UIEvent<HTMLDivElement>) => {
-      const top = e.currentTarget.scrollTop;
-      setScrollTop((prev) => (Math.floor(prev / ROW_HEIGHT) === Math.floor(top / ROW_HEIGHT) ? prev : top));
-    },
-    [ROW_HEIGHT],
-  );
-
-  const onEnfocar = useCallback((hash: string | null) => {
-    setFoco((prev) => {
-      if (hash === null) return prev === null ? prev : null;
-      if (prev?.hash === hash) return prev;
-      return commits.find((c) => c.hash === hash) ?? null;
-    });
-  }, [commits]);
-
-  const seleccionar = useCallback(
-    (commit: GitCommit) => {
-      onSelectCommit(commit);
-    },
-    [onSelectCommit],
-  );
-
-  const revelar = useCallback(
-    (hash: string) => {
-      const commit = commits.find((c) => c.hash === hash) ?? processedGraph.find((c) => c.hash === hash);
-      if (!commit) return;
-      onSelectCommit(commit);
-      const idx = processedGraph.findIndex((c) => c.hash === hash);
-      const el = scrollerRef.current;
-      if (idx < 0 || !el) return;
-      const top = idx * ROW_HEIGHT;
-      if (top < el.scrollTop || top + ROW_HEIGHT > el.scrollTop + el.clientHeight) {
-        el.scrollTop = Math.max(0, top - el.clientHeight / 2);
-      }
-    },
-    [commits, processedGraph, onSelectCommit, ROW_HEIGHT],
-  );
-
-  const onTeclado = useCallback(
-    (e: React.KeyboardEvent<HTMLDivElement>) => {
-      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
-      if (processedGraph.length === 0) return;
-      e.preventDefault();
-      const actual = selectedCommit ? processedGraph.findIndex((c) => c.hash === selectedCommit.hash) : -1;
-      const delta = e.key === 'ArrowDown' ? 1 : -1;
-      const siguiente = Math.min(processedGraph.length - 1, Math.max(0, actual < 0 ? 0 : actual + delta));
-      const commit = processedGraph[siguiente];
-      enfocarTrasTecla.current = commit.hash;
-      revelar(commit.hash);
-    },
-    [processedGraph, selectedCommit, revelar],
-  );
-
-  const activarAncestros = useCallback(() => {
-    setModo((prev) => (prev.tipo === 'ancestros' ? { tipo: 'ninguno' } : { tipo: 'ancestros' }));
-  }, []);
-
-  const activarDescendientes = useCallback(() => {
-    setModo((prev) => (prev.tipo === 'descendientes' ? { tipo: 'ninguno' } : { tipo: 'descendientes' }));
-  }, []);
-
-  const iniciarComparar = useCallback(() => {
-    if (!selectedCommit) return;
-    if (commitB === null) {
-      setCommitB(selectedCommit.hash);
-    } else {
-      const hashA = selectedCommit.hash;
-      const hashB = commitB;
-      setCommitB(null);
-      if (selectedRepo) {
-        void httpGitApi.mergeBase(selectedRepo, hashA, hashB).then((mb) => {
-          setModo({ tipo: 'camino', hashB, mergeBase: mb });
-        });
-      } else {
-        setModo({ tipo: 'camino', hashB, mergeBase: null });
-      }
-    }
-  }, [selectedCommit, commitB, selectedRepo]);
-
-  const activarExplicacionRama = useCallback(
-    (rama: string) => {
-      const tip = commits.find((c) => c.branches?.includes(rama));
-      if (!tip || !selectedRepo || !currentBranch) {
-        setModo({ tipo: 'explicacionRama', rama, mergeBase: null });
-        return;
-      }
-      void httpGitApi.mergeBase(selectedRepo, rama, currentBranch).then((mb) => {
-        setModo({ tipo: 'explicacionRama', rama, mergeBase: mb });
-      });
-    },
-    [commits, selectedRepo, currentBranch],
-  );
-
-  const cambiarDensidad = useCallback((d: Densidad) => {
-    setDensidad(d);
-    localStorage.setItem(CLAVE_DENSIDAD, d);
-  }, []);
-
-  const limpiarModo = useCallback(() => {
-    setModo({ tipo: 'ninguno' });
-    setCommitB(null);
-  }, []);
-
-  const badgeModo = useMemo(() => {
-    switch (modo.tipo) {
-      case 'ancestros': return 'Ancestros';
-      case 'descendientes': return 'Descendientes';
-      case 'camino': return 'Camino';
-      case 'autor': return `Autor: ${modo.autor}`;
-      case 'rama': return `Rama: ${modo.rama}`;
-      case 'explicacionRama': return `Rama: ${modo.rama}`;
-      default: return null;
-    }
-  }, [modo]);
+  const {
+    onScroll,
+    onEnfocar,
+    seleccionar,
+    revelar,
+    onTeclado,
+    activarAncestros,
+    activarDescendientes,
+    iniciarComparar,
+    activarExplicacionRama,
+    cambiarDensidad,
+    limpiarModo,
+    badgeModo,
+  } = useAccionesGrafo({
+    commits,
+    processedGraph,
+    selectedCommit,
+    selectedRepo,
+    currentBranch,
+    commitB,
+    modo,
+    onSelectCommit,
+    rowHeight: ROW_HEIGHT,
+    scrollerRef,
+    enfocarTrasTecla,
+    setScrollTop,
+    setFoco,
+    setModo,
+    setCommitB,
+    setDensidad,
+  });
 
   return (
     <div className="flex-1 flex flex-col h-full bg-surface-container-lowest overflow-hidden min-w-0">
@@ -402,6 +495,7 @@ export const CommitGraph: React.FC<CommitGraphProps> = ({
 
       <div
         ref={scrollerRef}
+        role="listbox"
         tabIndex={0}
         aria-label="Grafo de commits. Flechas arriba y abajo mueven la selección."
         aria-describedby="semantica-grafo"
@@ -688,6 +782,64 @@ const GrafoVirtualizado = memo(function GrafoVirtualizado({
   );
 });
 
+function claseSuperficieFila(isSelected: boolean, isCompareB: boolean, marcas: MarcasCommit): string {
+  if (isSelected) {
+    return 'bg-primary-container/10 border-l-2 border-l-primary text-on-surface glow-biolume-sm motion-reduce:shadow-none';
+  }
+  if (marcas.preview) return 'bg-magma/5 border-l-2 border-l-magma text-on-surface';
+  if (isCompareB) return 'bg-secondary/10 border-l-2 border-l-secondary text-on-surface';
+  if (marcas.head) return 'bg-ion/5 border-l-2 border-l-ion/40 text-on-surface';
+  if (marcas.base) return 'bg-gold/5 border-l-2 border-l-gold text-on-surface';
+  return 'hover:bg-surface-container-high/40 text-on-surface-variant';
+}
+
+function InsigniasFila({
+  marcas,
+  commit,
+  nombresRemotos,
+}: {
+  marcas: MarcasCommit;
+  commit: CommitConLane;
+  nombresRemotos: string[];
+}) {
+  return (
+    <>
+      {marcas.head ? <ChipRama nombre="HEAD" tipo="head" /> : null}
+      {marcas.base ? (
+        <span title="Merge-base" className="px-1 py-0.5 rounded text-[10px] font-bold bg-gold/20 text-gold border border-gold/40 shrink-0">
+          BASE
+        </span>
+      ) : null}
+      {marcas.saliente ? (
+        <span title="Por delante del remoto" className="px-1 py-0.5 rounded text-[10px] font-bold text-ember border border-ember/40 shrink-0">
+          ↑
+        </span>
+      ) : null}
+      {marcas.entrante ? (
+        <span title="Por detrás del remoto" className="px-1 py-0.5 rounded text-[10px] font-bold text-secondary border border-secondary/40 shrink-0">
+          ↓
+        </span>
+      ) : null}
+      {marcas.preview ? (
+        <span title="En la vista previa" className="px-1 py-0.5 rounded text-[10px] font-bold text-magma border border-magma/40 shrink-0">
+          PRE
+        </span>
+      ) : null}
+      {marcas.recuperacion ? (
+        <span title={marcas.notaRecuperacion ?? 'Punto de recuperación'} className="px-1 py-0.5 rounded text-[10px] font-bold text-ember border border-ember/40 shrink-0">
+          REC
+        </span>
+      ) : null}
+      {commit.branches?.map((nombre) => (
+        <ChipRama key={nombre} nombre={nombre} tipo={esRefRemota(nombre, nombresRemotos) ? 'remota' : 'rama'} />
+      ))}
+      {commit.tags?.map((nombre) => (
+        <ChipRama key={nombre} nombre={nombre} tipo="tag" />
+      ))}
+    </>
+  );
+}
+
 function claseAnillo(marcas: MarcasCommit, isCompareB: boolean): string {
   if (marcas.preview) return 'ring-2 ring-magma';
   if (marcas.head) return 'glow-biolume-sm ring-2 ring-ion/40 motion-reduce:shadow-none motion-reduce:ring-0';
@@ -754,18 +906,8 @@ const FilaCommit = memo(function FilaCommit({
       style={{ top: `${index * ROW_HEIGHT}px`, height: `${ROW_HEIGHT}px` }}
       className={cn(
         'group absolute left-0 right-0 px-4 flex items-center text-label-md cursor-pointer border-b border-outline-variant/30 text-left w-full transition-colors motion-reduce:transition-none focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50',
-        isSelected
-          ? 'bg-primary-container/10 border-l-2 border-l-primary text-on-surface glow-biolume-sm motion-reduce:shadow-none'
-          : marcas.preview
-            ? 'bg-magma/5 border-l-2 border-l-magma text-on-surface'
-            : isCompareB
-              ? 'bg-secondary/10 border-l-2 border-l-secondary text-on-surface'
-              : marcas.head
-                ? 'bg-ion/5 border-l-2 border-l-ion/40 text-on-surface'
-                : marcas.base
-                  ? 'bg-gold/5 border-l-2 border-l-gold text-on-surface'
-                  : 'hover:bg-surface-container-high/40 text-on-surface-variant',
-        atenuado && 'opacity-25',
+        claseSuperficieFila(isSelected, isCompareB, marcas),
+        atenuado ? 'opacity-25' : null,
       )}
     >
       <div className="shrink-0 relative h-full" style={{ width: anchoGrafo }}>
@@ -782,38 +924,7 @@ const FilaCommit = memo(function FilaCommit({
         />
       </div>
       <div className="flex-1 flex items-center gap-1.5 truncate pr-4 min-w-0">
-        {marcas.head && <ChipRama nombre="HEAD" tipo="head" />}
-        {marcas.base && (
-          <span title="Merge-base" className="px-1 py-0.5 rounded text-[10px] font-bold bg-gold/20 text-gold border border-gold/40 shrink-0">
-            BASE
-          </span>
-        )}
-        {marcas.saliente && (
-          <span title="Por delante del remoto" className="px-1 py-0.5 rounded text-[10px] font-bold text-ember border border-ember/40 shrink-0">
-            ↑
-          </span>
-        )}
-        {marcas.entrante && (
-          <span title="Por detrás del remoto" className="px-1 py-0.5 rounded text-[10px] font-bold text-secondary border border-secondary/40 shrink-0">
-            ↓
-          </span>
-        )}
-        {marcas.preview && (
-          <span title="En la vista previa" className="px-1 py-0.5 rounded text-[10px] font-bold text-magma border border-magma/40 shrink-0">
-            PRE
-          </span>
-        )}
-        {marcas.recuperacion && (
-          <span title={marcas.notaRecuperacion ?? 'Punto de recuperación'} className="px-1 py-0.5 rounded text-[10px] font-bold text-ember border border-ember/40 shrink-0">
-            REC
-          </span>
-        )}
-        {commit.branches?.map((b) => (
-          <ChipRama key={b} nombre={b} tipo={esRefRemota(b, nombresRemotos) ? 'remota' : 'rama'} />
-        ))}
-        {commit.tags?.map((t) => (
-          <ChipRama key={t} nombre={t} tipo="tag" />
-        ))}
+        <InsigniasFila marcas={marcas} commit={commit} nombresRemotos={nombresRemotos} />
         <span className="truncate font-medium text-on-surface">{commit.message}</span>
       </div>
       <div className="w-36 shrink-0 hidden md:flex items-center space-x-1.5 text-on-surface-variant truncate">
