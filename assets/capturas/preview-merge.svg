@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 800" role="img" aria-label="Placeholder: captura real pendiente del preview de merge de Abyssan">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#07080d"/>
+      <stop offset="100%" stop-color="#0d0e13"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="800" rx="16" fill="url(#bg)" stroke="#3b4a44" stroke-width="1"/>
+  <rect width="1280" height="800" fill="#07080d" opacity="0.65"/>
+
+  <!-- Mock dialog -->
+  <g transform="translate(400, 160)">
+    <rect width="480" height="480" rx="10" fill="#1a1b21" stroke="#3b4a44" stroke-width="1"/>
+
+    <!-- Header -->
+    <rect width="480" height="56" rx="10" fill="#292a2f"/>
+    <rect y="46" width="480" height="10" fill="#292a2f"/>
+    <rect x="16" y="14" width="28" height="28" rx="7" fill="#3ef0c0" opacity="0.18"/>
+    <text x="55" y="30" fill="#e3e1e9" font-family="ui-sans-serif, system-ui" font-size="16" font-weight="700">Fusionar fix/choca-con-main</text>
+    <text x="55" y="46" fill="#bacac2" font-family="ui-sans-serif, system-ui" font-size="11">fix/choca-con-main ’ main</text>
+
+    <!-- Explicación -->
+    <text x="16" y="86" fill="#bacac2" font-family="ui-sans-serif, system-ui" font-size="10" font-weight="700" letter-spacing="1">EXPLICACIÓN</text>
+    <text x="16" y="108" fill="#bacac2" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="11">Fusionaría 1 commit en main.</text>
+
+    <!-- Riesgos -->
+    <text x="16" y="150" fill="#bacac2" font-family="ui-sans-serif, system-ui" font-size="10" font-weight="700" letter-spacing="1">RIESGOS</text>
+    <text x="16" y="172" fill="#ffb020" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="11">" Conflicto detectado antes de ejecutar.</text>
+    <text x="16" y="190" fill="#ff5a7a" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="11">" Conflicto: src/core/tenant.js</text>
+
+    <!-- Cambios -->
+    <text x="16" y="232" fill="#bacac2" font-family="ui-sans-serif, system-ui" font-size="10" font-weight="700" letter-spacing="1">CAMBIOS</text>
+    <text x="16" y="254" fill="#c4ffe7" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="11">M src/core/tenant.js</text>
+
+    <!-- Watermark -->
+    <g transform="translate(240, 340)" text-anchor="middle">
+      <circle cx="0" cy="0" r="28" fill="#121318" stroke="#3b4a44" stroke-width="2"/>
+      <text x="0" y="6" fill="#bacac2" font-family="ui-sans-serif, system-ui" font-size="28" font-weight="700">!</text>
+      <text x="0" y="58" fill="#e3e1e9" font-family="ui-sans-serif, system-ui" font-size="14" font-weight="600">Placeholder  ver README</text>
+    </g>
+
+    <!-- Footer -->
+    <rect y="424" width="480" height="56" fill="#1e1f25" stroke="#3b4a44"/>
+    <rect x="300" y="438" width="80" height="28" rx="6" fill="#292a2f" stroke="#3b4a44"/>
+    <text x="340" y="456" fill="#bacac2" font-family="ui-sans-serif, system-ui" font-size="12" text-anchor="middle">Cancelar</text>
+    <rect x="388" y="438" width="80" height="28" rx="6" fill="#93000a" opacity="0.5" stroke="#ff5a7a"/>
+    <text x="428" y="456" fill="#ffdad6" font-family="ui-sans-serif, system-ui" font-size="12" text-anchor="middle">Ejecutar</text>
+  </g>
+</svg>

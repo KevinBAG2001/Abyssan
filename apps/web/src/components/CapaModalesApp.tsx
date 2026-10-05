@@ -148,6 +148,7 @@ export const CapaModalesApp: React.FC<CapaModalesAppProps> = (p) => (
     {p.confirmacion && (
       <ModalConfirmacion
         titulo={p.confirmacion.titulo}
+        subtitulo={p.confirmacion.subtitulo}
         descripcion={p.confirmacion.descripcion}
         etiquetaConfirmar={p.confirmacion.etiqueta}
         peligro={p.confirmacion.peligro}

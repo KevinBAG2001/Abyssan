@@ -6,8 +6,8 @@ Cómo levantar Abyssan en una máquina de desarrollo. Solo se documentan requisi
 
 | Herramienta | Evidencia en el repo | Nota |
 |-------------|----------------------|------|
-| Node.js | CI (`.github/workflows/ci.yml`) usa **20**. Dockerfiles usan **`node:22-alpine`**. El README pide 20 LTS o superior. | No hay campo `engines` en `package.json`. |
-| pnpm | CI: `pnpm/action-setup` versión **11.25.0**. Docker: `corepack prepare pnpm@11.25.0`. Campo `packageManager` en la raíz. | Gestor exclusivo. No uses `npm` ni `yarn` en este monorepo. |
+| Node.js | CI (`.github/workflows/ci.yml`) usa **22**. Dockerfiles usan **`node:22-alpine`**. `package.json` declara `engines.node: ">=22.13.0"`. | `pnpm@11.25.0` exige Node 22.13+. Con Node 20 el `corepack` falla. |
+| pnpm | CI: `pnpm/action-setup` versión **11.25.0**. Docker: `corepack prepare pnpm@11.25.0`. Campo `packageManager` y `engines.pnpm: ">=11.25.0"` en la raíz. | Gestor exclusivo. No uses `npm` ni `yarn` en este monorepo. |
 | Git | El servidor Alpine instala `git` (`apk add git`). simple-git invoca Git del `PATH`. | Obligatorio en el host o en el contenedor del API. |
 | Docker | `docker-compose.yml` y Dockerfiles | Opcional. |
 
