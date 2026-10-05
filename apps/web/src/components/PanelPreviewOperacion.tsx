@@ -1,8 +1,13 @@
-import { AlertTriangle, FileDiff } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { AlertTriangle, FileDiff, Info } from 'lucide-react';
 import { ui } from '../lib/diseno';
 import { cn } from '../lib/utils';
 import type { PreviewOperacionModel } from '../domain/models/GitModels';
 import { cortoHash, etiquetaEstadoPreview } from '../domain/preview/etiquetaEstadoPreview';
+import {
+  ORDEN_SECCIONES_PREVIEW,
+  type SeccionPreview,
+} from '../domain/preview/ordenSeccionesPreview';
 
 function etiquetaArchivo(tipo: PreviewOperacionModel['archivosAfectados'][number]['tipo']): string {
   if (tipo === 'agregado') return 'A';
@@ -21,10 +26,13 @@ export function PanelPreviewOperacion({ preview }: PanelPreviewOperacionProps) {
   const commits = preview.commitsAfectados.slice(0, 5);
   const restoCommits = Math.max(0, preview.commitsAfectados.length - commits.length);
 
-  return (
-    <div className="px-4 pb-3 space-y-3 max-h-64 overflow-y-auto">
-      <section>
-        <h3 className={cn(ui.labelCaps, 'mb-1.5')}>Explicación</h3>
+  const secciones: Record<SeccionPreview, ReactNode> = {
+    explicacion: (
+      <section key="explicacion" data-seccion="explicacion">
+        <h3 className={cn(ui.labelCaps, 'mb-1.5 flex items-center gap-1.5')}>
+          <Info className="w-3 h-3" aria-hidden />
+          Explicación
+        </h3>
         <p className="text-code-sm text-on-surface-variant leading-relaxed">{preview.explicacion}</p>
         <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-code-sm font-mono">
           <dt className="text-on-surface-variant/70">Actual</dt>
@@ -33,8 +41,31 @@ export function PanelPreviewOperacion({ preview }: PanelPreviewOperacionProps) {
           <dd className="text-on-surface truncate">{etiquetaEstadoPreview(preview.estadoObjetivo)}</dd>
         </dl>
       </section>
-
-      <section>
+    ),
+    riesgos: (
+      <section key="riesgos" data-seccion="riesgos">
+        <h3 className={cn(ui.labelCaps, 'mb-1.5 flex items-center gap-1.5')}>
+          <AlertTriangle className="w-3 h-3" aria-hidden />
+          Riesgos
+        </h3>
+        {preview.advertencias.length === 0 && preview.posiblesConflictos.length === 0 ? (
+          <p className="text-code-sm text-on-surface-variant/70">Ningún riesgo adicional detectado.</p>
+        ) : (
+          <ul className="text-code-sm text-ember space-y-1">
+            {preview.advertencias.map((advertencia) => (
+              <li key={advertencia}>• {advertencia}</li>
+            ))}
+            {preview.posiblesConflictos.map((archivo) => (
+              <li key={`conflicto-${archivo}`} className="text-magma">
+                • Conflicto: {archivo}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    ),
+    cambios: (
+      <section key="cambios" data-seccion="cambios">
         <h3 className={cn(ui.labelCaps, 'mb-1.5 flex items-center gap-1.5')}>
           <FileDiff className="w-3 h-3" aria-hidden />
           Cambios
@@ -66,7 +97,7 @@ export function PanelPreviewOperacion({ preview }: PanelPreviewOperacionProps) {
                     <span
                       className={cn(
                         'w-4 shrink-0 text-[10px]',
-                        archivo.tipo === 'conflicto' ? 'text-magma' : 'text-primary'
+                        archivo.tipo === 'conflicto' ? 'text-magma' : 'text-primary',
                       )}
                     >
                       {etiquetaArchivo(archivo.tipo)}
@@ -82,27 +113,12 @@ export function PanelPreviewOperacion({ preview }: PanelPreviewOperacionProps) {
           </div>
         )}
       </section>
+    ),
+  };
 
-      <section>
-        <h3 className={cn(ui.labelCaps, 'mb-1.5 flex items-center gap-1.5')}>
-          <AlertTriangle className="w-3 h-3" aria-hidden />
-          Riesgos
-        </h3>
-        {preview.advertencias.length === 0 && preview.posiblesConflictos.length === 0 ? (
-          <p className="text-code-sm text-on-surface-variant/70">Ningún riesgo adicional detectado.</p>
-        ) : (
-          <ul className="text-code-sm text-ember space-y-1">
-            {preview.advertencias.map((advertencia) => (
-              <li key={advertencia}>• {advertencia}</li>
-            ))}
-            {preview.posiblesConflictos.map((archivo) => (
-              <li key={`conflicto-${archivo}`} className="text-magma">
-                • Conflicto: {archivo}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+  return (
+    <div className="px-4 pb-3 space-y-3 max-h-64 overflow-y-auto">
+      {ORDEN_SECCIONES_PREVIEW.map((clave) => secciones[clave])}
     </div>
   );
 }
