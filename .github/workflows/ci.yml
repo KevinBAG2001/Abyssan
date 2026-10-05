@@ -82,6 +82,7 @@ jobs:
       # El árbol de la aplicación en la imagen sale limpio (Express, qs, simple-git).
       # Estas rutas no son el proceso que sirve Abyssan (`node dist/index.js`):
       # - npm CLI que trae node:22-alpine
+      # - pnpm 11.25.0 que instala Corepack en COREPACK_HOME (undici embebido)
       # - binario de esbuild 0.25.12 (Vite), compilado con Go 1.23.12
       # OS y el resto de node_modules siguen fallando el job en CRITICAL/HIGH.
       - name: Trivy imagen ${{ matrix.id }}
@@ -92,4 +93,4 @@ jobs:
           severity: CRITICAL,HIGH
           exit-code: '1'
           ignore-unfixed: true
-          skip-dirs: "/usr/local/lib/node_modules/npm,/app/node_modules/.pnpm/esbuild@0.25.12,/app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12"
+          skip-dirs: "/usr/local/lib/node_modules/npm,/usr/local/share/corepack,/app/node_modules/.pnpm/esbuild@0.25.12,/app/node_modules/.pnpm/@esbuild+linux-x64@0.25.12"
