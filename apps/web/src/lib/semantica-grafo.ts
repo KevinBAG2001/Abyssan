@@ -286,14 +286,18 @@ export function resolverSemanticaGrafo(entrada: EntradaSemanticaGrafo): Semantic
       (entrada.behind > 0 && entrantes.size === 0));
 
   const advertencias: string[] = [];
-  if (entrada.isMerging) advertencias.push('Hay un merge en curso.');
-  if (entrada.isRebasing) advertencias.push('Hay un rebase en curso.');
+  const avisosVistos = new Set<string>();
+  const anotarAviso = (texto: string) => {
+    if (!texto || avisosVistos.has(texto)) return;
+    avisosVistos.add(texto);
+    advertencias.push(texto);
+  };
+  if (entrada.isMerging) anotarAviso('Hay un merge en curso.');
+  if (entrada.isRebasing) anotarAviso('Hay un rebase en curso.');
   if (entrada.previewActivo && entrada.seguroEjecutar === false) {
-    advertencias.push('La vista previa marca la operación como no segura.');
+    anotarAviso('La vista previa marca la operación como no segura.');
   }
-  for (const texto of entrada.advertenciasPreview) {
-    if (texto && !advertencias.includes(texto)) advertencias.push(texto);
-  }
+  for (const texto of entrada.advertenciasPreview) anotarAviso(texto);
   if (ventanaIncompleta) {
     advertencias.push('Parte del ahead/behind queda fuera de los commits cargados.');
   }

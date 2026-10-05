@@ -2,22 +2,52 @@ import React from 'react';
 import { Header } from './components/Header';
 import { GitConsoleDrawer } from './components/GitConsoleDrawer';
 import { CapaModalesApp } from './components/CapaModalesApp';
-import { ModalIdentidadGit } from './components/ModalIdentidadGit';
-import { PanelTimeline } from './components/PanelTimeline';
-import { ToastNotificacion } from './components/app/ToastNotificacion';
 import { AreaTrabajoGit } from './components/app/AreaTrabajoGit';
+import { CapasEstadoApp } from './components/app/CapasEstadoApp';
+import { construirInteligenciaGrafo } from './application/construirInteligenciaGrafo';
 import { useGitRepository } from './application/hooks/useGitRepository';
 import { useMutacionesGit } from './application/hooks/useMutacionesGit';
 import { useEfectosAppShell } from './application/hooks/useEfectosAppShell';
 import { useEstadoAppShell } from './application/hooks/useEstadoAppShell';
 import { useSesionInstancia } from './application/hooks/useSesionInstancia';
-import { ModalSesionInstancia } from './components/ModalSesionInstancia';
 import type { AccionPaleta } from './components/PaletaComandos';
-import { PanelExplicacion } from './components/PanelExplicacion';
 import { ui } from './lib/diseno';
 import { cn } from './lib/utils';
 import { esCommitHead } from './lib/grafo-utils';
-import type { InteligenciaGrafo } from './lib/semantica-grafo';
+import type { BranchModel, CommitModel, GitOperacionModel, RepositoryStatusModel } from './domain/models/GitModels';
+
+function ejecutarAccionPaleta(
+  accion: AccionPaleta,
+  acciones: {
+    fetch: () => void;
+    pull: () => void;
+    push: () => void;
+    enfocarCommit: () => void;
+    abrirForjas: () => void;
+  },
+) {
+  if (accion === 'fetch') acciones.fetch();
+  if (accion === 'pull') acciones.pull();
+  if (accion === 'push') acciones.push();
+  if (accion === 'commit') acciones.enfocarCommit();
+  if (accion === 'forjas') acciones.abrirForjas();
+}
+
+function derivarCabecera(
+  status: RepositoryStatusModel | null,
+  commits: CommitModel[],
+  branches: BranchModel[],
+  loading: boolean,
+  mutando: boolean,
+  operaciones: GitOperacionModel[],
+) {
+  const ramaActual = status?.currentBranch || 'HEAD';
+  const headDesvinculado = ramaActual === 'HEAD desvinculado' || /^[0-9a-f]{7,40}$/i.test(ramaActual);
+  const ocupado = loading || mutando || operaciones.some((op) => op.estado === 'en_cola' || op.estado === 'corriendo');
+  const commitHead = commits.find((commit) => esCommitHead(commit));
+  const headShort = commitHead?.shortHash || branches.find((rama) => rama.current)?.commit?.slice(0, 7) || undefined;
+  return { ramaActual, headDesvinculado, ocupado, headShort };
+}
 
 export const App: React.FC = () => {
   const sesion = useSesionInstancia();
@@ -53,103 +83,73 @@ export const App: React.FC = () => {
     onAbrirPaleta: shell.abrirPaleta,
   });
 
+  const cabecera = derivarCabecera(
+    git.status,
+    git.commits,
+    git.branches,
+    git.loading,
+    mut.mutando,
+    git.operaciones,
+  );
+
   const onPaleta = (accion: AccionPaleta) => {
-    if (accion === 'fetch') void mut.handleFetch();
-    if (accion === 'pull') void mut.handlePull(shell.modoPull);
-    if (accion === 'push') void mut.handlePush();
-    if (accion === 'commit') document.getElementById('abyssan-commit-input')?.focus();
-    if (accion === 'forjas') shell.modales.setForjasAbiertas(true);
+    ejecutarAccionPaleta(accion, {
+      fetch: () => void mut.handleFetch(),
+      pull: () => void mut.handlePull(shell.modoPull),
+      push: () => void mut.handlePush(),
+      enfocarCommit: () => document.getElementById('abyssan-commit-input')?.focus(),
+      abrirForjas: () => shell.modales.setForjasAbiertas(true),
+    });
   };
 
-  const ramaActual = git.status?.currentBranch || 'HEAD';
-  const headDesvinculado =
-    ramaActual === 'HEAD desvinculado' || /^[0-9a-f]{7,40}$/i.test(ramaActual);
-  const ocupado =
-    git.loading ||
-    mut.mutando ||
-    git.operaciones.some((o) => o.estado === 'en_cola' || o.estado === 'corriendo');
-  const commitHead = git.commits.find((c) => esCommitHead(c));
-  const headShort =
-    commitHead?.shortHash ||
-    git.branches.find((b) => b.current)?.commit?.slice(0, 7) ||
-    undefined;
-
-  const inteligenciaGrafo = React.useMemo<InteligenciaGrafo>(() => {
-    const preview = mut.confirmacion?.preview;
-    const activa = git.operaciones.find((op) => op.estado === 'en_cola' || op.estado === 'corriendo');
-    const textos = new Set<string>();
-    if (mut.ultimaOp.puedeDeshacer && mut.ultimaOp.estadoAnterior) textos.add(mut.ultimaOp.estadoAnterior);
-    for (const entrada of mut.journal) {
-      if (!entrada.deshecha && entrada.puedeDeshacer && entrada.estadoAnterior) {
-        textos.add(entrada.estadoAnterior);
-      }
-    }
-    return {
-      headDesvinculado,
-      tracking: git.status?.tracking ?? null,
-      ahead: git.status?.ahead ?? 0,
-      behind: git.status?.behind ?? 0,
-      isMerging: Boolean(git.status?.isMerging),
-      isRebasing: Boolean(git.status?.isRebasing),
-      ramaSeleccionada: shell.ramaInspeccionada,
-      puntas: git.branches.map((rama) => ({
-        nombre: rama.name,
-        hash: rama.commit,
-        actual: rama.current,
-        remota: Boolean(rama.isRemote),
-      })),
-      hashesPreview: preview?.commitsAfectados.map((commit) => commit.hash) ?? [],
-      hashBasePreview: preview?.estadoActual.base ?? null,
-      advertenciasPreview: preview?.advertencias ?? [],
-      previewActivo: Boolean(preview),
-      seguroEjecutar: preview ? preview.seguroEjecutar : null,
-      textosRecuperacion: [...textos],
-      operacion:
-        activa && (activa.estado === 'en_cola' || activa.estado === 'corriendo')
-          ? {
-              tipo: activa.tipo,
-              estado: activa.estado,
-              progreso: activa.progreso,
-              etapa: activa.etapa,
-            }
-          : null,
-    };
-  }, [
-    headDesvinculado,
-    git.status,
-    git.branches,
-    git.operaciones,
-    shell.ramaInspeccionada,
-    mut.confirmacion,
-    mut.journal,
-    mut.ultimaOp,
-  ]);
+  const inteligenciaGrafo = React.useMemo(
+    () =>
+      construirInteligenciaGrafo({
+        headDesvinculado: cabecera.headDesvinculado,
+        status: git.status,
+        branches: git.branches,
+        operaciones: git.operaciones,
+        ramaInspeccionada: shell.ramaInspeccionada,
+        preview: mut.confirmacion?.preview,
+        journal: mut.journal,
+        ultimaOp: mut.ultimaOp,
+      }),
+    [
+      cabecera.headDesvinculado,
+      git.status,
+      git.branches,
+      git.operaciones,
+      shell.ramaInspeccionada,
+      mut.confirmacion,
+      mut.journal,
+      mut.ultimaOp,
+    ],
+  );
 
   return (
-    <div className={cn(ui.app, 'h-screen w-screen')} aria-busy={ocupado || sesion.cargando}>
+    <div className={cn(ui.app, 'h-screen w-screen')} aria-busy={cabecera.ocupado || sesion.cargando}>
       <OverlayContextMenu contextMenu={shell.contextMenu} onCerrar={() => shell.setContextMenu(null)} />
 
-      {git.toast && (
-        <ToastNotificacion mensaje={git.toast.message} tipo={git.toast.type} />
-      )}
-
-      {sesion.requiereToken && !sesion.lista && (
-        <ModalSesionInstancia error={sesion.error} cargando={sesion.cargando} onAbrir={sesion.abrir} />
-      )}
-
-      {sesion.cargando && !sesion.lista && !sesion.requiereToken && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-void/40">
-          <p className="text-code-sm text-on-surface-variant">Abriendo sesión…</p>
-        </div>
-      )}
-
-      {shell.explicacionActiva && (
-        <PanelExplicacion
-          tipo={shell.explicacionActiva.tipo}
-          comandoGit={shell.explicacionActiva.comandoGit}
-          onCerrar={shell.descartarExplicacion}
-        />
-      )}
+      <CapasEstadoApp
+        toast={git.toast}
+        requiereToken={sesion.requiereToken}
+        sesionLista={sesion.lista}
+        sesionCargando={sesion.cargando}
+        sesionError={sesion.error}
+        onAbrirSesion={sesion.abrir}
+        explicacion={shell.explicacionActiva}
+        onCerrarExplicacion={shell.descartarExplicacion}
+        timelineAbierta={shell.modales.timelineAbierta}
+        journal={mut.journal}
+        loading={git.loading}
+        onCerrarTimeline={() => shell.modales.setTimelineAbierta(false)}
+        onDeshacer={(id) => void mut.handleDeshacer(id)}
+        identidadAbierta={shell.modales.identidadAbierta}
+        repoPath={git.selectedRepo}
+        onCerrarIdentidad={() => shell.modales.setIdentidadAbierta(false)}
+        onIdentidadGuardada={() => git.showToast('Identidad git configurada', 'success')}
+        onError={(mensaje) => git.showToast(mensaje, 'error')}
+      />
 
       <Header
         repos={git.repos}
@@ -189,9 +189,9 @@ export const App: React.FC = () => {
         selectedCommit={git.selectedCommit}
         currentDiff={git.currentDiff}
         conflictData={git.conflictData}
-        loading={ocupado}
-        headDesvinculado={headDesvinculado}
-        ramaActual={ramaActual}
+        loading={cabecera.ocupado}
+        headDesvinculado={cabecera.headDesvinculado}
+        ramaActual={cabecera.ramaActual}
         ramaInspeccionada={shell.ramaInspeccionada}
         nombresRemotos={git.remotes.map((r) => r.name)}
         inteligenciaGrafo={inteligenciaGrafo}
@@ -233,15 +233,15 @@ export const App: React.FC = () => {
         onExpandidaChange={shell.consola.setConsolaExpandida}
         onClear={() => git.setLogs([])}
         reflog={mut.reflog}
-        currentBranch={git.selectedRepo ? ramaActual : undefined}
-        headShortHash={headShort}
-        loading={ocupado}
+        currentBranch={git.selectedRepo ? cabecera.ramaActual : undefined}
+        headShortHash={cabecera.headShort}
+        loading={cabecera.ocupado}
       />
 
       <CapaModalesApp
         selectedRepo={git.selectedRepo}
         selectedCommit={git.selectedCommit}
-        currentBranch={ramaActual}
+        currentBranch={cabecera.ramaActual}
         branches={git.branches}
         stashes={git.stashes}
         remotes={git.remotes}
@@ -306,23 +306,6 @@ export const App: React.FC = () => {
         onPaleta={onPaleta}
       />
 
-      {shell.modales.timelineAbierta && (
-        <PanelTimeline
-          entradas={mut.journal}
-          loading={git.loading}
-          onCerrar={() => shell.modales.setTimelineAbierta(false)}
-          onDeshacer={(id) => void mut.handleDeshacer(id)}
-        />
-      )}
-
-      {shell.modales.identidadAbierta && git.selectedRepo && (
-        <ModalIdentidadGit
-          repoPath={git.selectedRepo}
-          onClose={() => shell.modales.setIdentidadAbierta(false)}
-          onGuardado={() => git.showToast('Identidad git configurada', 'success')}
-          onError={(m) => git.showToast(m, 'error')}
-        />
-      )}
     </div>
   );
 };

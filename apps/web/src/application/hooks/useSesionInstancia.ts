@@ -31,22 +31,20 @@ export function useSesionInstancia() {
     void (async () => {
       setCargando(true);
       try {
-        const estado = await httpGitApi.obtenerEstadoSesion();
         if (!vivo) return;
-        if (estado.activa) {
+        const estado = await httpGitApi.obtenerEstadoSesion();
+        if (estado.activa && vivo) {
           setLista(true);
           setRequiereToken(false);
           return;
         }
-        if (estado.requiereToken) {
+        if (estado.requiereToken && vivo) {
           setRequiereToken(true);
           return;
         }
-        await abrir();
+        if (vivo) await abrir();
       } catch {
-        if (vivo) {
-          setRequiereToken(true);
-        }
+        if (vivo) setRequiereToken(true);
       } finally {
         if (vivo) setCargando(false);
       }

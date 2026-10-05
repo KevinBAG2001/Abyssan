@@ -10,6 +10,7 @@ import type { PreviewOperacionModel } from '../domain/models/GitModels';
 
 export type ModalConfirmacionProps = {
   titulo: string;
+  subtitulo?: string;
   descripcion: string;
   etiquetaConfirmar?: string;
   peligro?: boolean;
@@ -22,6 +23,7 @@ export type ModalConfirmacionProps = {
 
 export const ModalConfirmacion: React.FC<ModalConfirmacionProps> = ({
   titulo,
+  subtitulo,
   descripcion,
   etiquetaConfirmar = 'Ejecutar',
   peligro = true,
@@ -34,18 +36,20 @@ export const ModalConfirmacion: React.FC<ModalConfirmacionProps> = ({
   const [escrito, setEscrito] = useState('');
   const listo = !bloquearConfirmar && (!nombreRequerido || escrito === nombreRequerido);
 
+  const subtituloFinal =
+    subtitulo ??
+    (preview
+      ? 'Abyssan te muestra qué ocurriría antes de cambiar el repositorio'
+      : peligro
+        ? 'Operación destructiva — no se puede deshacer fácilmente'
+        : 'Confirma antes de continuar');
+
   return (
     <Dialogo onCerrar={onCancelar} labelledBy="titulo-confirmacion" ancho="md">
       <ModalEncabezado
         id="titulo-confirmacion"
         titulo={titulo}
-        subtitulo={
-          preview
-            ? 'Abyssan te muestra qué ocurriría antes de cambiar el repositorio'
-            : peligro
-              ? 'Operación destructiva — no se puede deshacer fácilmente'
-              : 'Confirma antes de continuar'
-        }
+        subtitulo={subtituloFinal}
         icono={<ShieldAlert className={cn('w-4 h-4', peligro ? 'text-magma' : 'text-ember')} />}
         onCerrar={onCancelar}
       />

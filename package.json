@@ -12,7 +12,8 @@
     "typecheck": "pnpm --filter @abyssan/server exec tsc --noEmit && pnpm --filter @abyssan/web exec tsc --noEmit",
     "test": "vitest run",
     "test:seguridad": "vitest run apps/server/src/infrastructure/seguridad apps/server/src/infrastructure/ws apps/server/src/application/__tests__/refsPerimetro.test.ts apps/server/src/application/__tests__/addRemotePerimetro.test.ts apps/server/src/application/__tests__/previewPerimetro.test.ts",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "demo:repo": "node scripts/crear-repo-demo.mjs"
   },
   "keywords": [
     "git",
@@ -26,7 +27,8 @@
   "license": "MIT",
   "packageManager": "pnpm@11.25.0",
   "engines": {
-    "node": ">=20"
+    "node": ">=22.13.0",
+    "pnpm": ">=11.25.0"
   },
   "devDependencies": {
     "oxlint": "^0.15.15",

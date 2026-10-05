@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 800" role="img" aria-label="Placeholder: captura real pendiente del grafo de Abyssan">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0d0e13"/>
+      <stop offset="100%" stop-color="#121318"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="800" rx="16" fill="url(#bg)" stroke="#3b4a44" stroke-width="1"/>
+
+  <!-- Chrome header -->
+  <rect x="0" y="0" width="1280" height="56" fill="#1a1b21"/>
+  <rect x="20" y="18" width="20" height="20" rx="5" fill="#3ef0c0"/>
+  <text x="50" y="33" fill="#e3e1e9" font-family="ui-sans-serif, system-ui" font-size="14" font-weight="700" letter-spacing="1.5">ABYSSAN</text>
+  <rect x="180" y="14" width="240" height="28" rx="8" fill="#121318" stroke="#3b4a44"/>
+  <text x="192" y="33" fill="#bacac2" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="11">abyssan-demo (main)</text>
+
+  <!-- Watermark -->
+  <g transform="translate(640, 380)" text-anchor="middle">
+    <circle cx="0" cy="-80" r="38" fill="#1e1f25" stroke="#3b4a44" stroke-width="2"/>
+    <text x="0" y="-74" fill="#bacac2" font-family="ui-sans-serif, system-ui" font-size="36" font-weight="700">!</text>
+    <text x="0" y="0" fill="#e3e1e9" font-family="ui-sans-serif, system-ui" font-size="22" font-weight="600">Captura real pendiente</text>
+    <text x="0" y="30" fill="#bacac2" font-family="ui-sans-serif, system-ui" font-size="14">Este SVG es un placeholder. Para generar la captura real:</text>
+    <text x="0" y="60" fill="#7dd0ff" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="13">pnpm demo:repo</text>
+    <text x="0" y="82" fill="#7dd0ff" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="13">pnpm dev</text>
+    <text x="0" y="104" fill="#7dd0ff" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="13">pnpm --filter @abyssan/web exec playwright install chromium</text>
+    <text x="0" y="126" fill="#7dd0ff" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="13">pnpm --filter @abyssan/web capturas</text>
+    <text x="0" y="160" fill="#bacac2" font-family="ui-sans-serif, system-ui" font-size="12">Se escribirá assets/capturas/grafo.png encima; cambia la referencia</text>
+    <text x="0" y="178" fill="#bacac2" font-family="ui-sans-serif, system-ui" font-size="12">en el README de ./grafo.svg a ./grafo.png.</text>
+  </g>
+
+  <!-- Decorative lanes as hint of what the final capture shows -->
+  <g stroke-width="1.8" fill="none" opacity="0.35">
+    <path d="M 180 650 L 180 740" stroke="#3ef0c0"/>
+    <path d="M 230 740 L 230 620 L 180 580" stroke="#7dd0ff"/>
+    <path d="M 280 740 L 280 660 L 180 620" stroke="#b08cff"/>
+  </g>
+  <g fill="#3ef0c0">
+    <circle cx="180" cy="740" r="5"/>
+    <circle cx="180" cy="690" r="5"/>
+    <circle cx="180" cy="640" r="5"/>
+  </g>
+  <g fill="#7dd0ff">
+    <circle cx="230" cy="730" r="5"/>
+    <circle cx="230" cy="680" r="5"/>
+  </g>
+  <g fill="#b08cff">
+    <circle cx="280" cy="720" r="5"/>
+  </g>
+</svg>
