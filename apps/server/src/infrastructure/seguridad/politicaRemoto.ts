@@ -34,7 +34,10 @@ function pareceRutaLocal(url: string): boolean {
 
 function tieneCredencialesEnUrl(url: string): boolean {
   if (/^https:\/\//i.test(url)) {
-    return /^https:\/\/[^/]*:[^/]*@/i.test(url);
+    const resto = url.replace(/^https:\/\//i, '');
+    const finAuthority = resto.search(/[/=?#]/);
+    const authority = finAuthority === -1 ? resto : resto.slice(0, finAuthority);
+    return authority.includes('@');
   }
   if (/^ssh:\/\//i.test(url)) {
     return /^ssh:\/\/[^/]*:[^/]*@/i.test(url);

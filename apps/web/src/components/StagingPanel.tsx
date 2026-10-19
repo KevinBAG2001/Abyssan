@@ -23,6 +23,7 @@ interface StagingPanelProps {
   status: GitRepoStatus | null;
   selectedFile: GitFileStatus | null;
   loading: boolean;
+  className?: string;
   onSelectFile: (file: GitFileStatus) => void;
   onStageFile: (filePath: string) => void;
   onStageAll: () => void;
@@ -55,6 +56,7 @@ export const StagingPanel: React.FC<StagingPanelProps> = ({
   status,
   selectedFile,
   loading,
+  className,
   onSelectFile,
   onStageFile,
   onStageAll,
@@ -82,7 +84,12 @@ export const StagingPanel: React.FC<StagingPanelProps> = ({
   };
 
   return (
-    <div className="w-staging min-w-[220px] max-w-[min(420px,38vw)] shrink-0 bg-surface-container-low border-l border-outline-variant flex flex-col h-full select-none overflow-hidden max-xl:min-w-[200px]">
+    <div
+      className={cn(
+        'w-staging min-w-0 max-w-[min(420px,38vw)] shrink-0 bg-surface-container-low border-l border-outline-variant flex flex-col h-full select-none overflow-hidden lg:min-w-[220px]',
+        className,
+      )}
+    >
       {status?.isMerging && (
         <div className="px-3 py-2.5 bg-error-container/20 border-b border-error/30 flex flex-col gap-2 shrink-0">
           <div className="flex items-center gap-2 text-error">

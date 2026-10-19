@@ -32,6 +32,7 @@ interface HeaderProps {
   motivoDeshacer?: string;
   modoAprendizaje: boolean;
   onCambiarModoAprendizaje: (activo: boolean) => void;
+  onAbrirPaleta: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -60,13 +61,19 @@ export const Header: React.FC<HeaderProps> = ({
   motivoDeshacer,
   modoAprendizaje,
   onCambiarModoAprendizaje,
+  onAbrirPaleta,
 }) => {
   const nombreRepo = selectedRepo
     ? repos.find((r) => r.path === selectedRepo)?.name || selectedRepo.split(/[/\\]/).pop()
     : null;
 
   return (
-    <header className={cn(ui.chrome, 'h-14 shrink-0 px-4 flex items-center justify-between gap-3 select-none min-w-0')}>
+    <header
+      className={cn(
+        ui.chrome,
+        'grid h-14 shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-2 select-none min-w-0 sm:gap-3 sm:px-4',
+      )}
+    >
       <SelectorRepositorio
         repos={repos}
         selectedRepo={selectedRepo}
@@ -99,6 +106,7 @@ export const Header: React.FC<HeaderProps> = ({
           onOpenIdentidad={onOpenIdentidad}
           onCambiarModoPull={onCambiarModoPull}
           onCambiarModoAprendizaje={onCambiarModoAprendizaje}
+          onAbrirPaleta={onAbrirPaleta}
         />
       )}
     </header>
@@ -123,7 +131,7 @@ function SelectorRepositorio({
   onOpenNacimiento: () => void;
 }) {
   return (
-    <div className="flex items-center gap-3 min-w-0 shrink">
+    <div className="flex min-w-0 items-center gap-2 sm:gap-3">
       <div className="flex items-center gap-2 shrink-0">
         <AbyssanLogo tamano="md" className="sm:h-8" />
         <span className="text-headline-sm text-on-surface hidden sm:inline tracking-tight font-sans">ABYSSAN</span>
@@ -133,13 +141,13 @@ function SelectorRepositorio({
 
       <div className="flex items-center gap-2 min-w-0">
         <label htmlFor="selector-repo" className="sr-only">Repositorio</label>
-        <div className="flex items-center gap-1 min-w-0">
-          <GitBranch className="w-4 h-4 text-secondary shrink-0 hidden sm:block" />
+        <div className="relative flex min-w-0 flex-1 items-center">
+          <GitBranch className="hidden w-4 h-4 shrink-0 text-secondary sm:block" />
           <select
             id="selector-repo"
             value={selectedRepo || ''}
             onChange={(e) => onSelectRepo(e.target.value)}
-            className="max-w-[10rem] sm:max-w-[14rem] truncate bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-label-md font-mono rounded border border-outline-variant px-2 py-1.5 focus:outline-none focus:border-primary cursor-pointer transition-colors"
+            className="w-full min-w-0 max-w-[9rem] truncate rounded border border-outline-variant bg-surface-container-high py-1.5 pl-2 pr-7 font-mono text-label-md text-on-surface transition-colors hover:bg-surface-container-highest focus:border-primary focus:outline-none cursor-pointer sm:max-w-[14rem]"
           >
             <option value="" disabled>
               {cargandoRepos
@@ -158,12 +166,12 @@ function SelectorRepositorio({
               </option>
             ))}
           </select>
-          <ChevronDown className="w-3.5 h-3.5 text-on-surface-variant -ml-6 pointer-events-none hidden sm:block" />
+          <ChevronDown className="pointer-events-none absolute right-2 top-1/2 hidden w-3.5 h-3.5 -translate-y-1/2 text-on-surface-variant sm:block" />
         </div>
         <button
           type="button"
           onClick={onOpenNacimiento}
-          className={ui.btnIcono}
+          className={cn(ui.btnIcono, 'shrink-0 touch-target')}
           title="Clonar o inicializar repositorio"
           aria-label="Clonar o inicializar repositorio"
         >
@@ -172,7 +180,7 @@ function SelectorRepositorio({
       </div>
 
       {nombreRepo && (
-        <nav aria-label="Ubicación en el repositorio" className="hidden lg:flex items-center gap-1 min-w-0 text-code-sm text-on-surface-variant truncate">
+        <nav aria-label="Ubicación en el repositorio" className="hidden min-w-0 items-center gap-1 truncate text-code-sm text-on-surface-variant xl:flex">
           <span className="truncate max-w-[6rem]">{nombreRepo}</span>
           {status?.currentBranch && (
             <>

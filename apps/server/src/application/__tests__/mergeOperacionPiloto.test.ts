@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { simpleGit } from 'simple-git';
+import { simpleGitAbyssan as simpleGit } from '../../infrastructure/git/simpleGitAbyssan.js';
 import { SimpleGitAdapter } from '../../infrastructure/git/SimpleGitAdapter.js';
 import { InMemoryCommandLogAdapter } from '../../infrastructure/logging/InMemoryCommandLogAdapter.js';
 import { GitUseCases } from '../use-cases/GitUseCases.js';

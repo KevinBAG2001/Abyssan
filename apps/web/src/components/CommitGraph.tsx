@@ -727,7 +727,7 @@ const GrafoVirtualizado = memo(function GrafoVirtualizado({
   );
 
   return (
-    <div className="relative" style={{ height: `${processedGraph.length * ROW_HEIGHT}px`, minWidth: `${Math.max(anchoGrafo + 520, 800)}px` }}>
+    <div className="relative" style={{ height: `${processedGraph.length * ROW_HEIGHT}px`, minWidth: `${Math.max(anchoGrafo + 320, 480)}px` }}>
       <svg
         className="absolute top-0 left-4 pointer-events-none"
         style={{ width: `${anchoGrafo}px`, height: `${processedGraph.length * ROW_HEIGHT}px` }}
@@ -933,7 +933,7 @@ const FilaCommit = memo(function FilaCommit({
         </div>
         <span className="truncate">{commit.authorName}</span>
       </div>
-      <div className="w-28 shrink-0 hidden lg:block text-on-surface-variant text-[11px]">
+      <div className="w-28 shrink-0 hidden lg:block text-on-surface-variant text-code-sm">
         {new Date(commit.date).toLocaleDateString(undefined, {
           month: 'short',
           day: 'numeric',
@@ -941,7 +941,7 @@ const FilaCommit = memo(function FilaCommit({
           minute: '2-digit',
         })}
       </div>
-      <div className="w-20 shrink-0 text-right font-mono text-[11px] text-on-surface-variant">{commit.shortHash}</div>
+      <div className="hidden shrink-0 text-right font-mono text-code-sm text-on-surface-variant xl:block w-20">{commit.shortHash}</div>
     </button>
   );
 });
