@@ -10,7 +10,7 @@ type ModalCapaProps = {
   onCerrar: () => void;
 };
 
-/** Anchos en rem: evita colisión con tokens `--spacing-*` de index.css (D1). */
+/** Anchos explícitos en rem (estables frente a utilidades `max-w-*` de Tailwind). */
 const ANCHOS = {
   sm: 'sm:max-w-[24rem]',
   md: 'sm:max-w-[28rem]',

@@ -6,12 +6,12 @@ const ENTORNO_GIT_PERMITIDO = [
   'GIT_CONFIG_SYSTEM',
   'GIT_CONFIG_NOSYSTEM',
   'GIT_CONFIG_COUNT',
-  'GIT_CONFIG_KEY_0',
-  'GIT_CONFIG_VALUE_0',
+  'GIT_TERMINAL_PROMPT',
   'GIT_AUTHOR_NAME',
   'GIT_AUTHOR_EMAIL',
   'GIT_COMMITTER_NAME',
   'GIT_COMMITTER_EMAIL',
+  ...Array.from({ length: 8 }, (_, i) => [`GIT_CONFIG_KEY_${i}`, `GIT_CONFIG_VALUE_${i}`]).flat(),
 ] as const;
 
 const OPCIONES_BASE: Pick<SimpleGitOptions, 'allowEnvironment' | 'unsafe'> = {
@@ -20,8 +20,14 @@ const OPCIONES_BASE: Pick<SimpleGitOptions, 'allowEnvironment' | 'unsafe'> = {
   unsafe: {
     allowUnsafeConfigPaths: true,
     allowUnsafeInclude: true,
+    // Auth HTTPS vía GIT_CONFIG_COUNT + http.extraHeader (B1); no va en argv.
+    allowUnsafeConfigEnvCount: true,
+    allowUnsafeCredentialHelper: true,
   },
 };
+
+/** Opciones compartidas (p. ej. tests que envuelven simple-git). */
+export const opcionesSimpleGitAbyssan = OPCIONES_BASE;
 
 /** Instancia simple-git con entorno Git del host/contenedor (Docker, tests, CI). */
 export function simpleGitAbyssan(
