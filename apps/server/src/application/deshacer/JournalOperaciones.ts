@@ -267,9 +267,10 @@ export class JournalOperaciones {
     return delRepo[delRepo.length - 1] ?? null;
   }
 
-  marcarNoDeshacer(motivo: string): void {
+  marcarNoDeshacer(repoPath: string, motivo: string): void {
     this.asegurarCargado();
-    const actual = this.entradas.filter((e) => !e.deshecha).at(-1);
+    const delRepo = this.entradas.filter((e) => e.repoPath === repoPath && !e.deshecha);
+    const actual = delRepo[delRepo.length - 1];
     if (!actual) return;
     actual.puedeDeshacer = false;
     actual.motivoBloqueo = sanitizarTextoAuditoria(motivo).slice(0, 240);

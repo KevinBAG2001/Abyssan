@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { GitPullRequest, KeyRound } from 'lucide-react';
 import {
   CuentaForja,
@@ -52,6 +52,13 @@ export const ModalForjas: React.FC<ModalForjasProps> = ({
   const [creando, setCreando] = useState(false);
   const [creada, setCreada] = useState<SolicitudForjaCreada | null>(null);
 
+  const onErrorRef = useRef(onError);
+  const onExitoRef = useRef(onExito);
+  useEffect(() => {
+    onErrorRef.current = onError;
+    onExitoRef.current = onExito;
+  }, [onError, onExito]);
+
   const locales = useMemo(() => {
     const nombres: string[] = [];
     for (const r of ramas) {
@@ -75,7 +82,7 @@ export const ModalForjas: React.FC<ModalForjasProps> = ({
     }
   };
 
-  const cargarSolicitudes = async () => {
+  const cargarSolicitudes = useCallback(async () => {
     setCargandoLista(true);
     setAvisoForja(null);
     try {
@@ -88,11 +95,10 @@ export const ModalForjas: React.FC<ModalForjasProps> = ({
       const mensaje = err instanceof Error ? err.message : 'La forja no responde.';
       setAvisoForja(mensaje);
       setSolicitudes([]);
-      onError(mensaje);
     } finally {
       setCargandoLista(false);
     }
-  };
+  }, [repoPath]);
 
   useEffect(() => {
     let vivo = true;
@@ -124,7 +130,6 @@ export const ModalForjas: React.FC<ModalForjasProps> = ({
           const mensaje = err instanceof Error ? err.message : 'La forja no responde.';
           setAvisoForja(mensaje);
           setSolicitudes([]);
-          onError(mensaje);
         }
       } finally {
         if (vivo) setCargandoLista(false);
@@ -133,7 +138,7 @@ export const ModalForjas: React.FC<ModalForjasProps> = ({
     return () => {
       vivo = false;
     };
-  }, [repoPath, onError]);
+  }, [repoPath]);
 
   useEffect(() => {
     if (!base) {
@@ -147,7 +152,7 @@ export const ModalForjas: React.FC<ModalForjasProps> = ({
       const destino = await httpGitApi.iniciarOAuth(p);
       window.location.href = destino;
     } catch (err: unknown) {
-      onError(err instanceof Error ? err.message : 'No se pudo iniciar OAuth');
+      onErrorRef.current(err instanceof Error ? err.message : 'No se pudo iniciar OAuth');
     }
   };
 
@@ -156,7 +161,7 @@ export const ModalForjas: React.FC<ModalForjasProps> = ({
       await httpGitApi.desconectarForja(p);
       await cargarCuentas();
     } catch (err: unknown) {
-      onError(err instanceof Error ? err.message : 'No se pudo desconectar');
+      onErrorRef.current(err instanceof Error ? err.message : 'No se pudo desconectar');
     }
   };
 
@@ -170,7 +175,7 @@ export const ModalForjas: React.FC<ModalForjasProps> = ({
     } catch (err: unknown) {
       const mensaje = err instanceof Error ? err.message : 'No se pudo cargar el diff.';
       setAvisoForja(mensaje);
-      onError(mensaje);
+      onErrorRef.current(mensaje);
     } finally {
       setCargandoDiff(false);
     }
@@ -186,11 +191,11 @@ export const ModalForjas: React.FC<ModalForjasProps> = ({
         seleccion.ramaOrigen,
         seleccion.esFork
       );
-      onExito(`Checkout en ${rama}`);
+      onExitoRef.current(`Checkout en ${rama}`);
       onCheckoutHecho();
       onClose();
     } catch (err: unknown) {
-      onError(err instanceof Error ? err.message : 'No se pudo hacer checkout');
+      onErrorRef.current(err instanceof Error ? err.message : 'No se pudo hacer checkout');
     } finally {
       setCheckoutEnCurso(false);
     }
@@ -208,10 +213,10 @@ export const ModalForjas: React.FC<ModalForjasProps> = ({
         cabeza: ramaActual,
       });
       setCreada(d);
-      onExito(`${proveedor === 'gitlab' ? 'MR' : 'PR'} #${d.numero} creado`);
+      onExitoRef.current(`${proveedor === 'gitlab' ? 'MR' : 'PR'} #${d.numero} creado`);
       void cargarSolicitudes();
     } catch (err: unknown) {
-      onError(err instanceof Error ? err.message : 'No se pudo crear la solicitud');
+      onErrorRef.current(err instanceof Error ? err.message : 'No se pudo crear la solicitud');
     } finally {
       setCreando(false);
     }
@@ -292,6 +297,7 @@ export const ModalForjas: React.FC<ModalForjasProps> = ({
             checkoutEnCurso={checkoutEnCurso}
             onAbrir={(s) => void abrirDiff(s)}
             onCheckout={() => void checkout()}
+            onReintentar={() => void cargarSolicitudes()}
           />
         ) : (
           <FormularioCrearForja

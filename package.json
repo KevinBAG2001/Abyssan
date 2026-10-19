@@ -13,7 +13,8 @@
     "test": "vitest run",
     "test:seguridad": "vitest run apps/server/src/infrastructure/seguridad apps/server/src/infrastructure/ws apps/server/src/application/__tests__/refsPerimetro.test.ts apps/server/src/application/__tests__/addRemotePerimetro.test.ts apps/server/src/application/__tests__/previewPerimetro.test.ts",
     "test:watch": "vitest",
-    "demo:repo": "node scripts/crear-repo-demo.mjs"
+    "demo:repo": "node scripts/crear-repo-demo.mjs",
+    "test:e2e:web": "pnpm --filter @abyssan/web test:e2e"
   },
   "keywords": [
     "git",
@@ -31,6 +32,9 @@
     "pnpm": ">=11.25.0"
   },
   "devDependencies": {
+    "@testing-library/react": "^16.3.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "jsdom": "^26.1.0",
     "oxlint": "^0.15.15",
     "typescript": "^5.9.3",
     "vitest": "^3.2.7"

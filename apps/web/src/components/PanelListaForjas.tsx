@@ -21,6 +21,7 @@ type PanelListaForjasProps = {
   checkoutEnCurso: boolean;
   onAbrir: (s: SolicitudForja) => void;
   onCheckout: () => void;
+  onReintentar: () => void;
 };
 
 export function PanelListaForjas({
@@ -33,12 +34,25 @@ export function PanelListaForjas({
   checkoutEnCurso,
   onAbrir,
   onCheckout,
+  onReintentar,
 }: PanelListaForjasProps) {
   return (
     <div className="flex flex-1 min-h-0 font-mono">
       <div className="w-full sm:w-72 border-r border-outline-variant overflow-y-auto shrink-0">
         {cargandoLista && <p className="p-3 text-code-sm text-on-surface-variant/70">Consultando la forja…</p>}
-        {avisoForja && <p className="p-3 text-code-sm text-ember border-b border-outline-variant">{avisoForja}</p>}
+        {avisoForja && (
+          <div className="p-3 text-code-sm text-ember border-b border-outline-variant space-y-2">
+            <p>{avisoForja}</p>
+            <button
+              type="button"
+              onClick={onReintentar}
+              disabled={cargandoLista}
+              className="px-2.5 py-1 text-[11px] font-bold bg-surface-container-highest hover:brightness-110 text-on-surface rounded border border-outline-variant disabled:opacity-40"
+            >
+              Reintentar
+            </button>
+          </div>
+        )}
         {!cargandoLista && solicitudes.length === 0 && !avisoForja && (
           <p className="p-3 text-code-sm text-on-surface-variant/70">No hay solicitudes abiertas.</p>
         )}
