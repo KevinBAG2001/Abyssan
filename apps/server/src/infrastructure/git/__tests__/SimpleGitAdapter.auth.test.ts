@@ -8,9 +8,10 @@ const { argvCapturados } = vi.hoisted(() => ({
   argvCapturados: [] as unknown[][],
 }));
 
-vi.mock('simple-git', async (importOriginal) => {
-  const original = await importOriginal<typeof import('simple-git')>();
-  const realSimpleGit = original.simpleGit;
+vi.mock('../simpleGitAbyssan.js', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../simpleGitAbyssan.js')>();
+  const { simpleGit: realSimpleGit } = await import('simple-git');
+  const { opcionesSimpleGitAbyssan } = original;
 
   function envolverInstanciaGit(git: SimpleGit): SimpleGit {
     const rawReal = git.raw.bind(git);
@@ -29,27 +30,34 @@ vi.mock('simple-git', async (importOriginal) => {
     return git;
   }
 
-  const simpleGit = (...args: Parameters<typeof realSimpleGit>) =>
-    envolverInstanciaGit(realSimpleGit(...args));
-  Object.assign(simpleGit, realSimpleGit);
+  function simpleGitAbyssan(
+    baseDir?: string | Partial<import('simple-git').SimpleGitOptions>,
+    options?: Partial<import('simple-git').SimpleGitOptions>,
+  ): SimpleGit {
+    if (typeof baseDir === 'string') {
+      return envolverInstanciaGit(realSimpleGit(baseDir, { ...opcionesSimpleGitAbyssan, ...options }));
+    }
+    return envolverInstanciaGit(
+      realSimpleGit({ ...opcionesSimpleGitAbyssan, ...baseDir, ...options }),
+    );
+  }
 
-  return { ...original, simpleGit, default: simpleGit };
+  return { ...original, simpleGitAbyssan };
 });
 
-import { simpleGit } from 'simple-git';
+import { simpleGitAbyssan } from '../simpleGitAbyssan.js';
 import { SimpleGitAdapter } from '../SimpleGitAdapter.js';
 import { InMemoryCommandLogAdapter } from '../../logging/InMemoryCommandLogAdapter.js';
 import { almacenCredencialesForja } from '../../credenciales/AlmacenCredencialesForja.js';
 
 const TOKEN = 'ghp_FAKE1234567890123456789012345678';
-const REMOTE_HTTPS = 'https://github.com/fake/repo.git';
 
 async function prepararBareYLocal(raiz: string) {
   const bare = path.join(raiz, 'bare.git');
   const upstream = path.join(raiz, 'upstream');
-  await simpleGit().init(['-b', 'main', bare, '--bare']);
-  await simpleGit().clone(bare, upstream);
-  const gitUp = simpleGit(upstream);
+  await simpleGitAbyssan().init(['-b', 'main', bare, '--bare']);
+  await simpleGitAbyssan().clone(bare, upstream);
+  const gitUp = simpleGitAbyssan(upstream);
   await gitUp.addConfig('user.email', 'test@abyssan.dev');
   await gitUp.addConfig('user.name', 'Test');
   fs.writeFileSync(path.join(upstream, 'f.txt'), 'v1\n');
@@ -62,18 +70,16 @@ async function prepararBareYLocal(raiz: string) {
 describe('SimpleGitAdapter auth sin token en argv/reflog', { timeout: 30_000 }, () => {
   const envOriginal = {
     ABYSSAN_HOME: process.env.ABYSSAN_HOME,
-    GIT_CONFIG_GLOBAL: process.env.GIT_CONFIG_GLOBAL,
-    GIT_CONFIG_SYSTEM: process.env.GIT_CONFIG_SYSTEM,
+    ABYSSAN_GITHUB_TOKEN: process.env.ABYSSAN_GITHUB_TOKEN,
   };
   let raiz: string;
   let adapter: SimpleGitAdapter;
   let local: string;
   let bare: string;
+  let credencialRemotoSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {
     argvCapturados.length = 0;
-    process.env.GIT_CONFIG_GLOBAL = '/dev/null';
-    process.env.GIT_CONFIG_SYSTEM = '/dev/null';
     raiz = fs.mkdtempSync(path.join(os.tmpdir(), 'abyssan-git-auth-'));
     process.env.ABYSSAN_HOME = path.join(raiz, 'abyssan-home');
     process.env.ABYSSAN_GITHUB_TOKEN = TOKEN;
@@ -82,24 +88,33 @@ describe('SimpleGitAdapter auth sin token en argv/reflog', { timeout: 30_000 }, 
     const preparado = await prepararBareYLocal(raiz);
     bare = preparado.bare;
     local = path.join(raiz, 'local');
-    await simpleGit().clone(bare, local);
-    const gitLocal = simpleGit(local);
+    await simpleGitAbyssan().clone(bare, local);
+    const gitLocal = simpleGitAbyssan(local);
     await gitLocal.addConfig('user.email', 'test@abyssan.dev');
     await gitLocal.addConfig('user.name', 'Test');
-    await gitLocal.remote(['set-url', 'origin', REMOTE_HTTPS]);
-    await gitLocal.addConfig(`url.${bare}.insteadOf`, REMOTE_HTTPS);
+    // Remoto local (ruta absoluta al bare). Sin url.insteadOf (bloqueado en simple-git 4).
+    await gitLocal.remote(['set-url', 'origin', bare]);
+
+    credencialRemotoSpy = vi
+      .spyOn(SimpleGitAdapter.prototype as never, 'credencialRemoto')
+      .mockResolvedValue({
+        urlPlana: 'https://github.com/fake/repo.git',
+        forja: 'github',
+        token: TOKEN,
+        nombreRemoto: 'origin',
+      });
 
     adapter = new SimpleGitAdapter(new InMemoryCommandLogAdapter());
   });
 
   afterEach(() => {
+    credencialRemotoSpy.mockRestore();
     delete process.env.ABYSSAN_GITHUB_TOKEN;
     if (envOriginal.ABYSSAN_HOME !== undefined) process.env.ABYSSAN_HOME = envOriginal.ABYSSAN_HOME;
     else delete process.env.ABYSSAN_HOME;
-    if (envOriginal.GIT_CONFIG_GLOBAL !== undefined) process.env.GIT_CONFIG_GLOBAL = envOriginal.GIT_CONFIG_GLOBAL;
-    else delete process.env.GIT_CONFIG_GLOBAL;
-    if (envOriginal.GIT_CONFIG_SYSTEM !== undefined) process.env.GIT_CONFIG_SYSTEM = envOriginal.GIT_CONFIG_SYSTEM;
-    else delete process.env.GIT_CONFIG_SYSTEM;
+    if (envOriginal.ABYSSAN_GITHUB_TOKEN !== undefined) {
+      process.env.ABYSSAN_GITHUB_TOKEN = envOriginal.ABYSSAN_GITHUB_TOKEN;
+    }
     fs.rmSync(raiz, { recursive: true, force: true });
   });
 
@@ -112,7 +127,7 @@ describe('SimpleGitAdapter auth sin token en argv/reflog', { timeout: 30_000 }, 
   it('pull no deja el token en reflog ni en la API de reflog', async () => {
     const upstream = path.join(raiz, 'upstream');
     fs.writeFileSync(path.join(upstream, 'f.txt'), 'v1\nv2\n');
-    const gitUp = simpleGit(upstream);
+    const gitUp = simpleGitAbyssan(upstream);
     await gitUp.add('f.txt');
     await gitUp.commit('second');
     await gitUp.push('origin', 'main');
@@ -141,7 +156,7 @@ describe('SimpleGitAdapter auth sin token en argv/reflog', { timeout: 30_000 }, 
     expect(JSON.stringify(argvCapturados)).toMatch(/origin/);
 
     fs.writeFileSync(path.join(local, 'nuevo.txt'), 'x\n');
-    const gitLocal = simpleGit(local);
+    const gitLocal = simpleGitAbyssan(local);
     await gitLocal.add('.');
     await gitLocal.commit('local');
 
@@ -154,7 +169,7 @@ describe('SimpleGitAdapter auth sin token en argv/reflog', { timeout: 30_000 }, 
 
   it('obtenerReflog sanitiza entradas ya contaminadas', async () => {
     const logHead = path.join(local, '.git', 'logs', 'HEAD');
-    const head = (await simpleGit(local).revparse(['HEAD'])).trim();
+    const head = (await simpleGitAbyssan(local).revparse(['HEAD'])).trim();
     const linea =
       `${head} ${head} Test <test@abyssan.dev> 1700000000 +0000\t` +
       `pull --no-rebase --progress https://x-access-token:${TOKEN}@github.com/u/r main: Fast-forward\n`;
