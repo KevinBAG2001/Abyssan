@@ -11,15 +11,9 @@ export type EntradaAuditoria = {
   error?: string;
 };
 
-const TOKEN_EN_URL = /https?:\/\/[^/\s]*:[^/\s]+@/gi;
-const PATRON_TOKEN = /(bearer\s+|token[=:]\s*|gho_|ghp_|glpat-|github_pat_)[^\s"']+/gi;
+import { sanitizarTextoAuditoria } from '../seguridad/sanitizarSecretosGit.js';
 
-export function sanitizarTextoAuditoria(texto: string): string {
-  return texto
-    .replace(TOKEN_EN_URL, 'https://***@')
-    .replace(PATRON_TOKEN, '[redactado]')
-    .slice(0, 400);
-}
+export { sanitizarTextoAuditoria };
 
 export function obtenerDirAbyssan(): string {
   if (process.env.ABYSSAN_HOME?.trim()) {

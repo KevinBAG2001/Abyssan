@@ -53,6 +53,6 @@ describe('auditoría jsonl', () => {
     expect(enUrl).toContain('https://***@');
     const suelto = sanitizarTextoAuditoria('token suelto ghp_falsoNoUsar en el mensaje');
     expect(suelto).not.toContain('ghp_falsoNoUsar');
-    expect(suelto).toContain('[redactado]');
+    expect(suelto).toContain('***');
   });
 });
