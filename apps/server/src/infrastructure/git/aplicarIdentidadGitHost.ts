@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import { simpleGit } from 'simple-git';
+import { simpleGitAbyssan as simpleGit } from './simpleGitAbyssan.js';
 
 const RUTA_GITCONFIG_EN_CONTENEDOR = '/host-gitconfig';
 

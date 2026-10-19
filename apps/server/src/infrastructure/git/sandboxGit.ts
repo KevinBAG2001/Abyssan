@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { simpleGit } from 'simple-git';
+import { simpleGitAbyssan as simpleGit } from './simpleGitAbyssan.js';
 
 function rutaGit(p: string): string {
   return p.replace(/\\/g, '/');
