@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Header } from './components/Header';
 import { GitConsoleDrawer } from './components/GitConsoleDrawer';
 import { CapaModalesApp } from './components/CapaModalesApp';
@@ -101,6 +101,15 @@ export const App: React.FC = () => {
       abrirForjas: () => shell.modales.setForjasAbiertas(true),
     });
   };
+
+  const notificarErrorModal = useCallback(
+    (mensaje: string) => git.showToast(mensaje, 'error'),
+    [git.showToast],
+  );
+  const notificarExitoModal = useCallback(
+    (mensaje: string) => git.showToast(mensaje, 'success'),
+    [git.showToast],
+  );
 
   const inteligenciaGrafo = React.useMemo(
     () =>
@@ -284,9 +293,9 @@ export const App: React.FC = () => {
           await git.loadRepos();
           git.setSelectedRepo(path);
         }}
-        onError={(m) => git.showToast(m, 'error')}
+        onError={notificarErrorModal}
         onCerrarForjas={() => shell.modales.setForjasAbiertas(false)}
-        onExito={(m) => git.showToast(m, 'success')}
+        onExito={notificarExitoModal}
         onCheckoutHecho={() => git.selectedRepo && void git.refreshRepoData(git.selectedRepo)}
         onCerrarContext={() => shell.setContextMenu(null)}
         onCreateBranch={mut.handleCreateBranch}
