@@ -33,6 +33,10 @@ describe('RemotePolicy', () => {
 
   it('rechaza credenciales embebidas y URLs malformadas', () => {
     expect(() => validarUrlRemoto('https://user:pass@github.com/org/repo.git')).toThrow('credenciales');
+    expect(() => validarUrlRemoto('https://ghp_soloToken@github.com/org/repo.git')).toThrow('credenciales');
+    expect(() => validarUrlRemoto('https://x-access-token:gho_secreto@github.com/org/repo.git')).toThrow(
+      'credenciales'
+    );
     expect(() => validarUrlRemoto('ssh://user:pass@host/repo.git')).toThrow('credenciales');
     expect(() => validarUrlRemoto('https://github.com/org/repo.git\n-u')).toThrow();
     expect(() => validarUrlRemoto('')).toThrow();
