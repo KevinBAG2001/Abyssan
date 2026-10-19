@@ -186,6 +186,7 @@ export const App: React.FC = () => {
         motivoDeshacer={mut.ultimaOp.motivoBloqueo}
         modoAprendizaje={shell.modoAprendizaje}
         onCambiarModoAprendizaje={shell.cambiarModoAprendizaje}
+        onAbrirPaleta={shell.abrirPaleta}
       />
 
       <AreaTrabajoGit

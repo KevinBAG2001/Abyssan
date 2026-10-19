@@ -13,7 +13,8 @@
     "test": "vitest run",
     "test:seguridad": "vitest run apps/server/src/infrastructure/seguridad apps/server/src/infrastructure/ws apps/server/src/application/__tests__/refsPerimetro.test.ts apps/server/src/application/__tests__/addRemotePerimetro.test.ts apps/server/src/application/__tests__/previewPerimetro.test.ts",
     "test:watch": "vitest",
-    "demo:repo": "node scripts/crear-repo-demo.mjs"
+    "demo:repo": "node scripts/crear-repo-demo.mjs",
+    "test:e2e:web": "pnpm --filter @abyssan/web test:e2e"
   },
   "keywords": [
     "git",

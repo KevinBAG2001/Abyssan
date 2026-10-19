@@ -67,6 +67,48 @@ jobs:
           exit-code: '1'
           ignore-unfixed: true
 
+  e2e-responsivo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+        with:
+          version: 11.25.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+      - name: Build
+        run: pnpm build
+      - name: Instalar Chromium (Playwright)
+        run: pnpm --filter @abyssan/web exec playwright install chromium --with-deps
+      - name: Preparar repo demo
+        run: |
+          mkdir -p /tmp/abyssan-proyectos
+          PROJECTS_ROOT=/tmp/abyssan-proyectos pnpm demo:repo --force
+        env:
+          PROJECTS_ROOT: /tmp/abyssan-proyectos
+      - name: Arrancar API y SPA
+        run: |
+          PROJECTS_ROOT=/tmp/abyssan-proyectos pnpm --filter @abyssan/server start &
+          pnpm --filter @abyssan/web preview --host 127.0.0.1 --port 5174 &
+          for i in $(seq 1 60); do
+            curl -sf http://127.0.0.1:3001/health >/dev/null && curl -sf http://127.0.0.1:5174/ >/dev/null && exit 0
+            sleep 1
+          done
+          echo "Servicios no listos a tiempo" >&2
+          exit 1
+        env:
+          PROJECTS_ROOT: /tmp/abyssan-proyectos
+      - name: Playwright responsivo
+        run: pnpm test:e2e:web
+        env:
+          PROJECTS_ROOT: /tmp/abyssan-proyectos
+          ABYSSAN_URL: http://127.0.0.1:5174
+
   imagenes:
     runs-on: ubuntu-latest
     timeout-minutes: 20
