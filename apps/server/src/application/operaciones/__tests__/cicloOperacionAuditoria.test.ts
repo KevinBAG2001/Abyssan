@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import type { Request, Response } from 'express';
 import type { WebSocket } from 'ws';
-import { simpleGit } from 'simple-git';
+import { simpleGitAbyssan as simpleGit } from '../../../infrastructure/git/simpleGitAbyssan.js';
 import { SimpleGitAdapter } from '../../../infrastructure/git/SimpleGitAdapter.js';
 import { InMemoryCommandLogAdapter } from '../../../infrastructure/logging/InMemoryCommandLogAdapter.js';
 import { hubWebSocket } from '../../../infrastructure/ws/HubWebSocket.js';
