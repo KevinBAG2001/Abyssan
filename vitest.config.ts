@@ -6,6 +6,7 @@ export default defineConfig({
   test: {
     include: ['apps/**/*.test.ts'],
     environment: 'node',
+    setupFiles: ['./vitest.setup.ts'],
     env: {
       ABYSSAN_HOME: path.join(os.tmpdir(), 'abyssan-vitest-home'),
     },
