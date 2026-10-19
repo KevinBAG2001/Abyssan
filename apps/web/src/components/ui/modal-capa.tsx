@@ -10,14 +10,15 @@ type ModalCapaProps = {
   onCerrar: () => void;
 };
 
+/** Anchos en rem: evita colisión con tokens `--spacing-*` de index.css (D1). */
 const ANCHOS = {
-  sm: 'max-w-sm',
-  md: 'max-w-md',
-  lg: 'max-w-lg',
-  xl: 'max-w-3xl',
-  compare: 'max-w-2xl',
-  wide: 'max-w-4xl',
-  paleta: 'max-w-[420px]',
+  sm: 'sm:max-w-[24rem]',
+  md: 'sm:max-w-[28rem]',
+  lg: 'sm:max-w-[32rem]',
+  xl: 'sm:max-w-[48rem]',
+  compare: 'sm:max-w-[42rem]',
+  wide: 'sm:max-w-[56rem]',
+  paleta: 'sm:max-w-[26.25rem]',
 } as const;
 
 /**
@@ -45,7 +46,7 @@ export function ModalCapa({
         open
         aria-modal="true"
         aria-labelledby={labelledBy}
-        className="fixed inset-0 z-[200] m-0 flex h-full max-h-none w-full max-w-none items-center justify-center border-0 bg-transparent p-4"
+        className="fixed inset-0 z-[200] m-0 flex h-full max-h-none w-full max-w-none items-end justify-center border-0 bg-transparent p-0 sm:items-center sm:p-4"
       >
         <button
           type="button"
@@ -55,7 +56,7 @@ export function ModalCapa({
         />
         <div
           className={cn(
-            'relative w-full min-w-[min(100%,18rem)] shrink-0 rounded-lg border border-outline-variant bg-surface-container-low shadow-2xl overflow-hidden',
+            'relative flex max-h-[calc(100dvh-2rem)] w-full min-w-0 shrink-0 flex-col overflow-hidden rounded-none border border-outline-variant bg-surface-container-low shadow-2xl sm:min-w-[min(100%,18rem)] sm:max-h-[min(calc(100dvh-2rem),90vh)] sm:rounded-lg max-sm:h-[100dvh] max-sm:max-h-[100dvh]',
             ANCHOS[ancho],
             className
           )}

@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "capturas": "node scripts/capturar-pantallas.mjs"
+    "capturas": "node scripts/capturar-pantallas.mjs",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.0.9",
@@ -23,7 +24,8 @@
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
     "@vitejs/plugin-react": "^4.3.4",
-    "playwright": "^1.56.0",
+    "@playwright/test": "1.56.0",
+    "playwright": "1.56.0",
     "typescript": "^5.7.3",
     "vite": "^6.2.0"
   }

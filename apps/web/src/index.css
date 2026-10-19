@@ -234,6 +234,20 @@
   .scrollbar-none::-webkit-scrollbar {
     display: none;
   }
+
+  .touch-target {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+@media (pointer: coarse) {
+  .touch-target,
+  button[class*='btnIcono'],
+  button[class*='btnSecundario'],
+  button[class*='btnPrimario'] {
+    min-height: 44px;
+  }
 }
 
 /* Scrollbar estilo instrumento */

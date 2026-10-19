@@ -15,6 +15,7 @@ interface SidebarProps {
   loading: boolean;
   headDesvinculado?: boolean;
   ramaInspeccionada?: string | null;
+  className?: string;
   onCheckout: (branchName: string) => void;
   onInspectarRama: (branch: IGitBranch) => void;
   onCreateBranch: (branchName: string) => void;
@@ -30,6 +31,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   loading,
   headDesvinculado = false,
   ramaInspeccionada = null,
+  className,
   onCheckout,
   onInspectarRama,
   onCreateBranch,
@@ -68,7 +70,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   return (
-    <aside className="w-sidebar min-w-[200px] max-w-[280px] shrink-0 bg-surface-container-low border-r border-outline-variant flex flex-col h-full select-none max-lg:min-w-[180px]">
+    <aside
+      className={cn(
+        'w-sidebar min-w-0 max-w-[280px] shrink-0 bg-surface-container-low border-r border-outline-variant flex flex-col h-full select-none lg:min-w-[200px]',
+        className,
+      )}
+    >
       <div className="px-4 py-3 border-b border-outline-variant flex items-center justify-between">
         <span className={ui.labelCaps}>Ramas & Tags</span>
         <div className="flex items-center gap-0.5">
