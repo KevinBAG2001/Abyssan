@@ -24,8 +24,14 @@ import {
   JournalOperaciones,
   journalOperaciones,
 } from '../deshacer/JournalOperaciones.js';
-import type { DatosRegistroJournal, EntradaJournalPublica, UltimaOperacion } from '../deshacer/tiposJournal.js';
+import type {
+  DatosRegistroJournal,
+  EntradaJournalPublica,
+  PuntoRepositorio,
+  UltimaOperacion,
+} from '../deshacer/tiposJournal.js';
 import { recuperarReset } from '../deshacer/recuperarReset.js';
+import { verificarPrecondicionesDeshacer } from '../deshacer/verificarPrecondicionesDeshacer.js';
 import { registroOperaciones } from '../operaciones/RegistroOperaciones.js';
 import {
   gestorOperaciones,
@@ -80,8 +86,22 @@ export class GitUseCases {
     return resultado;
   }
 
+  private async capturarPuntoRepositorio(repoPath: string): Promise<PuntoRepositorio> {
+    const head = (await this.gitRepository.obtenerHashHead(repoPath)).trim().toLowerCase();
+    const status = await this.gitRepository.getStatus(repoPath);
+    const rama =
+      status.currentBranch && status.currentBranch !== 'HEAD desvinculado'
+        ? status.currentBranch
+        : undefined;
+    return { head: head || undefined, rama };
+  }
+
   private async anotar(op: DatosRegistroJournal): Promise<void> {
-    this.journal.registrar(op);
+    let entrada = op;
+    if (op.puedeDeshacer && !op.despues) {
+      entrada = { ...op, despues: await this.capturarPuntoRepositorio(op.repoPath) };
+    }
+    this.journal.registrar(entrada);
     await this.reconciliarAnclas(op.repoPath);
   }
 
@@ -293,7 +313,10 @@ export class GitUseCases {
 
   private async trabajoPush(repoPath: string, onProgreso: EscuchaProgresoGit): Promise<void> {
     await this.gitRepository.push(repoPath, onProgreso);
-    this.journal.marcarNoDeshacer('Un push ya está en el remoto; no se deshace desde Abyssan.');
+    this.journal.marcarNoDeshacer(
+      repoPath,
+      'Un push ya está en el remoto; no se deshace desde Abyssan.'
+    );
     await this.anotar({
       tipo: 'push',
       repoPath,
@@ -453,6 +476,8 @@ export class GitUseCases {
       }
 
       const op = punta;
+      await verificarPrecondicionesDeshacer(this.gitRepository, repoPath, op);
+
       switch (op.tipo) {
         case 'crearRama': {
           const actual = await this.gitRepository.getStatus(repoPath);
@@ -704,8 +729,13 @@ export class GitUseCases {
       }
 
       const hashNuevo = (await this.gitRepository.obtenerHashHead(repoPath)).trim().toLowerCase();
+      const statusTrasReset = await this.gitRepository.getStatus(repoPath);
+      const ramaTrasReset =
+        statusTrasReset.currentBranch && statusTrasReset.currentBranch !== 'HEAD desvinculado'
+          ? statusTrasReset.currentBranch
+          : undefined;
       this.journal.completar(entrada.id, {
-        despues: { head: hashNuevo },
+        despues: { head: hashNuevo, rama: ramaTrasReset },
         puedeDeshacer: puedeAnclar,
         motivoBloqueo: puedeAnclar ? undefined : 'No había HEAD que anclar',
         payload: { hashAnterior, hashNuevo, type: tipo, target: destino },

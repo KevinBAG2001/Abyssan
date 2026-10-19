@@ -21,9 +21,10 @@ export type TipoOperacion =
  */
 export type EstadoJournal = 'en_curso' | 'completada' | 'fallida' | 'recuperada';
 
-/** Punto observable del repositorio. Hoy solo HEAD; no es una copia del árbol. */
+/** Punto observable del repositorio (HEAD y rama activa; no es una copia del árbol). */
 export type PuntoRepositorio = {
   head?: string;
+  rama?: string;
 };
 
 export type EstrategiaRecuperacion = 'ref_temporal' | 'snapshot' | 'ninguna';
