@@ -1,5 +1,6 @@
 // Austria: Adaptador de infraestructura para simple-git implementando IGitRepository
-import { simpleGit, SimpleGit, StatusResult, ResetMode } from 'simple-git';
+import { SimpleGit, StatusResult, ResetMode } from 'simple-git';
+import { simpleGitAbyssan as simpleGit } from './simpleGitAbyssan.js';
 import fs from 'fs';
 import path from 'path';
 import { IGitRepository } from '../../domain/repositories/IGitRepository.js';
@@ -28,10 +29,15 @@ import { parsearHunksConflicto } from '../../application/conflictos/parsearConfl
 import { almacenCredencialesForja } from '../credenciales/AlmacenCredencialesForja.js';
 import {
   detectarForja,
-  inyectarTokenHttps,
   mensajePushSinCredencial,
   tokenForjaDesdeEntorno,
 } from '../credenciales/inyectarTokenHttps.js';
+import {
+  construirEntornoAuthGitHttps,
+  credencialHttpsDesdeUrl,
+  type CredencialHttpsGit,
+} from '../credenciales/entornoAuthGitHttps.js';
+import { sanitizarSecretosGit } from '../seguridad/sanitizarSecretosGit.js';
 import { mapearEstadoPorcelain } from './mapearEstadoPorcelain.js';
 import { construirDiffArchivoNuevo, LIMITE_DIFF_ARCHIVO_NUEVO } from './diffArchivoNuevo.js';
 import { parsearNameStatus } from './parsearNameStatus.js';
@@ -72,11 +78,23 @@ export class SimpleGitAdapter implements IGitRepository {
     };
   }
 
-  private getGitInstance(repoPath: string, onProgreso?: EscuchaProgresoGit): SimpleGit {
+  private getGitInstance(
+    repoPath: string,
+    onProgreso?: EscuchaProgresoGit,
+    entornoExtra?: NodeJS.ProcessEnv
+  ): SimpleGit {
     if (!fs.existsSync(repoPath)) {
       throw new Error(`El directorio no existe: ${repoPath}`);
     }
-    return simpleGit({ baseDir: repoPath, ...this.opcionesProgreso(onProgreso) });
+    const git = simpleGit({ baseDir: repoPath, ...this.opcionesProgreso(onProgreso) });
+    if (entornoExtra) {
+      return git.env(entornoExtra);
+    }
+    return git;
+  }
+
+  private entornoConCredencial(cred?: CredencialHttpsGit): NodeJS.ProcessEnv | undefined {
+    return cred ? construirEntornoAuthGitHttps(cred) : undefined;
   }
 
   async isGitRepository(repoPath: string): Promise<boolean> {
@@ -141,27 +159,27 @@ export class SimpleGitAdapter implements IGitRepository {
     return deAlmacen || tokenForjaDesdeEntorno(forja);
   }
 
-  private async urlConTokenSiAplica(url: string): Promise<string> {
+  private credencialParaUrl(url: string): CredencialHttpsGit | undefined {
     const forja = detectarForja(url);
-    if (!forja) return url;
+    if (!forja) return undefined;
     const token = this.tokenForja(forja);
-    if (!token) return url;
-    return inyectarTokenHttps(url, token, forja);
+    if (!token) return undefined;
+    return credencialHttpsDesdeUrl(url, forja, token);
   }
 
-  private async urlRemotoConToken(repoPath: string): Promise<string | undefined> {
-    return this.urlRemotoNombradoConToken(repoPath, 'origin');
-  }
-
-  private async urlRemotoNombradoConToken(repoPath: string, nombre: string): Promise<string | undefined> {
+  private async credencialRemoto(
+    repoPath: string,
+    nombre = 'origin'
+  ): Promise<(CredencialHttpsGit & { nombreRemoto: string }) | undefined> {
     const git = this.getGitInstance(repoPath);
     try {
       const remotes = await git.getRemotes(true);
       const elegido = remotes.find((r) => r.name === nombre) || remotes[0];
       const url = elegido?.refs?.push || elegido?.refs?.fetch;
-      if (!url) return undefined;
-      const conToken = await this.urlConTokenSiAplica(url);
-      return conToken !== url ? conToken : undefined;
+      if (!url || !elegido?.name) return undefined;
+      const cred = this.credencialParaUrl(url);
+      if (!cred) return undefined;
+      return { ...cred, nombreRemoto: elegido.name };
     } catch {
       return undefined;
     }
@@ -478,33 +496,38 @@ export class SimpleGitAdapter implements IGitRepository {
     onProgreso?: EscuchaProgresoGit
   ): Promise<void> {
     const start = Date.now();
-    const git = this.getGitInstance(repoPath, onProgreso);
+    const cred = await this.credencialRemoto(repoPath);
+    const git = this.getGitInstance(repoPath, onProgreso, this.entornoConCredencial(cred));
     const args = modo === 'rebase' ? ['--rebase'] : ['--no-rebase'];
-    const remotoToken = await this.urlRemotoConToken(repoPath);
     try {
-      if (remotoToken) {
+      if (cred) {
         const status = await git.status();
         const rama = status.current || 'HEAD';
-        const flags = modo === 'rebase' ? ['--rebase'] : ['--no-rebase'];
-        await git.raw(['pull', ...flags, '--progress', remotoToken, rama]);
+        await git.raw(['pull', ...args, '--progress', cred.nombreRemoto, rama]);
       } else {
         await git.raw(['pull', ...args, '--progress']);
       }
       this.logRepository.addLog(`git pull ${args.join(' ')}`, Date.now() - start, true);
     } catch (err: any) {
-      this.logRepository.addLog(`git pull ${args.join(' ')}`, Date.now() - start, false, undefined, err.message);
+      this.logRepository.addLog(
+        `git pull ${args.join(' ')}`,
+        Date.now() - start,
+        false,
+        undefined,
+        sanitizarSecretosGit(err.message)
+      );
       throw err;
     }
   }
 
   async push(repoPath: string, onProgreso?: EscuchaProgresoGit): Promise<void> {
     const start = Date.now();
-    const git = this.getGitInstance(repoPath, onProgreso);
-    const remotoToken = await this.urlRemotoConToken(repoPath);
+    const cred = await this.credencialRemoto(repoPath);
+    const git = this.getGitInstance(repoPath, onProgreso, this.entornoConCredencial(cred));
     const status = await git.status();
     const rama = status.current || 'HEAD';
     const sinUpstream = !status.tracking;
-    if (!remotoToken) {
+    if (!cred) {
       const remotes = await git.getRemotes(true);
       const elegido = remotes.find((r) => r.name === 'origin') || remotes[0];
       const urlOrigin = elegido?.refs?.push || elegido?.refs?.fetch || '';
@@ -514,10 +537,10 @@ export class SimpleGitAdapter implements IGitRepository {
       }
     }
     try {
-      if (remotoToken) {
+      if (cred) {
         const args = sinUpstream
-          ? ['push', '--set-upstream', '--progress', remotoToken, rama]
-          : ['push', '--progress', remotoToken, rama];
+          ? ['push', '--set-upstream', '--progress', cred.nombreRemoto, rama]
+          : ['push', '--progress', cred.nombreRemoto, rama];
         await git.raw(args);
       } else {
         const args = sinUpstream
@@ -527,7 +550,7 @@ export class SimpleGitAdapter implements IGitRepository {
       }
       this.logRepository.addLog(`git push${sinUpstream ? ' --set-upstream' : ''}`, Date.now() - start, true);
     } catch (err: any) {
-      this.logRepository.addLog('git push', Date.now() - start, false, undefined, err.message);
+      this.logRepository.addLog('git push', Date.now() - start, false, undefined, sanitizarSecretosGit(err.message));
       throw err;
     }
   }
@@ -591,12 +614,25 @@ export class SimpleGitAdapter implements IGitRepository {
     if (fs.existsSync(destino) && fs.readdirSync(destino).length > 0) {
       throw new Error('La carpeta destino no está vacía');
     }
-    const urlEfectiva = await this.urlConTokenSiAplica(url);
+    const cred = this.credencialParaUrl(url);
+    const urlClone = cred?.urlPlana ?? url;
+    const entorno = this.entornoConCredencial(cred);
     try {
-      await simpleGit({ ...this.opcionesProgreso(onProgreso) }).clone(urlEfectiva, destino, ['--progress']);
+      const git = simpleGit({ ...this.opcionesProgreso(onProgreso) });
+      if (entorno) {
+        await git.env(entorno).clone(urlClone, destino, ['--progress']);
+      } else {
+        await git.clone(urlClone, destino, ['--progress']);
+      }
       this.logRepository.addLog(`git clone ${url} ${destino}`, Date.now() - start, true);
     } catch (err: any) {
-      this.logRepository.addLog(`git clone ${url}`, Date.now() - start, false, undefined, err.message);
+      this.logRepository.addLog(
+        `git clone ${url}`,
+        Date.now() - start,
+        false,
+        undefined,
+        sanitizarSecretosGit(err.message)
+      );
       throw err;
     }
   }
@@ -706,7 +742,7 @@ export class SimpleGitAdapter implements IGitRepository {
           return {
             hash: hash?.trim() || '',
             selector: selector?.trim() || '',
-            mensaje: mensaje?.trim() || '',
+            mensaje: sanitizarSecretosGit(mensaje?.trim() || ''),
             fecha: fecha?.trim() || '',
           };
         });
@@ -769,32 +805,37 @@ export class SimpleGitAdapter implements IGitRepository {
 
   async fetchAll(repoPath: string, prune = true, onProgreso?: EscuchaProgresoGit): Promise<void> {
     const start = Date.now();
-    const git = this.getGitInstance(repoPath, onProgreso);
+    const cred = await this.credencialRemoto(repoPath);
+    const git = this.getGitInstance(repoPath, onProgreso, this.entornoConCredencial(cred));
     const options = prune ? ['--all', '--prune'] : ['--all'];
-    const remotoToken = await this.urlRemotoConToken(repoPath);
     try {
-      if (remotoToken) {
-        await git.raw(['fetch', '--progress', remotoToken, ...(prune ? ['--prune'] : [])]);
+      if (cred) {
+        await git.raw(['fetch', '--progress', cred.nombreRemoto, ...(prune ? ['--prune'] : [])]);
       } else {
         await git.fetch([...options, '--progress']);
       }
       this.logRepository.addLog(`git fetch ${options.join(' ')}`, Date.now() - start, true);
     } catch (err: any) {
-      this.logRepository.addLog('git fetch', Date.now() - start, false, undefined, err.message);
+      this.logRepository.addLog('git fetch', Date.now() - start, false, undefined, sanitizarSecretosGit(err.message));
       throw err;
     }
   }
 
   async fetchRefspec(repoPath: string, remoto: string, refspec: string): Promise<void> {
     const start = Date.now();
-    const git = this.getGitInstance(repoPath);
-    const urlToken = await this.urlRemotoNombradoConToken(repoPath, remoto);
-    const destino = urlToken || remoto;
+    const cred = await this.credencialRemoto(repoPath, remoto);
+    const git = this.getGitInstance(repoPath, undefined, this.entornoConCredencial(cred));
     try {
-      await git.raw(['fetch', destino, refspec]);
+      await git.raw(['fetch', remoto, refspec]);
       this.logRepository.addLog(`git fetch ${remoto} ${refspec}`, Date.now() - start, true);
     } catch (err: any) {
-      this.logRepository.addLog(`git fetch ${remoto} ${refspec}`, Date.now() - start, false, undefined, err.message);
+      this.logRepository.addLog(
+        `git fetch ${remoto} ${refspec}`,
+        Date.now() - start,
+        false,
+        undefined,
+        sanitizarSecretosGit(err.message)
+      );
       throw err;
     }
   }
