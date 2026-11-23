@@ -24,5 +24,19 @@ export default defineConfig({
     env: {
       ABYSSAN_HOME: path.join(os.tmpdir(), 'abyssan-vitest-home'),
     },
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json-summary'],
+      reportsDirectory: './coverage',
+      exclude: [
+        '**/node_modules/**',
+        '**/dist/**',
+        'coverage/**',
+        '**/*.test.ts',
+        '**/*.test.tsx',
+        'apps/web/e2e/**',
+        'scripts/**',
+      ],
+    },
   },
 });
