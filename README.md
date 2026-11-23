@@ -121,7 +121,7 @@ Monorepo **pnpm workspaces**. Sin base de datos en v1: estado en memoria, `local
 ┌─────────────────────────────────────────────────────────────────┐
 │                        apps/web  ·  :5174                       │
 │         React 19  ·  TypeScript  ·  Vite 6  ·  Tailwind 4       │
-│              Lucide  ·  date-fns  ·  WebSocket client           │
+│              Lucide  ·  WebSocket client                        │
 └────────────────────────────┬────────────────────────────────────┘
                              │  REST  /api/git/*     WS  REPO_CHANGED
 ┌────────────────────────────▼────────────────────────────────────┐
